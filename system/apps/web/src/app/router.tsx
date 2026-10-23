@@ -1,0 +1,59 @@
+import { lazy, Suspense, type ReactNode } from "react";
+import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
+import { Spinner } from "../components/ui";
+import { NotFound, Placeholder } from "../features/common/Placeholder";
+import { ADMIN_NAV, ADVISER_NAV, FOUNDER_NAV, FUNDER_NAV, FUNDER_SETUP, type NavPage } from "./nav";
+import { RequireFunderSetup, RequireRole, RoleHome } from "./guards";
+
+// Each portal is its own chunk, so a founder on a phone never downloads the funder or admin code.
+const FounderShell = lazy(() => import("../components/layout/FounderShell").then((m) => ({ default: m.FounderShell })));
+const PortalShell = lazy(() => import("../components/layout/PortalShell").then((m) => ({ default: m.PortalShell })));
+const More = lazy(() => import("../features/founder/More"));
+const SignIn = lazy(() => import("../features/auth/SignIn"));
+const VerifyPin = lazy(() => import("../features/auth/VerifyPin"));
+const pub = () => import("../features/public/PublicPages");
+const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
+const BusinessProfile = lazy(() => pub().then((m) => ({ default: m.BusinessProfile })));
+const PayPage = lazy(() => pub().then((m) => ({ default: m.PayPage })));
+const Join = lazy(() => pub().then((m) => ({ default: m.Join })));
+
+const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
+const pages = (list: NavPage[]): RouteObject[] => list.map((p) => ({ path: p.path, element: <Placeholder page={p} /> }));
+
+export const routes: RouteObject[] = [
+  { path: "/", element: <RoleHome /> },
+  { path: "/sign-in", element: s(<SignIn />) },
+  { path: "/verify", element: s(<VerifyPin />) },
+  { path: "/join", element: s(<Join />) },
+  // Public, no account.
+  { path: "/directory", element: s(<Directory />) },
+  { path: "/b/:slug", element: s(<BusinessProfile />) },
+  { path: "/pay/:ref", element: s(<PayPage />) },
+  {
+    path: "/app",
+    element: <RequireRole roles={["founder"]}>{s(<FounderShell />)}</RequireRole>,
+    children: [
+      { index: true, element: <Navigate to="home" replace /> },
+      ...pages(FOUNDER_NAV.flatMap((g) => g.pages)),
+      { path: "more", element: s(<More />) },
+    ],
+  },
+  {
+    path: "/funder",
+    element: <RequireRole roles={["funder"]}><RequireFunderSetup>{s(<PortalShell base="/funder" title="Funder portal" pages={FUNDER_NAV} />)}</RequireFunderSetup></RequireRole>,
+    children: [{ index: true, element: <Navigate to="pipeline" replace /> }, ...pages([...FUNDER_NAV, FUNDER_SETUP])],
+  },
+  {
+    path: "/adviser",
+    element: <RequireRole roles={["adviser"]}>{s(<PortalShell base="/adviser" title="Support portal" pages={ADVISER_NAV} />)}</RequireRole>,
+    children: [{ index: true, element: <Navigate to="cohort" replace /> }, ...pages(ADVISER_NAV)],
+  },
+  {
+    path: "/admin",
+    element: <RequireRole roles={["admin"]}>{s(<PortalShell base="/admin" title="ProofPocket admin" pages={ADMIN_NAV} />)}</RequireRole>,
+    children: [{ index: true, element: <Navigate to="checks" replace /> }, ...pages(ADMIN_NAV)],
+  },
+  { path: "*", element: <NotFound /> },
+];
+
+export const router = createBrowserRouter(routes);

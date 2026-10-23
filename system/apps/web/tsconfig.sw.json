@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "WebWorker"
+    ],
+    "noEmit": true,
+    "types": [
+      "vite-plugin-pwa/client"
+    ]
+  },
+  "include": [
+    "src/sw.ts",
+    "src/lib/cache-rules.ts"
+  ]
+}
