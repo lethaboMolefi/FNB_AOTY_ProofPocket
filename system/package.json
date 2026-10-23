@@ -1,0 +1,27 @@
+{
+  "name": "proofpocket",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter ./apps/* dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @proofpocket/web test:e2e",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "pnpm --filter @proofpocket/api db:migrate",
+    "db:reset": "pnpm --filter @proofpocket/api db:reset",
+    "db:generate": "pnpm --filter @proofpocket/api db:generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.16.0",
+    "eslint": "9.16.0",
+    "eslint-plugin-react-hooks": "5.1.0",
+    "eslint-plugin-security": "3.0.1",
+    "globals": "15.13.0",
+    "typescript": "5.6.3",
+    "typescript-eslint": "8.18.0"
+  }
+}

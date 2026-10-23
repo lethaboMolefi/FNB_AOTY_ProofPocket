@@ -1,0 +1,20 @@
+# Local development only. Cloud SQL (private IP) is used in the cloud.
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: proofpocket_owner
+      POSTGRES_PASSWORD: owner_dev_password
+      POSTGRES_DB: proofpocket
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./apps/api/db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proofpocket_owner -d proofpocket"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  pgdata:
