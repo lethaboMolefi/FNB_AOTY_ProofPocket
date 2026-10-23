@@ -38,7 +38,9 @@ export function authRoutes(deps: Deps) {
     return {
       id: row.id, email: row.email, displayName: row.displayName, role: row.role,
       org: row.orgId ? { id: row.orgId, name: row.orgName!, type: row.orgType!, verified: row.orgVerified!, setupDone: row.orgSetupDone! } : null,
-      companyId: row.companyId,
+      company: row.companyId
+        ? { id: row.companyId, name: row.companyName!, town: row.companyTown!, province: row.companyProvince!, businessType: row.companyType!, verified: row.companyVerifiedAt !== null }
+        : null,
       needsOtp: !otpSatisfied(user!, token),
     };
   }));

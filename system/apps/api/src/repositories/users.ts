@@ -7,7 +7,8 @@ export async function findMe(tx: Tx, userId: string) {
     .select({
       id: users.id, email: users.email, displayName: users.displayName, role: users.role,
       orgId: organisations.id, orgName: organisations.name, orgType: organisations.type, orgVerified: organisations.verified, orgSetupDone: organisations.setupDone,
-      companyId: companies.id,
+      companyId: companies.id, companyName: companies.name, companyTown: companies.town, companyProvince: companies.province,
+      companyType: companies.businessType, companyVerifiedAt: companies.verifiedAt,
     })
     .from(users)
     .leftJoin(organisations, eq(organisations.id, users.orgId))

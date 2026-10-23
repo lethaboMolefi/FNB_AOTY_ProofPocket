@@ -14,7 +14,11 @@ export const meSchema = z.object({
   displayName: z.string(),
   role: roleSchema,
   org: z.object({ id: z.string().uuid(), name: z.string(), type: z.enum(["funder", "incubator", "buyer"]), verified: z.boolean(), setupDone: z.boolean() }).nullable(),
-  companyId: z.string().uuid().nullable(),
+  /** Founders only: the business they own. */
+  company: z.object({
+    id: z.string().uuid(), name: z.string(), town: z.string(), province: z.string(),
+    businessType: z.enum(["beauty", "food", "retail", "recycling", "trades", "services"]), verified: z.boolean(),
+  }).nullable(),
   /** Funder, adviser and admin users must enter an email PIN after each sign-in. */
   needsOtp: z.boolean(),
 });

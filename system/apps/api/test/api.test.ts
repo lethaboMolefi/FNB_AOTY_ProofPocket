@@ -52,7 +52,7 @@ describe("sign-in", () => {
     const r = await request(app).get("/api/v1/me").set("Authorization", signIn(FOUNDER));
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ email: FOUNDER, role: "founder", needsOtp: false, org: null });
-    expect(r.body.companyId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(r.body.company).toMatchObject({ name: "Nala Nails & Lashes", town: "Soweto", businessType: "beauty", verified: false });
   });
 
   it("funders must pass an email PIN on every sign-in", async () => {
