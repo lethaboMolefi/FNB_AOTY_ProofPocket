@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ProofPocket</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,750&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#founder" data-action="role" data-role="founder" aria-label="ProofPocket home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 14 L7 9 L10 12 L16 4" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="4" r="1.8" fill="var(--accent-ink)"/></svg>
+      </span>
+      <span class="brand-name">ProofPocket</span>
+    </a>
+    <span class="proto-tag">Prototype · example data</span>
+    <nav class="roles" aria-label="Choose a portal">
+      <button type="button" data-action="role" data-role="founder" aria-pressed="true">Founders</button>
+      <button type="button" data-action="role" data-role="funder" aria-pressed="false">Funders &amp; investors</button>
+      <button type="button" data-action="role" data-role="ngo" aria-pressed="false">Incubators &amp; NGOs</button>
+      <button type="button" data-action="role" data-role="directory" aria-pressed="false">Public directory</button>
+      <button type="button" data-action="role" data-role="join" aria-pressed="false">Join</button>
+    </nav>
+    <div class="who" id="who"></div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Sections"></nav>
+  <main class="content" id="view" tabindex="-1"></main>
+</div>
+
+<div id="drawer-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

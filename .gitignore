@@ -1,0 +1,21 @@
+# Older copy of the prototype kept locally; v2/ is the reference
+/app.js
+/index.html
+/styles.css
+/v2.zip
+
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.local-uploads/
+playwright-report/
+test-results/
+.terraform/
+*.tfstate
+*.tfstate.*
+.DS_Store
