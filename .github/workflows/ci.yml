@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: system
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: proofpocket_owner
+          POSTGRES_PASSWORD: owner_dev_password
+          POSTGRES_DB: proofpocket
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U proofpocket_owner -d proofpocket"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: system/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: system/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Create database roles (as docker-compose does locally)
+        run: PGPASSWORD=owner_dev_password psql -h localhost -p 5433 -U proofpocket_owner -d proofpocket -f apps/api/db-init/01-roles.sql
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Unit and API tests
+        run: pnpm test
+      - name: Dependency audit
+        run: pnpm audit --audit-level high --prod
+      - name: End-to-end (phone and desktop)
+        run: |
+          key() { node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"; }
+          sed -e "s|^ACCOUNT_NUMBER_KEY=.*|ACCOUNT_NUMBER_KEY=$(key)|" -e "s|^OTP_SECRET=.*|OTP_SECRET=$(key)|" apps/api/.env.example > apps/api/.env
+          cp apps/web/.env.example apps/web/.env
+          pnpm --filter @proofpocket/web exec playwright install --with-deps chromium
+          pnpm test:e2e
+        env:
+          CI: "true"
+
+  semgrep:
+    runs-on: ubuntu-latest
+    container: semgrep/semgrep:1.99.0
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep scan --config p/default --config p/typescript --config p/nodejsscan --error --exclude v2 --exclude "*.test.ts"
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

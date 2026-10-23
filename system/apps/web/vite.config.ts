@@ -2,6 +2,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const api = process.env.API_PROXY ?? "http://localhost:8787";
+
 export default defineConfig({
   plugins: [
     react(),
@@ -37,11 +39,11 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    proxy: { "/api": "http://localhost:8787" },
+    proxy: { "/api": api },
   },
   preview: {
     port: 4173,
-    proxy: { "/api": "http://localhost:8787" },
+    proxy: { "/api": api },
   },
   build: { target: "es2020", sourcemap: true },
 });

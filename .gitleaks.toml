@@ -1,0 +1,13 @@
+# Local development credentials are deliberately public (Docker Compose only).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Local dev and test fixtures"
+paths = [
+  '''system/docker-compose\.yml''',
+  '''system/apps/api/db-init/.*''',
+  '''system/apps/api/vitest\.config\.ts''',
+  '''system/apps/api/test/.*''',
+  '''system/apps/api/\.env\.example''',
+]

@@ -1,9 +1,9 @@
 // Loaded only in firebase mode, and only when needed, to keep the first download small.
-import { initializeApp } from "firebase/app";
+import { initializeApp } from "@firebase/app";
 import {
   browserLocalPersistence, createUserWithEmailAndPassword, getAuth, onAuthStateChanged, sendEmailVerification,
   setPersistence, signInWithEmailAndPassword, signOut, type User,
-} from "firebase/auth";
+} from "@firebase/auth";
 
 const app = initializeApp({
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,

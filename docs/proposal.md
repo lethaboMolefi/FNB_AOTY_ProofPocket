@@ -107,10 +107,18 @@ The brief's six phases, with two changes: phase 5 is split in two because it is 
 | `drizzle-kit`, `@testing-library/react`, `eslint-plugin-security`, `msw` | Migrations and tests |
 | An email provider SDK | See decision 1 |
 
-## 5. Decisions I need from you
+## 5. Decisions (approved 24 October 2026)
 
-1. **Email one-time PIN.** Firebase Auth has no 6-digit email PIN. It offers email *links*, plus SMS or authenticator-app second factors through Identity Platform. Google Cloud has no transactional email service of its own. *Recommend:* the API generates the PIN (`otp_challenges`) and sends it through a provider you choose (SendGrid, Postmark or Mailgun; an account and API key go into Secret Manager). In development, PINs are written to the console.
-2. **Accept or change the recommendations in `feature-inventory.md` section 12.** The ones that change the schema or the phase 1–2 work are: 12.1 sign-up in Join, 12.3 unguessable payment links, 12.6 admin invites organisations, 12.9 opening balance with a date, 12.10 fixed sector list and uncapped record months, 12.12 incubator memberships. The others can wait until their phase.
-3. **The files at the repo root.** `app.js`, `index.html`, `styles.css` and `v2.zip` sit next to `v2/`. They are an older version of the prototype (they differ from `v2/`). *Recommend:* move them to `archive/prototype-v1/` so the monorepo root is clean. Nothing in `v2/` will change.
-4. **Git.** The folder isn't a git repository yet. I'll run `git init` on a `main` branch at the start of phase 1 and work in small commits. Tell me if there's a remote to push to.
-5. **Data location.** Firebase Auth keeps user accounts outside South Africa. Everything else stays in `africa-south1`. That is usually fine under POPIA with the right privacy notice, but you may want to note it. I'll check in phase 6 that every service (including Direct VPC egress for Cloud Run, and Firebase Hosting rewrites to an `africa-south1` service) is available in the region, and stop if one isn't.
+1. **Email one-time PIN:** the API generates the PIN (`otp_challenges`, HMAC-hashed, 10 minutes, 5 tries, 5 per hour) and sends it from the team's Gmail account over SMTP with an app password. The password goes in Secret Manager; in development, PINs print to the API log. Gmail allows about 500 messages a day, which is enough for the hackathon. Move to a transactional provider before a public launch.
+2. **Section 12 of the inventory:** all recommendations approved as written.
+3. **Folder:** the real system lives in `system/`. The old prototype copy at the repo root is git-ignored, and `v2/` is untouched.
+4. **Git:** `main`, pushed to https://github.com/lethaboMolefi/FNB_AOTY_ProofPocket.
+5. **Data location:** Firebase Auth keeps accounts outside South Africa; everything else stays in `africa-south1`. Region availability gets checked in phase 6.
+
+## 6. Changes from the brief made during phase 1
+
+- **Node 22 LTS instead of Node 20.** Node 20 reached end-of-life in April 2026, and `firebase-admin` 14 (needed to drop the unpatched `node-forge`) requires Node 22.
+- **zod 4 instead of zod 3.** Every zod 3 release is affected by GHSA-mrhx-c7xc-m3w5 (memory exhaustion on oversized input); it is fixed in 4.6.6.
+- **`@firebase/app` + `@firebase/auth` instead of the `firebase` umbrella package.** The umbrella pulls in Firestore and a vulnerable gRPC. ProofPocket uses Firebase only for sign-in.
+- Other upgrades to patched releases: Express 4.22.3, Drizzle ORM 0.45.4 / drizzle-kit 0.31.11, nodemailer 10.0.16, React Router 6.30.6, React Hook Form 7.89.0. `pnpm audit --prod` shows no high or critical advisories. Two moderate React Router 6 advisories remain; the fix is in React Router 7, a bigger move planned before phase 5.
+- **Dependencies added** (from the section 4 list): helmet, cors, express-rate-limit, pino, pino-http, pino-pretty (dev), @asteasolutions/zod-to-openapi, nodemailer, drizzle-kit, esbuild (API bundle), workbox-* and workbox-window, @testing-library/react, jsdom, eslint-plugin-security, eslint-plugin-react-hooks, globals. `@google-cloud/storage`, `file-type`, `papaparse`, `idb` and `qrcode` arrive in the phases that use them.

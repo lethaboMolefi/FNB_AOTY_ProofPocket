@@ -14,6 +14,12 @@ async function ctxFor(email: string): Promise<DbContext> {
 }
 const as = async <T>(email: string, fn: Parameters<typeof withContext<T>>[2]) => withContext(db, await ctxFor(email), fn);
 const names = (rows: { name: string }[]) => rows.map((r) => r.name).sort();
+/** Drizzle wraps Postgres errors ("Failed query: …"); the database's own message is the cause. */
+async function rejectsWith(p: Promise<unknown>, pattern: RegExp) {
+  const err = await p.then(() => null, (e: unknown) => e as Error & { cause?: Error });
+  expect(err, "expected the database to refuse").not.toBeNull();
+  expect(`${err!.message} ${err!.cause?.message ?? ""}`).toMatch(pattern);
+}
 
 describe("row-level security", () => {
   it("without context the app role sees nothing", async () => {
@@ -32,9 +38,9 @@ describe("row-level security", () => {
 
   it("a founder can't write into another company's books", async () => {
     const other = await as(FOUNDER_2, async (tx) => (await tx.select({ id: companies.id }).from(companies))[0]!.id);
-    await expect(as(FOUNDER, (tx) => tx.insert(ledgerEntries).values({
+    await rejectsWith(as(FOUNDER, (tx) => tx.insert(ledgerEntries).values({
       companyId: other, clientUuid: crypto.randomUUID(), entryDate: "2026-10-01", direction: "in", amount: "10.00", method: "cash", category: "Sales",
-    }))).rejects.toThrow(/row-level security/);
+    })), /row-level security/);
   });
 
   it("an adviser sees their incubator's cohort only", async () => {
@@ -101,15 +107,15 @@ describe("row-level security", () => {
   });
 
   it("users can't change their own role, organisation or email", async () => {
-    await expect(as(FOUNDER, (tx) => tx.update(users).set({ role: "admin" }).where(sql`true`))).rejects.toThrow(/only an admin/);
-    await expect(as(ADVISER_N1, (tx) => tx.update(users).set({ isLead: false }).where(sql`true`))).rejects.toThrow(/only an admin/);
+    await rejectsWith(as(FOUNDER, (tx) => tx.update(users).set({ role: "admin" }).where(sql`true`)), /only an admin/);
+    await rejectsWith(as(ADVISER_N1, (tx) => tx.update(users).set({ isLead: false }).where(sql`true`)), /only an admin/);
     // Harmless self-edits still work.
     await expect(as(FOUNDER, (tx) => tx.update(users).set({ displayName: "Zanele M." }).where(sql`true`))).resolves.toBeDefined();
   });
 
   it("audit_log is append-only", async () => {
     await as(ADMIN, (tx) => tx.insert(auditLog).values({ action: "test", entity: "test" }));
-    await expect(as(ADMIN, (tx) => tx.update(auditLog).set({ action: "changed" }))).rejects.toThrow(/permission denied/);
-    await expect(as(ADMIN, (tx) => tx.delete(auditLog))).rejects.toThrow(/permission denied/);
+    await rejectsWith(as(ADMIN, (tx) => tx.update(auditLog).set({ action: "changed" })), /permission denied/);
+    await rejectsWith(as(ADMIN, (tx) => tx.delete(auditLog)), /permission denied/);
   });
 });

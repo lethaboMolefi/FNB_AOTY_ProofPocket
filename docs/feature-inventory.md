@@ -339,7 +339,7 @@ Feature request only for Verified. Introductions only for Verified, one per buye
 
 ---
 
-## 12. Gaps and disagreements (need a decision; my recommendation follows each)
+## 12. Gaps and disagreements (all recommendations approved 24 October 2026)
 
 1. **Sign-up is missing from Join.** The wizard never creates an account. *Recommend:* email + password on step 1 (Firebase), with email verification before documents are sent for checking.
 2. **Where scam messages come from.** The prototype shows a message from `approvals.fund@quickgrantz-mail.com`. The real system has no inbound email or SMS, so outsiders can't message founders. *Recommend:* (a) in-app messages come only from verified organisations and the system; (b) add **"Check a message"**, where the founder pastes a WhatsApp, SMS or email they received and ProofPocket runs the same risk rules (unverified sender, fee before release, pressure to act today, changed bank details) and saves it under Messages about money. "Report and block" adds the sender to a shared watch list that admin reviews, which is what "Other founders will be warned" implies.
