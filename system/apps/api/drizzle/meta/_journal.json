@@ -50,6 +50,13 @@
       "when": 1792801099373,
       "tag": "0006_totp",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792825561263,
+      "tag": "0007_phase45_security",
+      "breakpoints": true
     }
   ]
 }
