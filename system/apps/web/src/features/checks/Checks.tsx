@@ -3,7 +3,7 @@ import { shortFingerprint } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { LevelPill, PageHead, Spinner, useToast } from "../../components/ui";
-import { ApiError, api } from "../../lib/api";
+import { API_BASE, ApiError, api } from "../../lib/api";
 import { useMe } from "../../lib/me";
 
 interface Item { id: string; docType: string; docName: string; companyName: string; cipcNumber: string | null; verified: boolean; fileId: string | null; fileName: string | null; sha256: string | null }
@@ -21,7 +21,7 @@ function Row({ item, scope }: { item: Item; scope: "adviser" | "admin" }) {
   const reject = useMutation({ mutationFn: () => api<{ message: string }>(`/${scope}/checks/${item.id}/reject`, { body: { reason } }), onSuccess: done, onError: (e) => setErr((e as ApiError).message) });
   const open = async () => {
     if (!item.fileId) return;
-    try { const { url } = await api<{ url: string }>(`/files/${item.fileId}/download-url`); window.open(url, "_blank", "noopener"); }
+    try { const { url } = await api<{ url: string }>(`/files/${item.fileId}/download-url`); window.open(url.startsWith("/") ? `${API_BASE}${url}` : url, "_blank", "noopener"); }
     catch (e) { setErr((e as ApiError).message); }
   };
   return (

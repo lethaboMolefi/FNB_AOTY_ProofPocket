@@ -6,6 +6,12 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Where the API is. Empty in development (Vite proxies /api). In production the API runs on Cloud Run in
+ * africa-south1, which Firebase Hosting can't route to, so the web app calls it directly (CORS allows only our site).
+ */
+export const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+
 let tokenGetter: () => Promise<string | null> = async () => null;
 /** The auth provider registers how to get the current ID token. */
 export const setTokenGetter = (fn: () => Promise<string | null>) => { tokenGetter = fn; };
@@ -18,7 +24,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const token = await tokenGetter();
   let res: Response;
   try {
-    res = await fetch(`/api/v1${path}`, {
+    res = await fetch(`${API_BASE}/api/v1${path}`, {
       method: init.method ?? (init.body === undefined ? "GET" : "POST"),
       headers: {
         Accept: "application/json",

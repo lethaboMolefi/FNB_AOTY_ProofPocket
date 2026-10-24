@@ -12,6 +12,8 @@ PROJECT="${PROJECT:-hackathons-warroom}"
 REGION="${REGION:-africa-south1}"
 SITE="${SITE:-proofpocket-aoty}"                         # Firebase Hosting site → https://$SITE.web.app
 WEB_ORIGIN="https://${SITE}.web.app"
+# Firebase Hosting can't route to Cloud Run in africa-south1, so the web app calls the API here directly.
+API_URL="https://${SERVICE:-proofpocket-api}-$(gcloud projects describe "$PROJECT" --format='value(projectNumber)' | cat).${REGION}.run.app"
 NETWORK=proofpocket-vpc
 SUBNET=proofpocket-run                                   # Cloud Run Direct VPC egress
 SUBNET_RANGE=10.80.0.0/24
@@ -132,16 +134,19 @@ step_api() {
   g run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --service-account "$SA" \
     --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
     --allow-unauthenticated --min-instances 0 --max-instances 4 --memory 512Mi --cpu 1 --concurrency 40 \
-    --set-env-vars "NODE_ENV=production,TRUST_PROXY_HOPS=2,AUTH_MODE=firebase,FIREBASE_PROJECT_ID=${PROJECT},MAIL_MODE=smtp,SMTP_USER=${MAIL_USER},MAIL_FROM=ProofPocket <${MAIL_USER}>,STORAGE_MODE=gcs,GCS_BUCKET=${BUCKET},WEB_ORIGIN=${WEB_ORIGIN},PUBLIC_WEB_URL=${WEB_ORIGIN}" \
+    --set-env-vars "^@^NODE_ENV=production@TRUST_PROXY_HOPS=1@AUTH_MODE=firebase@FIREBASE_PROJECT_ID=${PROJECT}@MAIL_MODE=smtp@SMTP_USER=${MAIL_USER}@MAIL_FROM=ProofPocket <${MAIL_USER}>@STORAGE_MODE=gcs@GCS_BUCKET=${BUCKET}@WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com@PUBLIC_WEB_URL=${WEB_ORIGIN}" \
     --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest"
 }
 
 step_firebase() {
   firebase projects:list 2>/dev/null | grep -q " $PROJECT " || firebase projects:addfirebase "$PROJECT"
   firebase hosting:sites:list --project "$PROJECT" 2>/dev/null | grep -q " $SITE " || firebase hosting:sites:create "$SITE" --project "$PROJECT"
-  # Email + password sign-in (Firebase Authentication).
+  # Firebase Authentication (Identity Platform; email + password is free up to ~50k monthly users, no SMS used).
+  local token; token=$(gcloud auth print-access-token | cat)
+  curl -s -X POST "https://identitytoolkit.googleapis.com/v2/projects/${PROJECT}/identityPlatform:initializeAuth" \
+    -H "Authorization: Bearer $token" -H "x-goog-user-project: ${PROJECT}" -H "Content-Type: application/json" -d '{}' >/dev/null
   curl -sf -X PATCH "https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT}/config?updateMask=signIn.email.enabled,signIn.email.passwordRequired,authorizedDomains" \
-    -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "x-goog-user-project: ${PROJECT}" -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $token" -H "x-goog-user-project: ${PROJECT}" -H "Content-Type: application/json" \
     -d "{\"signIn\":{\"email\":{\"enabled\":true,\"passwordRequired\":true}},\"authorizedDomains\":[\"localhost\",\"${SITE}.web.app\",\"${SITE}.firebaseapp.com\",\"${PROJECT}.firebaseapp.com\"]}" >/dev/null
   firebase apps:list WEB --project "$PROJECT" 2>/dev/null | grep -q "ProofPocket web" || firebase apps:create WEB "ProofPocket web" --project "$PROJECT"
 }
@@ -152,7 +157,7 @@ step_web() {
   app_id=$(firebase apps:list WEB --project "$PROJECT" --json | python3 -c "import json,sys;print([a['appId'] for a in json.load(sys.stdin)['result'] if a['displayName']=='ProofPocket web'][0])")
   cfg=$(firebase apps:sdkconfig WEB "$app_id" --project "$PROJECT" --json | python3 -c "import json,sys;r=json.load(sys.stdin)['result'];c=r.get('sdkConfig',r);print(c['apiKey'],c['authDomain'],c['projectId'],c['appId'])")
   read -r key domain pid aid <<<"$cfg"
-  (cd "$SYSTEM/apps/web" && VITE_AUTH_MODE=firebase VITE_FIREBASE_API_KEY="$key" VITE_FIREBASE_AUTH_DOMAIN="${SITE}.firebaseapp.com" \
+  (cd "$SYSTEM/apps/web" && VITE_API_BASE="$API_URL" VITE_AUTH_MODE=firebase VITE_FIREBASE_API_KEY="$key" VITE_FIREBASE_AUTH_DOMAIN="${SITE}.firebaseapp.com" \
     VITE_FIREBASE_PROJECT_ID="$pid" VITE_FIREBASE_APP_ID="$aid" pnpm build)
   (cd "$SYSTEM" && firebase deploy --only "hosting:${SITE}" --project "$PROJECT")
   : "$domain"
@@ -173,7 +178,8 @@ step_budget() {
 }
 
 step_smoke() {
-  curl -sf "${WEB_ORIGIN}/api/v1/health" && echo
+  curl -sf "${API_URL}/api/v1/health" && echo
+  curl -sI -X OPTIONS "${API_URL}/api/v1/me" -H "Origin: ${WEB_ORIGIN}" -H "Access-Control-Request-Method: GET" | grep -i "^access-control-allow-origin"
   curl -sfI "${WEB_ORIGIN}/" | grep -iE "^(strict-transport-security|content-security-policy|x-content-type-options):" || true
   curl -sf "${WEB_ORIGIN}/manifest.webmanifest" | python3 -c "import json,sys;m=json.load(sys.stdin);print('manifest:',m['name'],m['display'])"
 }

@@ -12,6 +12,8 @@ import { CACHEABLE_API } from "./lib/cache-rules";
 declare const self: ServiceWorkerGlobalScope;
 
 const FOUNDER_API_CACHE = "pp-api-founder";
+/** The API may be on another origin in production (Cloud Run); only that origin's founder reads are cached. */
+const API_ORIGIN = new URL(import.meta.env.VITE_API_BASE || self.location.origin).origin;
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
@@ -20,7 +22,7 @@ cleanupOutdatedCaches();
 registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), { denylist: [/^\/api\//] }));
 
 registerRoute(
-  ({ url, request }) => request.method === "GET" && url.origin === self.location.origin && CACHEABLE_API.test(url.pathname),
+  ({ url, request }) => request.method === "GET" && url.origin === API_ORIGIN && CACHEABLE_API.test(url.pathname),
   new NetworkFirst({
     cacheName: FOUNDER_API_CACHE,
     networkTimeoutSeconds: 4,

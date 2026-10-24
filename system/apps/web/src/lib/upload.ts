@@ -1,6 +1,6 @@
 // Upload flow: compress photos on the phone → ask the API for a signed URL → PUT → the API checks the file and fingerprints it.
 import { MAX_UPLOAD_BYTES } from "@proofpocket/shared";
-import { ApiError, api } from "./api";
+import { API_BASE, ApiError, api } from "./api";
 
 const MAX_SIDE = 1600;
 const TARGET_BYTES = 200 * 1024;
@@ -36,7 +36,9 @@ export async function uploadFile(file: File, purpose: "document" | "receipt" | "
     `${base}/uploads`, { body: { purpose, name: f.name, contentType, size: f.size } });
   let put: Response;
   try {
-    put = await fetch(start.upload.url, { method: "PUT", headers: start.upload.headers, body: f });
+    // Cloud Storage gives an absolute signed URL; the local stand-in gives a path on the API.
+    const url = start.upload.url.startsWith("/") ? `${API_BASE}${start.upload.url}` : start.upload.url;
+    put = await fetch(url, { method: "PUT", headers: start.upload.headers, body: f });
   } catch {
     throw new ApiError(0, "offline", "The upload didn't go through. Check your connection and try again.");
   }
