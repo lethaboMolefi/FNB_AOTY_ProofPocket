@@ -8,6 +8,7 @@ import { actorOf, contextOf, otpSatisfied, requireUser, twoFactorRequired } from
 import { handle, limits, parse } from "../middleware/http";
 import { findMe } from "../repositories/users";
 import { signInLocal, signUpLocal } from "../services/local-auth";
+import { sendEmailOtp, verifyEmailOtp } from "../services/email-otp";
 import { adminReset, checkCode, codeError, markSignInVerified, startSetup, turnOff } from "../services/two-factor";
 
 export function authRoutes(deps: Deps) {
@@ -22,6 +23,23 @@ export function authRoutes(deps: Deps) {
     r.post("/auth/local/sign-up", limits.auth(), handle(async (req) => {
       const { email, password } = parse(signUpSchema, req.body);
       return signUpLocal(deps.db, deps.config, email, password);
+    }));
+
+    // Email OTP for sign-up email confirmation (local dev mode only).
+    r.post("/auth/email-otp/send", limits.auth(), handle(async (req) => {
+      const { email } = parse(signUpSchema.pick({ email: true }), req.body);
+      return sendEmailOtp(deps.mailer, email);
+    }));
+    r.post("/auth/email-otp/verify", limits.auth(), handle(async (req) => {
+      const { email, code } = parse(signUpSchema.pick({ email: true }).and(totpCodeSchema), req.body);
+      const result = verifyEmailOtp(email, code);
+      if (!result.ok) {
+        const msg = result.reason === "expired" ? "That code has expired. Request a new one."
+          : result.reason === "too_many" ? "Too many wrong codes. Request a new one."
+          : "That code isn't right. Check it and try again.";
+        throw new AppError(400, "otp_wrong", msg);
+      }
+      return { ok: true };
     }));
   }
 
