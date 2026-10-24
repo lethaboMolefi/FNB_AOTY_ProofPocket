@@ -134,7 +134,7 @@ step_api() {
   g run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --service-account "$SA" \
     --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
     --allow-unauthenticated --min-instances 0 --max-instances 4 --memory 512Mi --cpu 1 --concurrency 40 \
-    --set-env-vars "^@^NODE_ENV=production@TRUST_PROXY_HOPS=1@AUTH_MODE=firebase@FIREBASE_PROJECT_ID=${PROJECT}@MAIL_MODE=smtp@SMTP_USER=${MAIL_USER}@MAIL_FROM=ProofPocket <${MAIL_USER}>@STORAGE_MODE=gcs@GCS_BUCKET=${BUCKET}@WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com@PUBLIC_WEB_URL=${WEB_ORIGIN}" \
+    --set-env-vars "^|^NODE_ENV=production|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}" \
     --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest"
 }
 
@@ -172,8 +172,8 @@ step_budget() {
   local acct
   acct=$(g billing projects describe "$PROJECT" --format='value(billingAccountName)' | sed 's#billingAccounts/##')
   g billing budgets list --billing-account "$acct" --format='value(displayName)' | grep -q "ProofPocket" ||
-    g billing budgets create --billing-account "$acct" --display-name "ProofPocket (hackathons-warroom)" \
-      --budget-amount=600ZAR --filter-projects="projects/${PROJECT}" \
+    g billing budgets create --billing-account "$acct" --display-name "ProofPocket (whole hackathons-warroom project)" \
+      --budget-amount=40USD --filter-projects="projects/${PROJECT}" \
       --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
 }
 

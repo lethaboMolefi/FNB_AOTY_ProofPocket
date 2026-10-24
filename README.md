@@ -54,7 +54,7 @@ The build runs in phases (brief section 13). Each phase is committed and pushed 
 | 3 | Trade and cash flow: books, offline outbox, statements, stock, cash flow, Home | ✅ Done |
 | 4 | Get paid and stay safe: payment requests, public pay page, proofs, suppliers, fraud | ⏳ Next |
 | 5 | Formal markets and the other portals | ⏳ |
-| 6 | Deploy to Google Cloud (`africa-south1`) | ⏳ Needs access to the Google Cloud project |
+| 6 | Deploy to Google Cloud (`africa-south1`) | ✅ Hosted at **https://proofpocket-aoty.web.app** (phases 1–3) |
 
 Screens not built yet show a "Being built" notice naming their phase.
 
@@ -229,13 +229,47 @@ The database was created before the init script ran. Recreate it: `docker compos
 ### Emails in development
 With `MAIL_MODE=console`, nothing is sent; notification emails (such as "Two-step sign-in is on") appear in the API log. To send real email through Gmail, set `MAIL_MODE=smtp`, `SMTP_USER` and an **app password** in `SMTP_PASS` (Google account → Security → App passwords; needs Google two-step verification on that account).
 
-## Deploying to Google Cloud
+## The hosted site
 
-Phase 6 covers Terraform for `africa-south1`: Cloud SQL (PostgreSQL, private IP only, backups, deletion protection), VPC with Private Service Access, Cloud Run with Direct VPC egress and a least-privilege service account, a private bucket, Secret Manager, Firebase Hosting with security headers, and a billing budget alert. It needs access to the team's Google Cloud project. In production:
+**https://proofpocket-aoty.web.app**: the installable PWA, with phases 1–3 working and the example data loaded.
 
-- `AUTH_MODE=firebase`, `MAIL_MODE=smtp`, `STORAGE_MODE=gcs`. The API refuses to start with development settings.
-- Secrets (`ACCOUNT_NUMBER_KEY`, `OTP_SECRET`, `SMTP_PASS`, database password) live in Secret Manager.
-- `pnpm db:reset` refuses to run against production or remote databases.
+| Part | Where |
+|---|---|
+| Web app (PWA) | Firebase Hosting, site `proofpocket-aoty` (global CDN) |
+| API | Cloud Run `proofpocket-api`, `africa-south1`: https://proofpocket-api-273544508359.africa-south1.run.app |
+| Database | Cloud SQL PostgreSQL 18 `proofpocket-db`, `africa-south1`, **private IP only**, daily backups, deletion protection |
+| Files | Private bucket `hackathons-warroom-proofpocket-files` (no public access; 5-minute signed URLs) |
+| Secrets | Secret Manager (`proofpocket-*`) |
+| Sign-in | Firebase Authentication (email + password) plus Google Authenticator |
+| Project | `hackathons-warroom` (all ProofPocket resources are named `proofpocket-…`) |
+
+### How to check it's working
+
+1. **Open it.** Visit https://proofpocket-aoty.web.app. The sign-in page should load over HTTPS.
+2. **Is the API up?** Open https://proofpocket-api-273544508359.africa-south1.run.app/api/v1/health. It should show `{"ok":true}`.
+3. **Sign in.** Use an example account from `infra/.hosted-credentials.json` (only on the machine that deployed; ask the team). Founders land on Home with their figures. Funder, adviser and admin accounts first ask you to set up Google Authenticator.
+4. **Install it on a phone.**
+   - *Android (Chrome):* open the link, then use **Install app** in the ⋮ menu (or the prompt). It opens full screen with the ProofPocket icon.
+   - *iPhone (Safari):* tap **Share → Add to Home Screen**.
+5. **Offline.** After opening it once, turn on flight mode and open the app again. The app and your last Home screen still open, and book entries you add are saved on the phone and sync when you're back online.
+6. **Check it on a computer.** In Chrome, press F12 and open **Application**. **Manifest** should show the ProofPocket name and icons with no errors, and **Service workers** should show `sw.js` as activated. **Lighthouse → Progressive Web App** runs the installability checks.
+7. **Automated checks:** `cd system/apps/web && pnpm exec playwright test -c playwright.live.config.ts` runs sign-in, Home, the service worker and offline on phone and desktop against the live site. `bash infra/deploy.sh smoke` checks health, CORS, security headers and the manifest.
+
+### Turning on email notifications
+Sign-in alerts are sent from Gmail and need an **app password** (Google account → Security → 2-Step Verification → App passwords). Store it without it appearing on screen, then redeploy the API:
+```bash
+read -rs P && printf '%s' "$P" | gcloud secrets versions add proofpocket-smtp-pass --project hackathons-warroom --data-file=- && unset P
+bash infra/deploy.sh api
+```
+Until then, emails are skipped and logged; everything else works.
+
+### Updating and removing
+- **Redeploy after changes:** commit, then `bash infra/deploy.sh image && bash infra/deploy.sh bootstrap && bash infra/deploy.sh api && bash infra/deploy.sh web` (Node 26 and pnpm 12 on your PATH). The image is always built from the committed code.
+- **Cost:** about USD 10–20 a month, mostly the database. A budget alert (USD 40 for the whole `hackathons-warroom` project) emails at 50%, 90% and 100%.
+- **Removing it:** delete the Cloud Run service and job, the Cloud SQL instance (turn off deletion protection first), the bucket, the `proofpocket-*` secrets, the Artifact Registry repo, the VPC and the Firebase site. All are named `proofpocket-…`.
+
+### Why the web app calls the API by its own address
+Firebase Hosting can't route `/api` to Cloud Run in `africa-south1`. Rather than moving the API out of South Africa, the web app calls it at its Cloud Run address. CORS there allows only the ProofPocket site, and the CSP allows only that address.
 
 ---
 
