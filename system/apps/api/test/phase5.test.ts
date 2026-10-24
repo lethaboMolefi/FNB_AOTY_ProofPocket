@@ -188,3 +188,11 @@ describe("markets, directory and admin reviews", () => {
     expect((await get(await staffToken(app, "n.mokoena@proofpocket.example"), "/admin/organisations")).status).toBe(403);
   });
 });
+
+describe("navigation counts", () => {
+  it("match the prototype's rail for Nala", async () => {
+    expect((await get(signIn("zanele@proofpocket.example"), "/me/counts")).body).toMatchObject({ start: 2, stock: 2 });
+    const pillay = await staffToken(app, "s.pillay@proofpocket.example");
+    expect((await get(pillay, "/me/counts")).body).toHaveProperty("checks");
+  });
+});

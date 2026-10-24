@@ -62,7 +62,7 @@ test("each role sees only its own portal", async ({ page }) => {
 });
 
 test("funders must set up Google Authenticator before the portal", async ({ page }) => {
-  await signIn(page, "lesedi@proofpocket.example");
+  await signIn(page, "umnotho@proofpocket.example");
   await expect(page).toHaveURL(/\/verify$/);
   await expect(page.getByRole("heading", { name: "Set up two-step sign-in" })).toBeVisible();
   await expect(page.getByRole("img", { name: "QR code to scan with Google Authenticator" })).toBeVisible();

@@ -3,7 +3,7 @@
 Source: `v2/app.js` (1 062 lines), `v2/index.html`, `v2/styles.css`, read in full.
 Checked against the build brief, section 7 (screens) and section 8 (rules).
 
-Each row has a **Build** column: ✅ = built and covered by tests, ☐ = not built yet. Reviewed on 24 October 2026 after phase 3.
+Each row has a **Build** column: ✅ = built and covered by tests, 🟡 = partly built (the note says what's missing), ☐ = not built. Reviewed on 24 October 2026 after phase 5: every row is built except the one marked 🟡.
 
 Key:
 - ✓ = in the prototype and the brief agrees
@@ -23,14 +23,14 @@ Key:
 | "Viewing as" / "Signed in as" pickers | `renderTop` L320, `who` L943 | ✓ replaced by the signed-in user | ✅ |
 | Founder rail, grouped: (none) Home · **Start** Registration steps · **Trade** Bookkeeping, Stock · **Get paid** Payments · **Manage cash flow** Cash flow · **Reach formal markets** Profile & marketing, Funding readiness, Procurement · **Stay safe** Fraud protection, Privacy & sharing | `RAIL` L313 | ✓ desktop rail; phone bottom tabs Home, Books, Get paid, Markets, More ◇ | ✅ |
 | Stock hidden from the rail when the business type has no stock (services) | L340 | ✓ | ✅ |
-| Rail counts: protection = unverified open messages + pending supplier changes; start = joining docs not verified (Starter only); stock = low items; payments = proofs to check | L331–336 | ✓ (needs a home on the bottom tabs too) | ☐ |
+| Rail counts: protection = unverified open messages + pending supplier changes; start = joining docs not verified (Starter only); stock = low items; payments = proofs to check | L331–336 | ✓ (needs a home on the bottom tabs too) | ✅ |
 | Funder rail: Company pipeline, Applications (count = Submitted + Under review), Programmes & requirements | L315, L339 | ✓ | ✅ |
 | Incubator rail: Cohort board, Document checks (count = queue), Needs attention (count = "bad" flags), Support log | L316, L338 | ✓ | ✅ |
 | Rail footer "Example data… ProofPocket never holds money" + **Reset example data** | L344, `reset` L866 | ✓ reset becomes a dev-only seed command | ✅ |
 | Page head: "{Company} · {town}, {province}", title, subtitle, Starter/Verified pill | `fHead` L348 | ✓ | ✅ |
 | Toast (3.2 s, `aria-live="polite"`) | `toast` L836 | ✓ | ✅ |
-| Drawer: scrim, Esc closes, focus moves to the drawer, body scroll locked | L822, L932 | ✓ full screen on phones ◇ | ☐ |
-| Enter on a focused pipeline row opens it | L934 | ✓ | ☐ |
+| Drawer: scrim, Esc closes, focus moves to the drawer, body scroll locked | L822, L932 | ✓ full screen on phones ◇ | ✅ |
+| Enter on a focused pipeline row opens it | L934 | ✓ | ✅ |
 | Hash routing `#founder`, `#funder`… | L838, L1054 | ✓ replaced by React Router paths | ✅ |
 | Light and dark theme tokens | styles.css | ⚠ brief: light only, white background, tokens kept ready for dark mode | ✅ |
 
@@ -114,16 +114,16 @@ Key:
 ### 3.5 Payments (`vPayments` L447)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| "ProofPocket never holds your money…" notice (drop "Prototype: no money moves.") | L454 | ✓ | ☐ |
-| Proof of payment to check: "{client} says they paid R…", for · reference · method on date · from payer, file + fingerprint, "N things to check" / "Details match", five checks, banking-app warning, **The money is in my account**, **Not received** | L455–459 | ✓ | ☐ |
-| Ask a client to pay: client, amount, for, methods (PayShap, Bank EFT, Cash checked; Card machine unchecked); errors "Add the client's name and an amount", "Choose at least one way to pay"; toast "Request PP-NNNN created. Send the link on WhatsApp or show the QR code." | L461–464, L977 | ⚠ reference format, see 12.3 | ☐ |
-| Your payment details: bank, account name, account number, ShapID; personal-account warning (account name contains "personal"); "Payment details saved" | L465–469, L984 | ⚠ one-time PIN + adviser alert ◇; warning heuristic 12.15 | ☐ |
-| Payment requests list: client · for · amount, link + methods, "not received" note, **Send on WhatsApp** (prefilled text L451), **Show QR** (toggle), status pill (Paid · in books / Not received / Waiting for client), **Paid me cash** (if Cash allowed) | L449–452 | ✓ | ☐ |
+| "ProofPocket never holds your money…" notice (drop "Prototype: no money moves.") | L454 | ✓ | ✅ |
+| Proof of payment to check: "{client} says they paid R…", for · reference · method on date · from payer, file + fingerprint, "N things to check" / "Details match", five checks, banking-app warning, **The money is in my account**, **Not received** | L455–459 | ✓ | ✅ |
+| Ask a client to pay: client, amount, for, methods (PayShap, Bank EFT, Cash checked; Card machine unchecked); errors "Add the client's name and an amount", "Choose at least one way to pay"; toast "Request PP-NNNN created. Send the link on WhatsApp or show the QR code." | L461–464, L977 | ⚠ reference format, see 12.3 | ✅ |
+| Your payment details: bank, account name, account number, ShapID; personal-account warning (account name contains "personal"); "Payment details saved" | L465–469, L984 | ⚠ one-time PIN + adviser alert ◇; warning heuristic 12.15 | ✅ |
+| Payment requests list: client · for · amount, link + methods, "not received" note, **Send on WhatsApp** (prefilled text L451), **Show QR** (toggle), status pill (Paid · in books / Not received / Waiting for client), **Paid me cash** (if Cash allowed) | L449–452 | ✓ | ✅ |
 | **Simulate client scanning** | `scan` L876 | ✓ replaced by real `/pay/:ref` | n/a |
-| Pay a supplier: supplier select ("· ON HOLD"), amount, for; blocked toast copy L991; records money out Bank EFT "Stock and materials"; toast "Paid {supplier}. Recorded in your books." | L473–475, L988 | ⚠ rename to "Record a supplier payment"; the founder pays in their own banking app first | ☐ |
-| Add a supplier (name, "Bank and last 4 digits"); error "Add the supplier's name and bank"; "Supplier saved" | L476, L885 | ✓ | ☐ |
-| Record a cash payment out: paid to, amount, for, "Payee has no phone, give a slip number" (default on); category Collector payments (recycling) or Other expense; toast "Recorded. Give {name} slip number S…" | L477–478, L994 | ✓ offline | ☐ |
-| Request expiry (7 days), overdue, cancel | none | ◇ see 12.4 | ☐ |
+| Pay a supplier: supplier select ("· ON HOLD"), amount, for; blocked toast copy L991; records money out Bank EFT "Stock and materials"; toast "Paid {supplier}. Recorded in your books." | L473–475, L988 | ⚠ rename to "Record a supplier payment"; the founder pays in their own banking app first | ✅ |
+| Add a supplier (name, "Bank and last 4 digits"); error "Add the supplier's name and bank"; "Supplier saved" | L476, L885 | ✓ | ✅ |
+| Record a cash payment out: paid to, amount, for, "Payee has no phone, give a slip number" (default on); category Collector payments (recycling) or Other expense; toast "Recorded. Give {name} slip number S…" | L477–478, L994 | ✓ offline | ✅ |
+| Request expiry (7 days), overdue, cancel | none | ◇ see 12.4 | ✅ |
 
 ### 3.6 Cash flow (`vCashflow` L509)
 | Item | Prototype | Brief | Build |
@@ -136,126 +136,126 @@ Key:
 ### 3.7 Profile & marketing (`vMarkets` L533)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Starter lock notice + Get verified | L536 | ✓ | ☐ |
-| Profile form: one line (max 90), services and prices (one per line), WhatsApp, Instagram, hours; profile URL `proofpocket.co.za/b/{slug}`; "Profile saved" | L538–542, L1003 | ✓ public `/b/:slug` page implied ◇ (12.11) | ☐ |
-| Verified QR code (profile link) + Verified/Starter pill + **Copy profile link** ("Profile link copied") | L543–544, L901 | ✓ | ☐ |
-| Create a post (max 400): **Save post**; **Save and request a feature** (Verified only); "Write something first"; toasts L1010 | L546–548, L1006 | ✓ admin review ◇ | ☐ |
-| Your posts: text, date, "shared to …", **WhatsApp / Facebook / X** share links (record the network on click), pills "Featured this week" / "Feature requested" | L549–550, `shared` L900 | ✓ | ☐ |
-| Buyers looking for suppliers: name, "Good fit" (sector match) or buyer kind, wants, "Your adviser arranges the introduction", **Request introduction** (Verified only; primary when good fit), "Requested", "Verified only"; toast "Your adviser will arrange the introduction" | L551–552, L899 | ⚠ who arranges for founders without an incubator, 12.7 | ☐ |
+| Starter lock notice + Get verified | L536 | ✓ | ✅ |
+| Profile form: one line (max 90), services and prices (one per line), WhatsApp, Instagram, hours; profile URL `proofpocket.co.za/b/{slug}`; "Profile saved" | L538–542, L1003 | ✓ public `/b/:slug` page implied ◇ (12.11) | ✅ |
+| Verified QR code (profile link) + Verified/Starter pill + **Copy profile link** ("Profile link copied") | L543–544, L901 | ✓ | ✅ |
+| Create a post (max 400): **Save post**; **Save and request a feature** (Verified only); "Write something first"; toasts L1010 | L546–548, L1006 | ✓ admin review ◇ | ✅ |
+| Your posts: text, date, "shared to …", **WhatsApp / Facebook / X** share links (record the network on click), pills "Featured this week" / "Feature requested" | L549–550, `shared` L900 | ✓ | ✅ |
+| Buyers looking for suppliers: name, "Good fit" (sector match) or buyer kind, wants, "Your adviser arranges the introduction", **Request introduction** (Verified only; primary when good fit), "Requested", "Verified only"; toast "Your adviser will arrange the introduction" | L551–552, L899 | ⚠ who arranges for founders without an incubator, 12.7 | ✅ |
 
 ### 3.8 Funding readiness (`vFunding` L554)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Starter lock "Funders can't see you yet" | L558 | ✓ | ☐ |
-| Score ring + label + "Funders see the same score." | L560 | ✓ | ☐ |
-| Breakdown: Documents and Bookkeeping checklists with hints and points | L561, `readiness` L223 | ✓ | ☐ |
-| Programmes table sorted by fewest gaps: programme, funder · kind · Verified funder, amount range, funds left, gap chips / "Nothing, you qualify", Apply (amount input default max) or "Applied" | L563–568 | ✓ | ☐ |
-| Apply: amount within range ("Enter an amount between R… and R…"); creates Submitted application with the first offer "Requested amount"; toast "Application sent to {funder}" | L893–896 | ✓ | ☐ |
-| My applications: programme, funder, applied date, status pill, requested, current offer, offer history ("No reason given" in red), status reason, **Ask the funder for a reason** → "Reason requested"; toast "Request sent to the funder" | L569–573, L897 | ✓ | ☐ |
-| Withdraw an application | none | ◇ brief has a `withdrawn` status, 12.8 | ☐ |
+| Starter lock "Funders can't see you yet" | L558 | ✓ | ✅ |
+| Score ring + label + "Funders see the same score." | L560 | ✓ | ✅ |
+| Breakdown: Documents and Bookkeeping checklists with hints and points | L561, `readiness` L223 | ✓ | ✅ |
+| Programmes table sorted by fewest gaps: programme, funder · kind · Verified funder, amount range, funds left, gap chips / "Nothing, you qualify", Apply (amount input default max) or "Applied" | L563–568 | ✓ | ✅ |
+| Apply: amount within range ("Enter an amount between R… and R…"); creates Submitted application with the first offer "Requested amount"; toast "Application sent to {funder}" | L893–896 | ✓ | ✅ |
+| My applications: programme, funder, applied date, status pill, requested, current offer, offer history ("No reason given" in red), status reason, **Ask the funder for a reason** → "Reason requested"; toast "Request sent to the funder" | L569–573, L897 | ✓ | ✅ |
+| Withdraw an application | none | ◇ brief has a `withdrawn` status, 12.8 | ✅ |
 
 ### 3.9 Procurement (`vProcurement` L575)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Tiles: track record N of 6 months (bar), account Verified/Starter, tender documents N of 3 (Tax, CSD, B-BBEE) | L578–580 | ✓ | ☐ |
-| Tenders table: title, buyer, "Your sector", value, closes, requirement chips ✓/×, "N months' record" chip; action: Interest sent / Verify first / "Add N documents" → Registration steps / "N more months" / **Express interest** | L581–585 | ✓ | ☐ |
-| Express interest → toast "Interest sent with your checked documents and track record" | L898 | ⚠ nobody receives it, 12.7 | ☐ |
-| Closed tenders | none | ✚ prototype never hides past closing dates; hide them | ☐ |
+| Tiles: track record N of 6 months (bar), account Verified/Starter, tender documents N of 3 (Tax, CSD, B-BBEE) | L578–580 | ✓ | ✅ |
+| Tenders table: title, buyer, "Your sector", value, closes, requirement chips ✓/×, "N months' record" chip; action: Interest sent / Verify first / "Add N documents" → Registration steps / "N more months" / **Express interest** | L581–585 | ✓ | ✅ |
+| Express interest → toast "Interest sent with your checked documents and track record" | L898 | ⚠ nobody receives it, 12.7 | ✅ |
+| Closed tenders | none | ✚ prototype never hides past closing dates; hide them | ✅ |
 
 ### 3.10 Fraud protection (`vProtection` L588)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Messages about money: sender, Verified/Not verified pill, address · date, quoted text, risk-flag pills; **Report and block** / **It's genuine** (unverified + open only); "Reported and blocked" / "Marked genuine" | L590–591, `msg` L902 | ⚠ where outside messages come from, 12.2 | ☐ |
-| Report toast "Reported. Other founders will be warned about this sender." | L902 | ✚ implies a shared sender blocklist, 12.2 | ☐ |
-| Supplier bank details: name · bank, pending text (copy L592), **I've confirmed by phone**, **Reject change**, "Unchanged"; toasts "New details confirmed" / "Change rejected. Old details kept." | L592, L887–888 | ✓ | ☐ |
-| **Simulate a change request** | `simchange` L886 | ✓ replaced: founder edits a supplier's bank details → pending hold | ☐ |
-| Document fingerprints list | L594 | ✓ | ☐ |
-| Rules that keep you safe (4 lines) | L595–599 | ✓ | ☐ |
+| Messages about money: sender, Verified/Not verified pill, address · date, quoted text, risk-flag pills; **Report and block** / **It's genuine** (unverified + open only); "Reported and blocked" / "Marked genuine" | L590–591, `msg` L902 | ⚠ where outside messages come from, 12.2 | ✅ |
+| Report toast "Reported. Other founders will be warned about this sender." | L902 | ✚ implies a shared sender blocklist, 12.2 | ✅ |
+| Supplier bank details: name · bank, pending text (copy L592), **I've confirmed by phone**, **Reject change**, "Unchanged"; toasts "New details confirmed" / "Change rejected. Old details kept." | L592, L887–888 | ✓ | ✅ |
+| **Simulate a change request** | `simchange` L886 | ✓ replaced: founder edits a supplier's bank details → pending hold | ✅ |
+| Document fingerprints list | L594 | ✓ | ✅ |
+| Rules that keep you safe (4 lines) | L595–599 | ✓ | ✅ |
 
 ### 3.11 Privacy & sharing (`vPrivacy` L602)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Funder visibility radio cards: Nothing / Summary / Full books (copy L606–608); toast "Sharing updated"; activity | L603–608, L946 | ✓ | ☐ |
-| Always private list | L609 | ✓ | ☐ |
-| Your incubator: name + adviser, or "You haven't chosen an incubator." | L610 | ⚠ no way to choose or leave an incubator after joining, 12.12 | ☐ |
+| Funder visibility radio cards: Nothing / Summary / Full books (copy L606–608); toast "Sharing updated"; activity | L603–608, L946 | ✓ | ✅ |
+| Always private list | L609 | ✓ | ✅ |
+| Your incubator: name + adviser, or "You haven't chosen an incubator." | L610 | ⚠ no way to choose or leave an incubator after joining, 12.12 | ✅ |
 
 ## 4. Public payment page (`payPageHTML` L481), brief 7.3
 
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| "You're paying" {business}, "Verified on ProofPocket" / "Starter: not yet verified", amount, for, reference, requested date | L493–494 | ✓ | ☐ |
-| How to pay, per allowed method: PayShap (ShapID + reference, copy buttons), EFT (bank, account name, number, reference), Cash ("quote reference … They will mark it paid"), Card (tap on their machine) | L485–488 | ✓ | ☐ |
-| "Only pay to the details on this page…" warning | L499 | ✓ | ☐ |
-| Not-received banner: "{business} hasn't received this payment yet. Check your bank, then upload your proof again." | L497 | ✓ | ☐ |
-| Proof form only when PayShap or EFT allowed: your name (prefilled client), amount (prefilled), date (max today), paid by (digital methods), "I used reference …" (default on), file; errors L1037–1039 | L500–505, `submitPop` L1034 | ✓ | ☐ |
-| Hint "ProofPocket reads the amount, date and reference from your proof in the full system." | L505 | ⚠ implies OCR, which the brief doesn't include; drop the hint | ☐ |
-| States: Proof of payment sent (Checking), "Paid. Thank you." | L495–496 | ✓ | ☐ |
-| "You'll get a message when it's confirmed." | L496 | ⚠ the client has no account; see 12.14 | ☐ |
-| Report this request → toast "Thanks. ProofPocket will review this business within two working days." | L506, L915 | ✓ saved to admin | ☐ |
-| Expired / flagged / cancelled states | none | ◇ copy needed | ☐ |
+| "You're paying" {business}, "Verified on ProofPocket" / "Starter: not yet verified", amount, for, reference, requested date | L493–494 | ✓ | ✅ |
+| How to pay, per allowed method: PayShap (ShapID + reference, copy buttons), EFT (bank, account name, number, reference), Cash ("quote reference … They will mark it paid"), Card (tap on their machine) | L485–488 | ✓ | ✅ |
+| "Only pay to the details on this page…" warning | L499 | ✓ | ✅ |
+| Not-received banner: "{business} hasn't received this payment yet. Check your bank, then upload your proof again." | L497 | ✓ | ✅ |
+| Proof form only when PayShap or EFT allowed: your name (prefilled client), amount (prefilled), date (max today), paid by (digital methods), "I used reference …" (default on), file; errors L1037–1039 | L500–505, `submitPop` L1034 | ✓ | ✅ |
+| Hint "ProofPocket reads the amount, date and reference from your proof in the full system." | L505 | ⚠ implies OCR, which the brief doesn't include; drop the hint | ✅ |
+| States: Proof of payment sent (Checking), "Paid. Thank you." | L495–496 | ✓ | ✅ |
+| "You'll get a message when it's confirmed." | L496 | ⚠ the client has no account; see 12.14 | ✅ |
+| Report this request → toast "Thanks. ProofPocket will review this business within two working days." | L506, L915 | ✓ saved to admin | ✅ |
+| Expired / flagged / cancelled states | none | ◇ copy needed | ✅ |
 
 ## 5. Funder and investor portal, brief 7.4
 
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| **Set-up gate** (blocks everything until done): programme name, type (Grant/Loan/Equity/Blended), smallest (5 000), largest (30 000), budget (500 000), months (3, max 36), min score (40), required docs (all except ID and address; CIPC, bank, tax ticked); error copy L1021; "Save and open pipeline"; toast "Requirements saved. Founders can see them now." | `funderSetup` L614, L1019 | ✓ | ☐ |
-| Pipeline tiles: verified and sharing (+ "N Starter or private"), meet your requirements, funding ready 70+, applications to you + Open | L637–642 | ✓ | ☐ |
-| Filters: search (name/town/sector, live), sector, area, minimum readiness slider (step 5) | L643–648, L938, L956 | ✓ | ☐ |
-| Table sorted by score: company (sector · stage), area, readiness bar, "Qualifies for N" / "Not yet", 5-month sparkline, books (Up to date ≤7 / N days ≤14 / bad), sharing | L649–651 | ✓ | ☐ |
-| Applications table: company + date, programme, requested, current offer (+ "No reason given", "Founder asked why"), status, readiness, Open | `funderApplications` L653 | ✓ | ☐ |
-| Programmes: per programme name, kind · range · months · score, "N verified companies qualify", budget / committed / left + bar, required-doc chips toggle ("Requirements updated; founders see the change"); **Add a programme** (reuses set-up with Cancel) | `funderProgrammes` L660, L903–905 | ⚠ "committed" never changes in the prototype, 12.8 | ☐ |
-| Edit a programme's amounts, months, score; close a programme | none | ✚ prototype only toggles documents | ☐ |
+| **Set-up gate** (blocks everything until done): programme name, type (Grant/Loan/Equity/Blended), smallest (5 000), largest (30 000), budget (500 000), months (3, max 36), min score (40), required docs (all except ID and address; CIPC, bank, tax ticked); error copy L1021; "Save and open pipeline"; toast "Requirements saved. Founders can see them now." | `funderSetup` L614, L1019 | ✓ | ✅ |
+| Pipeline tiles: verified and sharing (+ "N Starter or private"), meet your requirements, funding ready 70+, applications to you + Open | L637–642 | ✓ | ✅ |
+| Filters: search (name/town/sector, live), sector, area, minimum readiness slider (step 5) | L643–648, L938, L956 | ✓ | ✅ |
+| Table sorted by score: company (sector · stage), area, readiness bar, "Qualifies for N" / "Not yet", 5-month sparkline, books (Up to date ≤7 / N days ≤14 / bad), sharing | L649–651 | ✓ | ✅ |
+| Applications table: company + date, programme, requested, current offer (+ "No reason given", "Founder asked why"), status, readiness, Open | `funderApplications` L653 | ✓ | ✅ |
+| Programmes: per programme name, kind · range · months · score, "N verified companies qualify", budget / committed / left + bar, required-doc chips toggle ("Requirements updated; founders see the change"); **Add a programme** (reuses set-up with Cancel) | `funderProgrammes` L660, L903–905 | ⚠ "committed" never changes in the prototype, 12.8 | ✅ |
+| Edit a programme's amounts, months, score; close a programme | none | ✚ prototype only toggles documents | 🟡 close/reopen and required documents built; editing amounts, months and score not built (add a new programme instead) |
 
 ### 5.1 Company drawer (funder view; `drawerHTML` L771, `funderDrawerPart` L796)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Head: sector · town, name, level pill, CIPC no., area, "N months on record" | L778–779 | ✓ | ☐ |
-| Readiness ring + label + "N of 9 documents checked" | L782 | ✓ | ☐ |
-| Key figures: income 5 months, avg monthly profit, cash on hand, people | L783 | ✓ | ☐ |
-| Flags, chart | L785–786 | ✓ | ☐ |
-| Latest 8 entries only with full sharing, otherwise "This founder shares a summary only…" | L787 | ✓ | ☐ |
-| Documents (status only), bookkeeping health | L788 | ✓ | ☐ |
-| Applications to this funder: offer history, founder-asked-why notice, **Change offer** (reason required; status → Offer made; clears "asked"), **Approve current offer** (default reason "Approved at the current offer."), **Decline** (reason required), error copy L907, L1016 | L798–803, L906, L1014 | ✓ audit log ◇ | ☐ |
-| Invite to apply: programmes not yet applied to, "still needs N things" / "qualifies now"; sends a verified-funder message; toast "Invite sent" | L804, L910 | ✓ | ☐ |
-| Incubator support: stage steps, adviser, support log | L790–792 | ✓ | ☐ |
-| Activity timeline (8 latest) | L793 | ✓ | ☐ |
+| Head: sector · town, name, level pill, CIPC no., area, "N months on record" | L778–779 | ✓ | ✅ |
+| Readiness ring + label + "N of 9 documents checked" | L782 | ✓ | ✅ |
+| Key figures: income 5 months, avg monthly profit, cash on hand, people | L783 | ✓ | ✅ |
+| Flags, chart | L785–786 | ✓ | ✅ |
+| Latest 8 entries only with full sharing, otherwise "This founder shares a summary only…" | L787 | ✓ | ✅ |
+| Documents (status only), bookkeeping health | L788 | ✓ | ✅ |
+| Applications to this funder: offer history, founder-asked-why notice, **Change offer** (reason required; status → Offer made; clears "asked"), **Approve current offer** (default reason "Approved at the current offer."), **Decline** (reason required), error copy L907, L1016 | L798–803, L906, L1014 | ✓ audit log ◇ | ✅ |
+| Invite to apply: programmes not yet applied to, "still needs N things" / "qualifies now"; sends a verified-funder message; toast "Invite sent" | L804, L910 | ✓ | ✅ |
+| Incubator support: stage steps, adviser, support log | L790–792 | ✓ | ✅ |
+| Activity timeline (8 latest) | L793 | ✓ | ✅ |
 
 ## 6. Incubator and NGO portal, brief 7.5
 
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Cohort board tiles: companies (+ N Starter), average readiness, documents to check + Open, support sessions logged | `ngoCohort` L672 | ✓ | ☐ |
-| Five stage columns with count; cards: name, level pill, sector · town, score bar, adviser, up to 2 flags + "+N" (Starter flag hidden) | L681–683 | ✓ | ☐ |
+| Cohort board tiles: companies (+ N Starter), average readiness, documents to check + Open, support sessions logged | `ngoCohort` L672 | ✓ | ✅ |
+| Five stage columns with count; cards: name, level pill, sector · town, score bar, adviser, up to 2 flags + "+N" (Starter flag hidden) | L681–683 | ✓ | ✅ |
 | Document checks: company · document · level, file + fingerprint, CIPC number given (for CIPC), reason input, **Approve**, **Send back** | `ngoVerify` L685 | ✓ | ✅ |
 | Approve: doc verified, activity "… approved by {adviser or incubator}", support-log entry "Document check", toast "Approved" or "{company} is now Verified" | L912 | ✓ | ✅ |
 | Send back: reason required ("Add a reason so the founder knows what to fix"); doc → missing, file and fingerprint removed, message from the incubator "Please upload your … again: {reason}"; toast "Sent back to the founder" | L913–914 | ✓ | ✅ |
-| Needs attention: all cohort flags, bad first, Open | `ngoAttention` L692 | ✓ | ☐ |
-| Support log form: company, type (8 types), note; "Add a note about the support"; "Support logged"; activity "{incubator}: {type}." | `ngoSupport` L697, L1024 | ✓ | ☐ |
-| Introduction requests: "{company} asked to meet {buyer}", "To arrange" | L707 | ⚠ no action to mark arranged, 12.7 | ☐ |
-| History timeline | L708 | ✓ | ☐ |
-| Drawer: as funder plus full books always, adviser select (assigning at stage 0 moves to stage 1; "Adviser assigned"/"Adviser removed"), **Move to {next}**, **Back a stage**, "In monitoring" | L791, L911, L944 | ✓ | ☐ |
+| Needs attention: all cohort flags, bad first, Open | `ngoAttention` L692 | ✓ | ✅ |
+| Support log form: company, type (8 types), note; "Add a note about the support"; "Support logged"; activity "{incubator}: {type}." | `ngoSupport` L697, L1024 | ✓ | ✅ |
+| Introduction requests: "{company} asked to meet {buyer}", "To arrange" | L707 | ⚠ no action to mark arranged, 12.7 | ✅ |
+| History timeline | L708 | ✓ | ✅ |
+| Drawer: as funder plus full books always, adviser select (assigning at stage 0 moves to stage 1; "Adviser assigned"/"Adviser removed"), **Move to {next}**, **Back a stage**, "In monitoring" | L791, L911, L944 | ✓ | ✅ |
 
 ## 7. Admin portal, brief 7.6 (◇ not in the prototype)
 
 | Item | Implied by | Build |
 |---|---|---|
 | Checker queue for companies without an incubator (same approve / send back as advisers; acts as "ProofPocket checker") | `routeCheck` L846 | ✅ |
-| Verify funder, incubator and buyer organisations | `verified` on funders, "Verified funder" pills | ☐ |
-| Reports from the directory and payment pages | `reports` L915 | ☐ |
-| Feature-request review for posts (approve → featured, reject with note) | L1010 "reviews feature requests weekly" | ☐ |
-| Flagged payment requests | brief 8 | ☐ |
-| Organisation and user onboarding (invite funder, incubator, adviser, buyer users) | nowhere; see 12.6 | ☐ |
-| Tenders and buyers management | seed only; see 12.7 | ☐ |
+| Verify funder, incubator and buyer organisations | `verified` on funders, "Verified funder" pills | ✅ |
+| Reports from the directory and payment pages | `reports` L915 | ✅ |
+| Feature-request review for posts (approve → featured, reject with note) | L1010 "reviews feature requests weekly" | ✅ |
+| Flagged payment requests | brief 8 | ✅ |
+| Organisation and user onboarding (invite funder, incubator, adviser, buyer users) | nowhere; see 12.6 | ✅ |
+| Tenders and buyers management | seed only; see 12.7 | ✅ |
 
 ## 8. Public directory, brief 7.7
 
 | Item | Prototype | Build |
 |---|---|---|
-| Header copy ("Every business here has shown ProofPocket…") | `vDirectory` L716 | ☐ |
-| Featured this week: Verified companies' featured posts | L715–717 | ☐ |
-| Search (name, town, sector, tagline; live) and sector filter | L718, L939, L960 | ☐ |
-| Verified business cards: name, Verified, tagline or sector, sector · town, province | L719 | ☐ |
-| Profile drawer: tagline, services list, contact (WhatsApp, Instagram, hours), **Message on WhatsApp** (`wa.me/27…`), "What ProofPocket checked" (4 joining docs + "checks documents, not the quality of work"), **Report this business** | `profileHTML` L721 | ☐ |
+| Header copy ("Every business here has shown ProofPocket…") | `vDirectory` L716 | ✅ |
+| Featured this week: Verified companies' featured posts | L715–717 | ✅ |
+| Search (name, town, sector, tagline; live) and sector filter | L718, L939, L960 | ✅ |
+| Verified business cards: name, Verified, tagline or sector, sector · town, province | L719 | ✅ |
+| Profile drawer: tagline, services list, contact (WhatsApp, Instagram, hours), **Message on WhatsApp** (`wa.me/27…`), "What ProofPocket checked" (4 joining docs + "checks documents, not the quality of work"), **Report this business** | `profileHTML` L721 | ✅ |
 
 ## 9. Activity and messages generated by actions
 
@@ -269,13 +269,13 @@ System messages to the founder: "You're verified…" (L853), send-back request (
 
 | Item | Build |
 |---|---|
-| 6 companies: c1 Nala Nails & Lashes (Starter, Soweto, personal account, pending supplier change, scam message, Naledi proof, Lerato request, post), c2 ReKasi Plastics (CSD pending, full sharing, R50k→R40k→R28k offers, Lesedi message, statement lines, featured post), c3 Mabele AgriLink, c4 Green Route Waste Services, c5 Mama Tau Catering (tax expired, summary sharing, books 21 days old), c6 Khanya Solar Installs (business plan pending, supplier, featured post) | ☐ |
-| Per company: docs, 5 earlier months, ledger (offset days), stock, suppliers, profile, incubator + stage + adviser + log, activity, payment details | ☐ |
-| 4 funders (f4 Bophelo Community Fund needs set-up), 4 programmes | ☐ |
-| 2 incubators with 2 advisers each | ☐ |
-| 5 applications (ap1–ap5) with offers and status reasons | ☐ |
-| 5 tenders, 4 buyers, all marked "(example)" | ☐ |
-| Relative dates (`daysAgo`, `inMonth`) kept relative to the seed run date | ☐ |
+| 6 companies: c1 Nala Nails & Lashes (Starter, Soweto, personal account, pending supplier change, scam message, Naledi proof, Lerato request, post), c2 ReKasi Plastics (CSD pending, full sharing, R50k→R40k→R28k offers, Lesedi message, statement lines, featured post), c3 Mabele AgriLink, c4 Green Route Waste Services, c5 Mama Tau Catering (tax expired, summary sharing, books 21 days old), c6 Khanya Solar Installs (business plan pending, supplier, featured post) | ✅ |
+| Per company: docs, 5 earlier months, ledger (offset days), stock, suppliers, profile, incubator + stage + adviser + log, activity, payment details | ✅ |
+| 4 funders (f4 Bophelo Community Fund needs set-up), 4 programmes | ✅ |
+| 2 incubators with 2 advisers each | ✅ |
+| 5 applications (ap1–ap5) with offers and status reasons | ✅ |
+| 5 tenders, 4 buyers, all marked "(example)" | ✅ |
+| Relative dates (`daysAgo`, `inMonth`) kept relative to the seed run date | ✅ |
 
 ## 11. Business rules (port exactly; unit tests first in `packages/shared`)
 

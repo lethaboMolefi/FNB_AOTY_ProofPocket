@@ -2,6 +2,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { TwoFactorPrompt } from "../../features/auth/TwoFactor";
 import { FOUNDER_TABS, founderNavFor } from "../../app/nav";
+import { useCounts } from "../../lib/counts";
 import { useMe } from "../../lib/me";
 import { InstallHint } from "../../lib/pwa";
 import { Icon } from "../icons";
@@ -11,6 +12,7 @@ export function FounderShell() {
   const { data: me } = useMe();
   const nav = founderNavFor(me?.company?.businessType);
   const onHome = useLocation().pathname === "/app/home";
+  const counts = useCounts();
   return (
     <>
       <TopBar home="/app" who={me?.company && <span className="hidden desktop:inline muted">{me.company.name}</span>} />
@@ -21,7 +23,7 @@ export function FounderShell() {
             <div key={g.group || "top"}>
               {g.group && <div className="rail-group">{g.group}</div>}
               {g.pages.map((p) => (
-                <NavLink key={p.path} to={`/app/${p.path}`} className="rail-link">{p.label}</NavLink>
+                <NavLink key={p.path} to={`/app/${p.path}`} className="rail-link"><span>{p.label}</span>{counts[p.path] ? <span className="count" aria-label={`${counts[p.path]} waiting`}>{counts[p.path]}</span> : null}</NavLink>
               ))}
             </div>
           ))}

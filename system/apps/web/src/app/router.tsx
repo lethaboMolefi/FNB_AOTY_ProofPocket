@@ -11,7 +11,7 @@ const PortalShell = lazy(() => import("../components/layout/PortalShell").then((
 const More = lazy(() => import("../features/founder/More"));
 const SignIn = lazy(() => import("../features/auth/SignIn"));
 const VerifyPin = lazy(() => import("../features/auth/VerifyPin"));
-const pub = () => import("../features/public/PublicPages");
+const pub = () => import("../features/public/Directory");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
 const BusinessProfile = lazy(() => pub().then((m) => ({ default: m.BusinessProfile })));
 const PayPage = lazy(() => import("../features/public/PayPage"));
@@ -26,6 +26,22 @@ const Cashflow = lazy(() => import("../features/founder/Cashflow"));
 const Payments = lazy(() => import("../features/founder/Payments"));
 const Protection = lazy(() => import("../features/founder/Protection"));
 const Privacy = lazy(() => import("../features/founder/Privacy"));
+const Markets = lazy(() => import("../features/founder/Markets"));
+const Funding = lazy(() => import("../features/founder/Funding"));
+const Procurement = lazy(() => import("../features/founder/Procurement"));
+const FunderSetup = lazy(() => import("../features/funder/ProgrammeForm"));
+const Pipeline = lazy(() => import("../features/funder/Pipeline"));
+const FunderApplications = lazy(() => import("../features/funder/Applications"));
+const FunderProgrammes = lazy(() => import("../features/funder/Programmes"));
+const Cohort = lazy(() => import("../features/adviser/Cohort"));
+const Attention = lazy(() => import("../features/adviser/Attention"));
+const Support = lazy(() => import("../features/adviser/Support"));
+const Organisations = lazy(() => import("../features/admin/Organisations"));
+const rev = () => import("../features/admin/Reviews");
+const Reports = lazy(() => rev().then((m) => ({ default: m.Reports })));
+const Features = lazy(() => rev().then((m) => ({ default: m.Features })));
+const Flagged = lazy(() => rev().then((m) => ({ default: m.Flagged })));
+const AdminTenders = lazy(() => rev().then((m) => ({ default: m.Tenders })));
 
 const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
 /** Screens that are built; everything else shows its placeholder until its phase. */
@@ -39,6 +55,21 @@ const BUILT: Record<string, ReactNode> = {
   "founder/payments": s(<Payments />),
   "founder/protection": s(<Protection />),
   "founder/privacy": s(<Privacy />),
+  "founder/markets": s(<Markets />),
+  "founder/funding": s(<Funding />),
+  "founder/procurement": s(<Procurement />),
+  "funder/setup": s(<FunderSetup />),
+  "funder/pipeline": s(<Pipeline />),
+  "funder/applications": s(<FunderApplications />),
+  "funder/programmes": s(<FunderProgrammes />),
+  "adviser/cohort": s(<Cohort />),
+  "adviser/attention": s(<Attention />),
+  "adviser/support": s(<Support />),
+  "admin/organisations": s(<Organisations />),
+  "admin/reports": s(<Reports />),
+  "admin/features": s(<Features />),
+  "admin/flagged": s(<Flagged />),
+  "admin/tenders": s(<AdminTenders />),
   "adviser/checks": s(<Checks scope="adviser" />),
   "admin/checks": s(<Checks scope="admin" />),
 };

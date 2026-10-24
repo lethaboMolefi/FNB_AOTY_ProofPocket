@@ -20,7 +20,9 @@ const limiter = (windowMs: number, limit: number, message: string) =>
 
 export const limits = {
   general: () => limiter(60_000, 300, "Too many requests. Wait a minute and try again."),
-  auth: () => limiter(15 * 60_000, 30, "Too many sign-in attempts. Wait 15 minutes and try again."),
+  // Per IP. Many people can share one mobile-network IP, and each account also locks after 5 wrong tries,
+  // so this is a backstop. AUTH_RATE_LIMIT raises it (end-to-end tests sign in many times from one machine).
+  auth: () => limiter(15 * 60_000, Number(process.env.AUTH_RATE_LIMIT) || 60, "Too many sign-in attempts. Wait 15 minutes and try again."),
   uploads: () => limiter(15 * 60_000, 60, "Too many uploads. Wait a few minutes and try again."),
   pay: () => limiter(60_000, 30, "Too many requests. Wait a minute and try again."),
 };

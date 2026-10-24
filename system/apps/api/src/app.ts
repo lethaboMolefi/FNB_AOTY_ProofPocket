@@ -22,6 +22,7 @@ import { funderRoutes } from "./routes/funder";
 import { adviserRoutes } from "./routes/adviser";
 import { adminRoutes } from "./routes/admin";
 import { publicRoutes } from "./routes/public";
+import { countRoutes } from "./routes/counts";
 import { founderDocRoutes } from "./routes/founder-docs";
 import { joinRoutes } from "./routes/join";
 
@@ -66,6 +67,7 @@ export function createApp(deps: Deps) {
   v1.use(adviserRoutes(deps));
   v1.use(adminRoutes(deps));
   v1.use(publicRoutes(deps));
+  v1.use(countRoutes(deps));
   v1.use(checkRoutes(deps));
 
   app.use("/api/v1", v1);
