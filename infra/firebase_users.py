@@ -5,9 +5,12 @@ Usage: firebase_users.py PROJECT ADMIN_EMAIL OUT_FILE
 Uses the signed-in gcloud account (Identity Toolkit admin API). Emails are marked verified so the API links
 each sign-in to the matching example user. Passwords are written only to OUT_FILE (git-ignored, mode 600).
 """
-import json, os, secrets, subprocess, sys, urllib.error, urllib.request
+import json, os, re, secrets, subprocess, sys, urllib.error, urllib.request
 
 project, admin_email, out = sys.argv[1], sys.argv[2], sys.argv[3]
+# Google Cloud project IDs: 6-30 lowercase letters, digits and hyphens. Anything else is refused.
+if not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", project):
+    sys.exit(f"Not a valid project ID: {project!r}")
 ACCOUNTS = [
     ("Founder", "Zanele M., Nala Nails & Lashes (Starter)", "zanele@proofpocket.example"),
     ("Founder", "Palesa K., ReKasi Plastics", "palesa@proofpocket.example"),
@@ -29,6 +32,8 @@ token = subprocess.check_output(["gcloud", "auth", "print-access-token"], text=T
 base = f"https://identitytoolkit.googleapis.com/v1/projects/{project}"
 
 def call(path, body):
+    # Fixed https host and paths; only the validated project ID varies.
+    # nosemgrep: dynamic-urllib-use-detected
     req = urllib.request.Request(base + path, data=json.dumps(body).encode(), method="POST", headers={
         "Authorization": f"Bearer {token}", "x-goog-user-project": project, "Content-Type": "application/json"})
     try:
