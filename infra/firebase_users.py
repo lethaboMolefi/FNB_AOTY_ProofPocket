@@ -33,11 +33,10 @@ base = f"https://identitytoolkit.googleapis.com/v1/projects/{project}"
 
 def call(path, body):
     # Fixed https host and paths; only the validated project ID varies.
-    # nosemgrep: dynamic-urllib-use-detected
     req = urllib.request.Request(base + path, data=json.dumps(body).encode(), method="POST", headers={
         "Authorization": f"Bearer {token}", "x-goog-user-project": project, "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req) as r:
+        with urllib.request.urlopen(req) as r:  # nosemgrep: dynamic-urllib-use-detected
             return json.load(r)
     except urllib.error.HTTPError as e:
         return {"error": json.load(e)}
