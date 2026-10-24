@@ -1,5 +1,6 @@
-import { signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
+import { emailSchema, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
 import { Router } from "express";
+import { z } from "zod";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
 import { AppError, forbidden, notFound } from "../lib/errors";
@@ -27,11 +28,11 @@ export function authRoutes(deps: Deps) {
 
     // Email OTP for sign-up email confirmation (local dev mode only).
     r.post("/auth/email-otp/send", limits.auth(), handle(async (req) => {
-      const { email } = parse(signUpSchema.pick({ email: true }), req.body);
+      const { email } = parse(z.object({ email: emailSchema }), req.body);
       return sendEmailOtp(deps.mailer, email);
     }));
     r.post("/auth/email-otp/verify", limits.auth(), handle(async (req) => {
-      const { email, code } = parse(signUpSchema.pick({ email: true }).and(totpCodeSchema), req.body);
+      const { email, code } = parse(z.object({ email: emailSchema, code: totpCodeSchema.shape.code }), req.body);
       const result = verifyEmailOtp(email, code);
       if (!result.ok) {
         const msg = result.reason === "expired" ? "That code has expired. Request a new one."
