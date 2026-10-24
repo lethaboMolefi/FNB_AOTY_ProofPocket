@@ -4,7 +4,7 @@
 #   bash infra/deploy.sh <step>      run one step
 #   bash infra/deploy.sh all         run everything in order
 #
-# Steps: network, database, storage, secrets, identity, registry, image, bootstrap, api, firebase, web, users, budget, smoke
+# Steps: network, database, storage, secrets, identity, registry, image, bootstrap, api, jobs, firebase, web, users, budget, smoke
 # Needs: gcloud and firebase CLIs signed in as a project owner, Node 26 + pnpm 12, python3.
 set -euo pipefail
 
@@ -101,8 +101,8 @@ step_identity() {
   g storage buckets add-iam-policy-binding "gs://$BUCKET" --member "serviceAccount:$SA" --role roles/storage.objectAdmin >/dev/null
   # Signs V4 upload/download URLs without a key file (IAM signBlob on itself).
   g iam service-accounts add-iam-policy-binding "$SA" --member "serviceAccount:$SA" --role roles/iam.serviceAccountTokenCreator >/dev/null
-  # Reads users to check Firebase sign-ins haven't been revoked.
-  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role roles/firebaseauth.viewer --condition=None >/dev/null
+  # Checks Firebase sign-ins haven't been revoked, and creates sign-ins for people the admin invites.
+  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role roles/firebaseauth.admin --condition=None >/dev/null
 }
 
 step_registry() {
@@ -136,6 +136,17 @@ step_api() {
     --allow-unauthenticated --min-instances 0 --max-instances 4 --memory 512Mi --cpu 1 --concurrency 40 \
     --set-env-vars "^|^NODE_ENV=production|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}" \
     --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest"
+}
+
+step_jobs() {
+  # Expiry and fingerprint checks (src/jobs.ts), as a Cloud Run Job in africa-south1. Start it by hand with:
+  #   gcloud run jobs execute proofpocket-jobs --region africa-south1 [--args=dist/jobs.js,--rehash]
+  # Cloud Scheduler isn't available in africa-south1; see the README before scheduling it from another region.
+  local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
+    --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest"
+    --set-env-vars "STORAGE_MODE=gcs,GCS_BUCKET=${BUCKET}" --command node --args dist/jobs.js --max-retries 1 --task-timeout 1800)
+  if exists g run jobs describe proofpocket-jobs --region "$REGION"; then g run jobs update proofpocket-jobs "${args[@]}"
+  else g run jobs create proofpocket-jobs "${args[@]}"; fi
 }
 
 step_firebase() {
@@ -185,7 +196,7 @@ step_smoke() {
 }
 
 case "${1:-}" in
-  all) for s in network database storage secrets identity registry image bootstrap api firebase web users budget smoke; do echo "== $s"; "step_$s"; done ;;
-  network|database|storage|secrets|identity|registry|image|bootstrap|api|firebase|web|users|budget|smoke) "step_$1" ;;
+  all) for s in network database storage secrets identity registry image bootstrap api jobs firebase web users budget smoke; do echo "== $s"; "step_$s"; done ;;
+  network|database|storage|secrets|identity|registry|image|bootstrap|api|jobs|firebase|web|users|budget|smoke) "step_$1" ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
 esac
