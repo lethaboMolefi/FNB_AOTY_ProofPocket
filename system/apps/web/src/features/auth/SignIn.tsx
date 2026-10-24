@@ -80,9 +80,6 @@ export default function SignIn() {
         <button className="btn primary" type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? "Signing in…" : "Sign in"}</button>
         {AUTH_MODE === "firebase" && <button className="btn ghost self-start" type="button" onClick={() => void forgot()}>Forgot password?</button>}
       </form>
-      <Notice tone="info" icon="2">
-        <span className="small"><b>Two-step sign-in keeps your money safe.</b> After your password, enter the code from the Google Authenticator app on your phone, so a stolen password isn't enough. It's always on for funders, advisers and admins, and founders can set it up in Business settings.</span>
-      </Notice>
       <Notice tone="warn" icon="!"><span className="small">ProofPocket will never phone you or message you to ask for your password or a code.</span></Notice>
       <p className="small">New here? <Link to="/join">Join ProofPocket</Link></p>
     </AuthPageShell>
