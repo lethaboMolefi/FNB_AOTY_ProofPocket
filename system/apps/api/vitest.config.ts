@@ -13,6 +13,8 @@ export default defineConfig({
       DATABASE_OWNER_URL: `postgres://proofpocket_owner:owner_dev_password@${host}/proofpocket_test`,
       AUTH_MODE: "dev",
       MAIL_MODE: "console",
+      STORAGE_MODE: "local",
+      STORAGE_DIR: ".local-uploads-test",
       ACCOUNT_NUMBER_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
       OTP_SECRET: "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=",
     },

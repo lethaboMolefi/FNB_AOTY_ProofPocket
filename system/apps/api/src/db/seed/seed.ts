@@ -6,9 +6,16 @@ import {
 import type { Db } from "../client";
 import * as s from "../schema/index";
 import { encryptField, last4, randomToken } from "../../lib/crypto";
+import { hashPassword } from "../../lib/passwords";
 import { APPLICATIONS, BUYERS, COMPANIES, FUNDERS, INCUBATORS, MESSAGES, PAYMENT_REQUESTS, POSTS, STATEMENT_LINES, TENDERS } from "./data";
 
-export interface SeedOptions { today?: string; accountKey: string; adminEmail: string }
+export interface SeedOptions {
+  today?: string;
+  accountKey: string;
+  adminEmail: string;
+  /** Email → password for AUTH_MODE=local sign-in. Hashed with scrypt; never stored in plain text. */
+  passwords?: Record<string, string>;
+}
 
 const fakeSha = () => randomBytes(32).toString("hex");
 const money = (n: number) => n.toFixed(2);
@@ -69,7 +76,7 @@ export async function seed(db: Db, opts: SeedOptions) {
         openingBalance: money(c.opening), openingBalanceDate: firstOfMonth(today), funderSharing: c.sharing,
         verifiedAt: isVerified(docStates) ? at(45) : null,
         incubatorId: incubator, adviserId: c.incubator.adviser ? userId.get(c.incubator.adviser)! : null, supportStage: c.incubator.stage,
-        createdAt: at(60), ...ex,
+        joinedAt: at(60), consentAt: at(60), createdAt: at(60), ...ex,
       }).returning();
       const cid = co!.id;
       companyId.set(c.key, cid);
@@ -179,6 +186,11 @@ export async function seed(db: Db, opts: SeedOptions) {
       const cid = companyId.get(key)!;
       const [imp] = await tx.insert(s.statementImports).values({ companyId: cid, bank: "FNB", format: "csv", lineCount: lines.length, ...ex }).returning();
       await tx.insert(s.statementLines).values(lines.map((l) => ({ companyId: cid, importId: imp!.id, lineDate: daysAgo(l.daysAgo), description: l.description, amount: money(l.amount), direction: l.direction, ...ex })));
+    }
+
+    // ------------------------------------------------------------ local development sign-in
+    for (const [email, password] of Object.entries(opts.passwords ?? {})) {
+      await tx.insert(s.localCredentials).values({ email: email.toLowerCase(), passwordHash: await hashPassword(password) });
     }
   });
 }

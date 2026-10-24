@@ -51,9 +51,11 @@ describe("row-level security", () => {
 
   it("a funder sees Verified, sharing companies, never Starters", async () => {
     await as(FUNDER_F1, async (tx) => {
-      const seen = names(await tx.select({ name: companies.name }).from(companies));
-      expect(seen).not.toContain("Nala Nails & Lashes");
-      expect(seen).toEqual(["Green Route Waste Services", "Khanya Solar Installs", "Mabele AgriLink", "Mama Tau Catering", "ReKasi Plastics"]);
+      const rows = await tx.select({ name: companies.name, verifiedAt: companies.verifiedAt, sharing: companies.funderSharing }).from(companies);
+      expect(names(rows)).not.toContain("Nala Nails & Lashes");
+      expect(names(rows)).toEqual(expect.arrayContaining(["Green Route Waste Services", "Khanya Solar Installs", "Mabele AgriLink", "Mama Tau Catering", "ReKasi Plastics"]));
+      // Other tests may verify more companies; every one a funder sees must be Verified and sharing.
+      for (const r of rows) { expect(r.verifiedAt).not.toBeNull(); expect(r.sharing).not.toBe("none"); }
     });
   });
 

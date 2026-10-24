@@ -13,3 +13,5 @@ export * from "./rules/bookkeeping";
 export * from "./rules/cashflow";
 export * from "./schemas/common";
 export * from "./schemas/auth";
+export * from "./schemas/join";
+export * from "./schemas/files";

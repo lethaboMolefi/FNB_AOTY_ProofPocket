@@ -51,8 +51,8 @@ describe("sign-in", () => {
   it("founders sign in without a PIN; the role comes from the database", async () => {
     const r = await request(app).get("/api/v1/me").set("Authorization", signIn(FOUNDER));
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ email: FOUNDER, role: "founder", needsOtp: false, org: null });
-    expect(r.body.company).toMatchObject({ name: "Nala Nails & Lashes", town: "Soweto", businessType: "beauty", verified: false });
+    expect(r.body).toMatchObject({ email: FOUNDER, role: "founder", needsOtp: false, org: null, twoFactor: { enabled: false, required: false } });
+    expect(r.body.company).toMatchObject({ name: "Nala Nails & Lashes", town: "Soweto", businessType: "beauty", verified: false, joined: true });
   });
 
   it("funders must pass an email PIN on every sign-in", async () => {
@@ -100,6 +100,8 @@ describe("sign-in", () => {
 describe("config and crypto", () => {
   it("refuses dev sign-in and console mail in production", () => {
     expect(() => loadConfig({ ...process.env, NODE_ENV: "production", AUTH_MODE: "dev" })).toThrow(/AUTH_MODE/);
+    expect(() => loadConfig({ ...process.env, NODE_ENV: "production", AUTH_MODE: "local" })).toThrow(/AUTH_MODE/);
+    expect(() => loadConfig({ ...process.env, NODE_ENV: "development", AUTH_MODE: "dev" })).toThrow(/tests only/);
     expect(() => loadConfig({ ...process.env, NODE_ENV: "production", AUTH_MODE: "firebase", FIREBASE_PROJECT_ID: "x", MAIL_MODE: "console" })).toThrow(/MAIL_MODE/);
   });
   it("encrypts account numbers so the stored value doesn't contain them", () => {

@@ -8,7 +8,7 @@ export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 /** Who the database should treat the current request as. Read by the RLS policies. */
 export interface DbContext {
-  role: "founder" | "funder" | "adviser" | "buyer" | "admin" | "public" | "joining" | "anonymous";
+  role: "founder" | "funder" | "adviser" | "buyer" | "admin" | "public" | "joining" | "auth" | "anonymous";
   userId?: string | null;
   firebaseUid?: string | null;
   payRequestId?: string | null;

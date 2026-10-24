@@ -29,8 +29,10 @@ export const users = pgTable("users", {
   orgId: uuid("org_id").references(() => organisations.id),
   /** Incubator lead adviser: may invite colleagues. */
   isLead: boolean("is_lead").notNull().default(false),
-  /** Firebase auth_time of the sign-in that passed the email PIN (funder, adviser, admin). */
+  /** Firebase auth_time of the sign-in that passed the email PIN. */
   otpVerifiedAuthTime: bigint("otp_verified_auth_time", { mode: "number" }),
+  /** Two-step sign-in (email PIN) chosen by a founder. Always on for funder, adviser and admin accounts. */
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   isExample: isExample(),
   ...timestamps,
 }, (t) => [
@@ -62,6 +64,9 @@ export const companies = pgTable("companies", {
   incubatorId: uuid("incubator_id").references(() => organisations.id),
   adviserId: uuid("adviser_id").references(() => users.id),
   supportStage: smallint("support_stage").notNull().default(0),
+  /** Set when the founder finishes the Join wizard (consent given, documents sent for checking). */
+  joinedAt: timestamp("joined_at", { withTimezone: true }),
+  consentAt: timestamp("consent_at", { withTimezone: true }),
   isExample: isExample(),
   ...timestamps,
 }, (t) => [
@@ -157,3 +162,17 @@ export const otpChallenges = pgTable("otp_challenges", {
   consumedAt: timestamp("consumed_at", { withTimezone: true }),
   ...timestamps,
 }, (t) => [index("otp_user_idx").on(t.userId, t.purpose)]);
+
+/**
+ * Email + password accounts for local development and tests only (AUTH_MODE=local).
+ * Production uses Firebase Authentication; this table stays empty there.
+ */
+export const localCredentials = pgTable("local_credentials", {
+  id: id(),
+  email: text("email").notNull(),
+  /** scrypt$N$r$p$salt$hash */
+  passwordHash: text("password_hash").notNull(),
+  failedAttempts: smallint("failed_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  ...timestamps,
+}, (t) => [uniqueIndex("local_credentials_email_key").on(sql`lower(${t.email})`)]);

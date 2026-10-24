@@ -28,7 +28,7 @@ pnpm test:e2e                 # Playwright, phone + desktop, production build, o
 pnpm lint && pnpm typecheck
 ```
 
-Local env files: `apps/api/.env` and `apps/web/.env`, copied from `.env.example`. With `AUTH_MODE=dev`, sign in by picking a seeded account; email PINs print in the API log (`MAIL_MODE=console`). Production uses Firebase Auth and Gmail SMTP (app password in Secret Manager); the config refuses dev auth and console mail in production.
+Local env files: `apps/api/.env` and `apps/web/.env`, copied from `.env.example`. Locally `AUTH_MODE=local`: email + password checked by the API (scrypt, lockout after 5 tries). `pnpm db:reset` prints the example accounts' passwords and keeps them in the git-ignored `apps/api/.seed-credentials.json`. Email PINs print in the API log (`MAIL_MODE=console`). Two-step sign-in (email PIN) is always on for funder, adviser and admin accounts and optional for founders (Business settings). Production uses Firebase Auth and Gmail SMTP; the config refuses local/dev auth, console mail and local storage in production. `AUTH_MODE=dev` (fake tokens) exists for automated tests only.
 
 ## Working rules
 

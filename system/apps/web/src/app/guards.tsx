@@ -18,6 +18,7 @@ function useDestination(): { wait: true } | { wait: false; to: string | null; ro
     return { wait: false, to: "/sign-in" };
   }
   if (me.data.needsOtp) return { wait: false, to: "/verify" };
+  if (me.data.role === "founder" && (!me.data.company || !me.data.company.joined)) return { wait: false, to: "/join" };
   return { wait: false, to: null, role: me.data.role };
 }
 

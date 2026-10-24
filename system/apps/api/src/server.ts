@@ -3,7 +3,8 @@ import { createApp, REDACT } from "./app";
 import { loadConfig } from "./config";
 import { createDb } from "./db/client";
 import { createMailer } from "./lib/mailer";
-import { devVerifier, firebaseVerifier } from "./middleware/auth";
+import { createStore } from "./lib/storage";
+import { devVerifier, firebaseVerifier, localVerifier } from "./middleware/auth";
 
 const config = loadConfig();
 const log = pino({
@@ -12,10 +13,11 @@ const log = pino({
   ...(config.NODE_ENV === "development" ? { transport: { target: "pino-pretty", options: { singleLine: true } } } : {}),
 });
 const { pool, db } = createDb(config.DATABASE_URL);
-const verify = config.AUTH_MODE === "dev" ? devVerifier : firebaseVerifier(config.FIREBASE_PROJECT_ID!);
-if (config.AUTH_MODE === "dev") log.warn("AUTH_MODE=dev: accepting development sign-in tokens");
+const verify = config.AUTH_MODE === "firebase" ? firebaseVerifier(config.FIREBASE_PROJECT_ID!)
+  : config.AUTH_MODE === "local" ? localVerifier(config.OTP_SECRET) : devVerifier(config.OTP_SECRET);
+if (config.AUTH_MODE !== "firebase") log.warn(`AUTH_MODE=${config.AUTH_MODE}: development sign-in, never for production`);
 
-const app = createApp({ config, db, log, mailer: createMailer(config, log), verify });
+const app = createApp({ config, db, log, mailer: createMailer(config, log), verify, store: createStore(config) });
 const server = app.listen(config.PORT, () => log.info(`ProofPocket API on :${config.PORT}`));
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

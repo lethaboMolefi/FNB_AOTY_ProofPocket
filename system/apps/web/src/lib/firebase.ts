@@ -2,7 +2,7 @@
 import { initializeApp } from "@firebase/app";
 import {
   browserLocalPersistence, createUserWithEmailAndPassword, getAuth, onAuthStateChanged, sendEmailVerification,
-  setPersistence, signInWithEmailAndPassword, signOut, type User,
+  sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signOut, type User,
 } from "@firebase/auth";
 
 const app = initializeApp({
@@ -23,3 +23,4 @@ export async function signUp(email: string, password: string) {
   return cred;
 }
 export const out = () => signOut(auth);
+export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);

@@ -1,5 +1,6 @@
 // Founder layout: grouped left rail on desktop; bottom tab bar (Home, Books, Get paid, Markets, More) on phones.
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { TwoFactorPrompt } from "../../features/auth/TwoFactor";
 import { FOUNDER_TABS, founderNavFor } from "../../app/nav";
 import { useMe } from "../../lib/me";
 import { InstallHint } from "../../lib/pwa";
@@ -9,6 +10,7 @@ import { TopBar } from "./TopBar";
 export function FounderShell() {
   const { data: me } = useMe();
   const nav = founderNavFor(me?.company?.businessType);
+  const onHome = useLocation().pathname === "/app/home";
   return (
     <>
       <TopBar home="/app" who={me?.company && <span className="hidden desktop:inline muted">{me.company.name}</span>} />
@@ -26,6 +28,7 @@ export function FounderShell() {
           <p className="hint mt-4 border-t border-line px-2.5 pt-3">ProofPocket never holds money.</p>
         </nav>
         <main id="main" className="flex min-w-0 flex-col gap-5" tabIndex={-1}>
+          {onHome && <TwoFactorPrompt />}
           <InstallHint />
           <Outlet />
         </main>

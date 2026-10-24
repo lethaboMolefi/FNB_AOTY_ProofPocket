@@ -15,10 +15,19 @@ const pub = () => import("../features/public/PublicPages");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
 const BusinessProfile = lazy(() => pub().then((m) => ({ default: m.BusinessProfile })));
 const PayPage = lazy(() => pub().then((m) => ({ default: m.PayPage })));
-const Join = lazy(() => pub().then((m) => ({ default: m.Join })));
+const Join = lazy(() => import("../features/join/Join"));
+const Start = lazy(() => import("../features/founder/Start"));
+const Checks = lazy(() => import("../features/checks/Checks"));
 
 const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
-const pages = (list: NavPage[]): RouteObject[] => list.map((p) => ({ path: p.path, element: <Placeholder page={p} /> }));
+/** Screens that are built; everything else shows its placeholder until its phase. */
+const BUILT: Record<string, ReactNode> = {
+  "founder/start": s(<Start />),
+  "adviser/checks": s(<Checks scope="adviser" />),
+  "admin/checks": s(<Checks scope="admin" />),
+};
+const pages = (portal: string, list: NavPage[]): RouteObject[] =>
+  list.map((p) => ({ path: p.path, element: BUILT[`${portal}/${p.path}`] ?? <Placeholder page={p} /> }));
 
 export const routes: RouteObject[] = [
   { path: "/", element: <RoleHome /> },
@@ -34,24 +43,24 @@ export const routes: RouteObject[] = [
     element: <RequireRole roles={["founder"]}>{s(<FounderShell />)}</RequireRole>,
     children: [
       { index: true, element: <Navigate to="home" replace /> },
-      ...pages(FOUNDER_NAV.flatMap((g) => g.pages)),
+      ...pages("founder", FOUNDER_NAV.flatMap((g) => g.pages)),
       { path: "more", element: s(<More />) },
     ],
   },
   {
     path: "/funder",
     element: <RequireRole roles={["funder"]}><RequireFunderSetup>{s(<PortalShell base="/funder" title="Funder portal" pages={FUNDER_NAV} />)}</RequireFunderSetup></RequireRole>,
-    children: [{ index: true, element: <Navigate to="pipeline" replace /> }, ...pages([...FUNDER_NAV, FUNDER_SETUP])],
+    children: [{ index: true, element: <Navigate to="pipeline" replace /> }, ...pages("funder", [...FUNDER_NAV, FUNDER_SETUP])],
   },
   {
     path: "/adviser",
     element: <RequireRole roles={["adviser"]}>{s(<PortalShell base="/adviser" title="Support portal" pages={ADVISER_NAV} />)}</RequireRole>,
-    children: [{ index: true, element: <Navigate to="cohort" replace /> }, ...pages(ADVISER_NAV)],
+    children: [{ index: true, element: <Navigate to="cohort" replace /> }, ...pages("adviser", ADVISER_NAV)],
   },
   {
     path: "/admin",
     element: <RequireRole roles={["admin"]}>{s(<PortalShell base="/admin" title="ProofPocket admin" pages={ADMIN_NAV} />)}</RequireRole>,
-    children: [{ index: true, element: <Navigate to="checks" replace /> }, ...pages(ADMIN_NAV)],
+    children: [{ index: true, element: <Navigate to="checks" replace /> }, ...pages("admin", ADMIN_NAV)],
   },
   { path: "*", element: <NotFound /> },
 ];

@@ -15,6 +15,20 @@
       "when": 1792795398583,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792798394951,
+      "tag": "0002_auth_join",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792798990900,
+      "tag": "0003_phase2",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,6 @@
 // Outgoing email. Production sends through Gmail SMTP with an app password; development prints to the log.
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import nodemailer from "nodemailer";
 import type { Logger } from "pino";
 import type { Config } from "../config";
@@ -7,6 +9,16 @@ export interface Mail { to: string; subject: string; text: string }
 export interface Mailer { send(mail: Mail): Promise<void> }
 
 export function createMailer(config: Config, log: Logger): Mailer {
+  if (config.MAIL_MODE === "file") {
+    // Tests read the latest email (and its PIN) from this folder. Created on each send in case it was cleared.
+    return {
+      async send(mail) {
+        mkdirSync(config.MAIL_DIR, { recursive: true });
+        const name = `${Date.now()}-${mail.to.replace(/[^a-z0-9@.]/gi, "_")}.json`;
+        writeFileSync(join(config.MAIL_DIR, name), JSON.stringify(mail));
+      },
+    };
+  }
   if (config.MAIL_MODE === "console") {
     return {
       async send(mail) {

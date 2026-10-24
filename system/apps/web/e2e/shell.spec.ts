@@ -1,9 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { signIn } from "./helpers";
 
-async function signInAs(page: Page, label: string) {
-  await page.goto("/sign-in");
-  await page.getByRole("button", { name: label }).click();
-}
+const NALA = "zanele@proofpocket.example";
 
 test("the manifest makes ProofPocket installable", async ({ request }) => {
   const m = await (await request.get("/manifest.webmanifest")).json();
@@ -15,10 +13,18 @@ test("signed-out visitors go to sign-in", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  // No list of accounts on the sign-in page.
+  await expect(page.getByRole("button", { name: /Nala|Lesedi/ })).toHaveCount(0);
+});
+
+test("a wrong password gets one generic message", async ({ page }) => {
+  await signIn(page, NALA, "not-the-right-password", { expectFailure: true });
+  await expect(page.getByRole("alert")).toHaveText("That email and password don't match. Check them and try again.");
+  await expect(page).toHaveURL(/\/sign-in$/);
 });
 
 test("a founder lands on Home with the founder navigation", async ({ page, isMobile }) => {
-  await signInAs(page, "Nala Nails & Lashes (Starter)");
+  await signIn(page, NALA);
   await expect(page).toHaveURL(/\/app\/home$/);
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
   await expect(page.getByText("Nala Nails & Lashes · Soweto, Gauteng")).toBeVisible();
@@ -38,7 +44,7 @@ test("a founder lands on Home with the founder navigation", async ({ page, isMob
 });
 
 test("a services business doesn't see Stock", async ({ page, isMobile }) => {
-  await signInAs(page, "Mabele AgriLink");
+  await signIn(page, "tumelo@proofpocket.example");
   await expect(page).toHaveURL(/\/app\/home$/);
   if (isMobile) await page.getByRole("link", { name: "More" }).click();
   await expect(page.getByRole("link", { name: "Bookkeeping" }).or(page.getByRole("link", { name: "Registration steps" })).first()).toBeVisible();
@@ -46,7 +52,7 @@ test("a services business doesn't see Stock", async ({ page, isMobile }) => {
 });
 
 test("each role sees only its own portal", async ({ page }) => {
-  await signInAs(page, "ReKasi Plastics");
+  await signIn(page, "palesa@proofpocket.example");
   await expect(page).toHaveURL(/\/app\/home$/);
   await page.goto("/funder/pipeline");
   await expect(page).toHaveURL(/\/app\/home$/);
@@ -55,7 +61,7 @@ test("each role sees only its own portal", async ({ page }) => {
 });
 
 test("funders must enter an emailed PIN before the portal", async ({ page }) => {
-  await signInAs(page, "Lesedi Youth Fund");
+  await signIn(page, "lesedi@proofpocket.example");
   await expect(page).toHaveURL(/\/verify$/);
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
   await expect(page.getByText(/We sent a 6-digit PIN to le/)).toBeVisible();
@@ -64,7 +70,7 @@ test("funders must enter an emailed PIN before the portal", async ({ page }) => 
 });
 
 test("the app shell opens offline", async ({ page, context }) => {
-  await signInAs(page, "Nala Nails & Lashes (Starter)");
+  await signIn(page, NALA);
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   // A reload after the worker takes control puts /me in the founder cache.

@@ -7,10 +7,15 @@ import { pinoHttp } from "pino-http";
 import type { Config } from "./config";
 import type { Db } from "./db/client";
 import type { Mailer } from "./lib/mailer";
+import type { FileStore } from "./lib/storage";
 import { authenticate, type TokenVerifier } from "./middleware/auth";
 import { errorHandler, limits, notFoundHandler } from "./middleware/http";
 import { buildOpenApi } from "./openapi";
 import { authRoutes } from "./routes/auth";
+import { checkRoutes } from "./routes/checks";
+import { fileRoutes } from "./routes/files";
+import { founderDocRoutes } from "./routes/founder-docs";
+import { joinRoutes } from "./routes/join";
 
 export interface Deps {
   config: Config;
@@ -18,6 +23,7 @@ export interface Deps {
   log: Logger;
   mailer: Mailer;
   verify: TokenVerifier;
+  store: FileStore;
 }
 
 /** Fields that must never reach the logs. */
@@ -41,6 +47,10 @@ export function createApp(deps: Deps) {
   v1.get("/openapi.json", (_req, res) => { res.json(openapi); });
   v1.use(authenticate(deps.db, deps.verify));
   v1.use(authRoutes(deps));
+  v1.use(joinRoutes(deps));
+  v1.use(fileRoutes(deps));
+  v1.use(founderDocRoutes(deps));
+  v1.use(checkRoutes(deps));
 
   app.use("/api/v1", v1);
   app.use(notFoundHandler);

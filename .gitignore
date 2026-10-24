@@ -12,10 +12,16 @@ coverage/
 .env
 .env.*
 !.env.example
-.local-uploads/
+.local-uploads*/
 playwright-report/
 test-results/
 .terraform/
 *.tfstate
 *.tfstate.*
 .DS_Store
+
+# Local example-account passwords and test mail
+.seed-credentials.json
+.local-mail/
+.e2e-mail/
+.e2e-uploads/

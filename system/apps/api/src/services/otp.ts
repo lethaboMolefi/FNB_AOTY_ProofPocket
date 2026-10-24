@@ -7,7 +7,7 @@ import { hashCode, sameHash, sixDigitCode } from "../lib/crypto";
 import { AppError } from "../lib/errors";
 import type { Mailer } from "../lib/mailer";
 
-export type OtpPurpose = "sign_in" | "payment_details";
+export type OtpPurpose = "sign_in" | "payment_details" | "two_factor";
 
 const TTL_MINUTES = 10;
 const MAX_ATTEMPTS = 5;
@@ -16,6 +16,7 @@ const MAX_PER_HOUR = 5;
 const PURPOSE_TEXT: Record<OtpPurpose, string> = {
   sign_in: "to finish signing in",
   payment_details: "to change the payment details clients see",
+  two_factor: "to change two-step sign-in",
 };
 
 /** "pe•••••@gmail.com" */

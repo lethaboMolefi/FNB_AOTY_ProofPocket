@@ -35,6 +35,6 @@ export const membershipStatus = pgEnum("membership_status", ["requested", "activ
 export const handledStatus = pgEnum("handled_status", ["requested", "arranged", "declined"]);
 export const reportTarget = pgEnum("report_target", ["company", "payment_request", "post", "message_sender"]);
 export const reportStatus = pgEnum("report_status", ["open", "resolved", "dismissed"]);
-export const otpPurpose = pgEnum("otp_purpose", ["sign_in", "payment_details"]);
+export const otpPurpose = pgEnum("otp_purpose", ["sign_in", "payment_details", "two_factor"]);
 export const filePurpose = pgEnum("file_purpose", ["document", "receipt", "proof", "statement"]);
 export const watchStatus = pgEnum("watch_status", ["watch", "confirmed_scam", "cleared"]);

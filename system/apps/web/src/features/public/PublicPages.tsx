@@ -46,13 +46,3 @@ export function PayPage() {
     </PublicShell>
   );
 }
-
-export function Join() {
-  return (
-    <PublicShell>
-      <PageHead label="Join ProofPocket" title="Start your business record"
-        sub="Anyone can start. Registered businesses that pass the document check get the Verified badge, which funders, buyers and customers look for." />
-      <Building phase={2} what="The join wizard" />
-    </PublicShell>
-  );
-}
