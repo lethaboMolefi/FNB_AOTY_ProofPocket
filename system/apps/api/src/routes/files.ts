@@ -40,6 +40,9 @@ export function fileRoutes(deps: Deps) {
       res.setHeader("Content-Type", g.t);
       res.setHeader("Content-Disposition", `attachment; filename="${(g.n ?? "file").replace(/[^\w.-]+/g, "_")}"`);
       res.setHeader("Cache-Control", "private, no-store");
+      // A stored upload, sent as a download: no scripts, no rendering in our origin.
+      res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox");
+      // nosemgrep: direct-response-write -- binary file download with attachment disposition, nosniff and a sandbox CSP
       res.send(data);
     }));
   }

@@ -50,6 +50,8 @@ export interface LocalStore extends FileStore {
 
 export function localStore(config: Config): LocalStore {
   const root = normalize(config.STORAGE_DIR);
+  // The string is a key-derivation label, not a secret; the secret is OTP_SECRET from the environment.
+  // nosemgrep: node_secret
   const key = createHmac("sha256", Buffer.from(config.OTP_SECRET, "base64")).update("proofpocket-local-storage").digest();
   const sign = (body: string) => createHmac("sha256", key).update(body).digest("base64url");
   const token = (g: Omit<LocalGrant, "exp">) => {

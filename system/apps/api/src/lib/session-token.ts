@@ -3,6 +3,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface SessionClaims { sub: string; email: string; at: number; exp: number }
 
+// The string below is a key-derivation label, not a secret; the secret is OTP_SECRET from the environment.
+// nosemgrep: node_secret
 const key = (secretB64: string) => createHmac("sha256", Buffer.from(secretB64, "base64")).update("proofpocket-local-session").digest();
 const sign = (body: string, secretB64: string) => createHmac("sha256", key(secretB64)).update(body).digest("base64url");
 

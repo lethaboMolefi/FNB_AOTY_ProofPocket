@@ -2,8 +2,8 @@ import { createHmac } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { expect, type Page } from "@playwright/test";
 
-/** Test database only. */
-export const E2E_PASSWORD = "e2e-only-Passphrase-77";
+/** Generated per run in playwright.config.ts; test database only. */
+export const E2E_PASSWORD = process.env.E2E_PASSWORD!;
 
 export async function signIn(page: Page, email: string, password = E2E_PASSWORD, opts: { expectFailure?: boolean } = {}) {
   await page.goto("/sign-in");

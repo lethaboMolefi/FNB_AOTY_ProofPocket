@@ -11,7 +11,7 @@ import { CACHEABLE_API } from "./lib/cache-rules";
 
 declare const self: ServiceWorkerGlobalScope;
 
-const USER_CACHE = "pp-api-founder";
+const FOUNDER_API_CACHE = "pp-api-founder";
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
@@ -22,7 +22,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL("/index.html"), { deny
 registerRoute(
   ({ url, request }) => request.method === "GET" && url.origin === self.location.origin && CACHEABLE_API.test(url.pathname),
   new NetworkFirst({
-    cacheName: USER_CACHE,
+    cacheName: FOUNDER_API_CACHE,
     networkTimeoutSeconds: 4,
     plugins: [new CacheableResponsePlugin({ statuses: [200] }), new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 7 * 86_400 })],
   }),
@@ -48,5 +48,5 @@ self.addEventListener("message", (event) => {
   // The page shows "A new version is ready. Refresh"; Refresh sends this.
   if (type === "SKIP_WAITING") void self.skipWaiting();
   // Sign-out or a different account on the same phone.
-  if (type === "CLEAR_USER_CACHE") event.waitUntil(caches.delete(USER_CACHE));
+  if (type === "CLEAR_FOUNDER_API_CACHE") event.waitUntil(caches.delete(FOUNDER_API_CACHE));
 });

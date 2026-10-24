@@ -1,6 +1,13 @@
+import { randomBytes } from "node:crypto";
 import { defineConfig } from "vitest/config";
 
 const host = process.env.TEST_DB_HOST ?? "localhost:5433";
+const key = () => randomBytes(32).toString("base64");
+
+// Fresh keys and a fresh example-account password for every run (set here so the global setup sees them too).
+process.env.TEST_ACCOUNT_NUMBER_KEY ??= key();
+process.env.TEST_OTP_SECRET ??= key();
+process.env.TEST_PASSWORD ??= `test-${randomBytes(12).toString("base64url")}`;
 
 export default defineConfig({
   test: {
@@ -15,8 +22,9 @@ export default defineConfig({
       MAIL_MODE: "console",
       STORAGE_MODE: "local",
       STORAGE_DIR: ".local-uploads-test",
-      ACCOUNT_NUMBER_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
-      OTP_SECRET: "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=",
+      ACCOUNT_NUMBER_KEY: process.env.TEST_ACCOUNT_NUMBER_KEY,
+      OTP_SECRET: process.env.TEST_OTP_SECRET,
+      TEST_PASSWORD: process.env.TEST_PASSWORD,
     },
   },
 });

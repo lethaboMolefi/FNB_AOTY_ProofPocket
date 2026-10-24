@@ -114,5 +114,9 @@ describe("config and crypto", () => {
     const enc = encryptField("6281 004 517", config.ACCOUNT_NUMBER_KEY);
     expect(enc).not.toContain("6281");
     expect(decryptField(enc, config.ACCOUNT_NUMBER_KEY)).toBe("6281 004 517");
+    // A truncated authentication tag is refused, not checked against fewer bytes.
+    const [v, iv, tag, ct] = enc.split(":");
+    const short = [v, iv, Buffer.from(tag!, "base64").subarray(0, 4).toString("base64"), ct].join(":");
+    expect(() => decryptField(short, config.ACCOUNT_NUMBER_KEY)).toThrow();
   });
 });

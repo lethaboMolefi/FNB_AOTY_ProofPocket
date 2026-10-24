@@ -1,4 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+
+// Fresh keys and example-account password for every run, shared by the global setup, the test API and the tests.
+process.env.E2E_ACCOUNT_NUMBER_KEY ??= randomBytes(32).toString("base64");
+process.env.E2E_OTP_SECRET ??= randomBytes(32).toString("base64");
+process.env.E2E_PASSWORD ??= `e2e-${randomBytes(12).toString("base64url")}`;
 
 // Runs against the production build (service worker included) and its own API on port 8788, using the
 // proofpocket_test database freshly loaded with the example data, so your dev data is never touched.
@@ -21,7 +27,9 @@ export default defineConfig({
     {
       command: "pnpm exec tsx --env-file=.env src/server.ts",
       cwd: "../api",
-      env: { PORT: "8788", DATABASE_URL: TEST_DB, NODE_ENV: "development", AUTH_MODE: "local", MAIL_MODE: "file", MAIL_DIR, STORAGE_MODE: "local", STORAGE_DIR: new URL("./.e2e-uploads", import.meta.url).pathname },
+      env: {
+        PORT: "8788", DATABASE_URL: TEST_DB, NODE_ENV: "development", AUTH_MODE: "local",
+        ACCOUNT_NUMBER_KEY: process.env.E2E_ACCOUNT_NUMBER_KEY!, OTP_SECRET: process.env.E2E_OTP_SECRET!, MAIL_MODE: "file", MAIL_DIR, STORAGE_MODE: "local", STORAGE_DIR: new URL("./.e2e-uploads", import.meta.url).pathname },
       url: "http://localhost:8788/api/v1/health",
       reuseExistingServer: false,
       timeout: 60_000,

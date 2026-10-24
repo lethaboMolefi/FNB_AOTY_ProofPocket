@@ -14,9 +14,11 @@ export const joinDetailsSchema = z.object({
   incubatorId: z.string().uuid().nullable(),
   registered: z.boolean(),
   legalName: z.string().trim().max(120).optional(),
-  cipcNumber: z.string().trim().optional(),
+  cipcNumber: z.string().trim().max(20).optional(),
 }).superRefine((d, ctx) => {
   if (!SECTORS[d.businessType].includes(d.sector)) ctx.addIssue({ code: "custom", path: ["sector"], message: "Choose a sector for this type of business" });
+  // Anchored, fixed-length pattern on input capped at 20 characters: no catastrophic backtracking.
+  // nosemgrep: regex_dos
   if (d.registered && !CIPC_PATTERN.test(d.cipcNumber ?? "")) ctx.addIssue({ code: "custom", path: ["cipcNumber"], message: "The CIPC number should look like 2024/123456/07." });
 });
 export type JoinDetails = z.infer<typeof joinDetailsSchema>;

@@ -4,8 +4,22 @@ packages:
 
 # Exact versions only (no ^ or ~ when adding packages).
 savePrefix: ""
-# Supply-chain safety: don't install versions published in the last 24 hours (pnpm's default, kept on purpose).
+# Supply-chain safety.
+# Don't install versions published in the last 24 hours. Semgrep suggests 7 days; the team chose the latest
+# releases, so this stays at pnpm's default of one day.
+# nosemgrep: pnpm-minimum-release-age
 minimumReleaseAge: 1440
+# Transitive dependencies may only come from the registry (no git or tarball URLs).
+blockExoticSubdeps: true
+# Refuse an update whose publisher trust is lower than the version it replaces.
+trustPolicy: no-downgrade
+# Reviewed exceptions (exact versions only):
+# - semver 6.3.1: npm's own package; the old 6.x line predates provenance signatures.
+# - @trickfilm400/rollup-plugin-off-main-thread 3.0.0-pre1: the fork Google's workbox-build 7.4.1 depends on;
+#   build time only, never shipped to phones.
+trustPolicyExclude:
+  - semver@6.3.1
+  - "@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1"
 allowBuilds:
   '@firebase/util': false
   esbuild: true

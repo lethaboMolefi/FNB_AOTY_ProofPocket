@@ -13,7 +13,7 @@ export default function setup() {
     env: {
       ...process.env,
       DATABASE_OWNER_URL: "postgres://proofpocket_owner:owner_dev_password@localhost:5433/proofpocket_test",
-      ACCOUNT_NUMBER_KEY: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+      ACCOUNT_NUMBER_KEY: process.env.E2E_ACCOUNT_NUMBER_KEY,
       SEED_ADMIN_EMAIL: "admin@proofpocket.example",
       SEED_FIXED_PASSWORD: E2E_PASSWORD,
     },

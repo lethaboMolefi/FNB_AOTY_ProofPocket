@@ -3,7 +3,7 @@
 Source: `v2/app.js` (1 062 lines), `v2/index.html`, `v2/styles.css`, read in full.
 Checked against the build brief, section 7 (screens) and section 8 (rules).
 
-Each row has a **Build** column, which is the tick box for phase 5 ("every screen in the inventory is ticked").
+Each row has a **Build** column: ✅ = built and covered by tests, ☐ = not built yet. Reviewed on 24 October 2026 after phase 3.
 
 Key:
 - ✓ = in the prototype and the brief agrees
@@ -18,98 +18,98 @@ Key:
 
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Top bar: brand, "Prototype · example data" tag | index.html | ✓ the tag becomes a dev-only badge | ☐ |
-| Role switcher (Founders, Funders & investors, Incubators & NGOs, Public directory, Join) | index.html, `role` L862 | ✓ replaced by sign-in; each role sees only its portal | ☐ |
-| "Viewing as" / "Signed in as" pickers | `renderTop` L320, `who` L943 | ✓ replaced by the signed-in user | ☐ |
-| Founder rail, grouped: (none) Home · **Start** Registration steps · **Trade** Bookkeeping, Stock · **Get paid** Payments · **Manage cash flow** Cash flow · **Reach formal markets** Profile & marketing, Funding readiness, Procurement · **Stay safe** Fraud protection, Privacy & sharing | `RAIL` L313 | ✓ desktop rail; phone bottom tabs Home, Books, Get paid, Markets, More ◇ | ☐ |
-| Stock hidden from the rail when the business type has no stock (services) | L340 | ✓ | ☐ |
+| Top bar: brand, "Prototype · example data" tag | index.html | ✓ the tag becomes a dev-only badge | ✅ |
+| Role switcher (Founders, Funders & investors, Incubators & NGOs, Public directory, Join) | index.html, `role` L862 | ✓ replaced by sign-in; each role sees only its portal | ✅ |
+| "Viewing as" / "Signed in as" pickers | `renderTop` L320, `who` L943 | ✓ replaced by the signed-in user | ✅ |
+| Founder rail, grouped: (none) Home · **Start** Registration steps · **Trade** Bookkeeping, Stock · **Get paid** Payments · **Manage cash flow** Cash flow · **Reach formal markets** Profile & marketing, Funding readiness, Procurement · **Stay safe** Fraud protection, Privacy & sharing | `RAIL` L313 | ✓ desktop rail; phone bottom tabs Home, Books, Get paid, Markets, More ◇ | ✅ |
+| Stock hidden from the rail when the business type has no stock (services) | L340 | ✓ | ✅ |
 | Rail counts: protection = unverified open messages + pending supplier changes; start = joining docs not verified (Starter only); stock = low items; payments = proofs to check | L331–336 | ✓ (needs a home on the bottom tabs too) | ☐ |
-| Funder rail: Company pipeline, Applications (count = Submitted + Under review), Programmes & requirements | L315, L339 | ✓ | ☐ |
-| Incubator rail: Cohort board, Document checks (count = queue), Needs attention (count = "bad" flags), Support log | L316, L338 | ✓ | ☐ |
-| Rail footer "Example data… ProofPocket never holds money" + **Reset example data** | L344, `reset` L866 | ✓ reset becomes a dev-only seed command | ☐ |
-| Page head: "{Company} · {town}, {province}", title, subtitle, Starter/Verified pill | `fHead` L348 | ✓ | ☐ |
-| Toast (3.2 s, `aria-live="polite"`) | `toast` L836 | ✓ | ☐ |
+| Funder rail: Company pipeline, Applications (count = Submitted + Under review), Programmes & requirements | L315, L339 | ✓ | ✅ |
+| Incubator rail: Cohort board, Document checks (count = queue), Needs attention (count = "bad" flags), Support log | L316, L338 | ✓ | ✅ |
+| Rail footer "Example data… ProofPocket never holds money" + **Reset example data** | L344, `reset` L866 | ✓ reset becomes a dev-only seed command | ✅ |
+| Page head: "{Company} · {town}, {province}", title, subtitle, Starter/Verified pill | `fHead` L348 | ✓ | ✅ |
+| Toast (3.2 s, `aria-live="polite"`) | `toast` L836 | ✓ | ✅ |
 | Drawer: scrim, Esc closes, focus moves to the drawer, body scroll locked | L822, L932 | ✓ full screen on phones ◇ | ☐ |
 | Enter on a focused pipeline row opens it | L934 | ✓ | ☐ |
-| Hash routing `#founder`, `#funder`… | L838, L1054 | ✓ replaced by React Router paths | ☐ |
-| Light and dark theme tokens | styles.css | ⚠ brief: light only, white background, tokens kept ready for dark mode | ☐ |
+| Hash routing `#founder`, `#funder`… | L838, L1054 | ✓ replaced by React Router paths | ✅ |
+| Light and dark theme tokens | styles.css | ⚠ brief: light only, white background, tokens kept ready for dark mode | ✅ |
 
 ## 2. Join (`vJoin` L734), brief 7.1
 
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Steps: Details → Documents → Join | L765 | ✓ | ☐ |
-| Fields: your name, business name, type of business (6 types), town or township, province (9), area (Township/Urban/Rural), incubator or NGO ("None yet") | L739–746 | ✓ | ☐ |
-| "Is the business registered with CIPC?" radio cards, *Not yet* / *Yes*; switching re-renders the form and keeps typed values | L748, L940 | ✓ | ☐ |
-| If Yes: registered name + CIPC number (`^\d{4}/\d{6}/\d{2}$`) | L751, L1030 | ✓ | ☐ |
-| Errors: "Add your name, the business name and your town." / "The CIPC number should look like 2024/123456/07." | L1029–1030 | ✓ | ☐ |
-| Documents: Not yet → ID + address; Yes → CIPC, ID, bank, address. "PDF or photo, up to 5 MB"; shows file name + fingerprint; Upload/Replace | L754–755 | ✓ | ☐ |
-| Continue blocked: "Attach: {names}." | `joinnext` L917 | ✓ | ☐ |
-| Check and join summary: business (legal name if registered, CIPC no.), owner, type and area, supported by, account (Starter / "Verified, once documents are checked"), attached docs | L758–760 | ✓ | ☐ |
-| Consent checkbox (exact copy L761); error "Tick the box to confirm before joining." | L761, L919 | ✓ | ☐ |
-| "Starter or Verified?" side panel; "Both are free." | L767 | ✓ | ☐ |
-| On join: company created with docs `pending`, sector = type label, founded = this year, employees 1, opening balance 0, stage "Early", sharing "summary", support stage 0; activity "Joined ProofPocket…"; lands on Registration steps | `joinsubmit` L918–928 | ⚠ see 12.9, 12.10 | ☐ |
-| Welcome toast: "Welcome! {Incubator} will check your documents." / "Welcome! A ProofPocket checker is reviewing your documents." | L928 | ✓ | ☐ |
-| Account creation (email + password) | none | ◇ the wizard needs a sign-up step (12.1) | ☐ |
+| Steps: Details → Documents → Join | L765 | ✓ | ✅ |
+| Fields: your name, business name, type of business (6 types), town or township, province (9), area (Township/Urban/Rural), incubator or NGO ("None yet") | L739–746 | ✓ | ✅ |
+| "Is the business registered with CIPC?" radio cards, *Not yet* / *Yes*; switching re-renders the form and keeps typed values | L748, L940 | ✓ | ✅ |
+| If Yes: registered name + CIPC number (`^\d{4}/\d{6}/\d{2}$`) | L751, L1030 | ✓ | ✅ |
+| Errors: "Add your name, the business name and your town." / "The CIPC number should look like 2024/123456/07." | L1029–1030 | ✓ | ✅ |
+| Documents: Not yet → ID + address; Yes → CIPC, ID, bank, address. "PDF or photo, up to 5 MB"; shows file name + fingerprint; Upload/Replace | L754–755 | ✓ | ✅ |
+| Continue blocked: "Attach: {names}." | `joinnext` L917 | ✓ | ✅ |
+| Check and join summary: business (legal name if registered, CIPC no.), owner, type and area, supported by, account (Starter / "Verified, once documents are checked"), attached docs | L758–760 | ✓ | ✅ |
+| Consent checkbox (exact copy L761); error "Tick the box to confirm before joining." | L761, L919 | ✓ | ✅ |
+| "Starter or Verified?" side panel; "Both are free." | L767 | ✓ | ✅ |
+| On join: company created with docs `pending`, sector = type label, founded = this year, employees 1, opening balance 0, stage "Early", sharing "summary", support stage 0; activity "Joined ProofPocket…"; lands on Registration steps | `joinsubmit` L918–928 | ⚠ see 12.9, 12.10 | ✅ |
+| Welcome toast: "Welcome! {Incubator} will check your documents." / "Welcome! A ProofPocket checker is reviewing your documents." | L928 | ✓ | ✅ |
+| Account creation (email + password) | none | ◇ the wizard needs a sign-up step (12.1) | ✅ |
 
 ## 3. Founder portal, brief 7.2
 
 ### 3.1 Home (`vHome` L360)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Subtitle: type · area · N person/people · trading since YEAR | L364 | ✓ | ☐ |
-| Starter notice + Continue → Registration steps | L365 | ✓ | ☐ |
-| "N client(s) say(s) they have paid" notice + Check → Payments | L366 | ✓ | ☐ |
-| "N possible scam(s) need your attention" + Review → Fraud protection | L367 | ✓ | ☐ |
-| Journey, 5 steps, each opens its screen (rules in 11.6) | `journey` L349 | ✓ | ☐ |
-| Tiles: money in this month, money out this month, cash on hand ("Bank and cash together"), readiness score + label | L369–374 | ✓ | ☐ |
-| "Six months at a glance" bar chart + Cash flow button | L376 | ✓ | ☐ |
-| Next steps: top 4 unmet readiness items by points, "worth N points", Fix → Registration steps (documents) or Bookkeeping | L362, L377 | ✓ | ☐ |
-| Things to watch: all flags, pill "Act now" (bad) / "Check" (warn) | L380 | ✓ | ☐ |
-| Messages: latest 4 with Verified / Not verified pill | L381 | ✓ | ☐ |
-| "Add to home screen" hint after the second visit | none | ◇ | ☐ |
+| Subtitle: type · area · N person/people · trading since YEAR | L364 | ✓ | ✅ |
+| Starter notice + Continue → Registration steps | L365 | ✓ | ✅ |
+| "N client(s) say(s) they have paid" notice + Check → Payments | L366 | ✓ | ✅ |
+| "N possible scam(s) need your attention" + Review → Fraud protection | L367 | ✓ | ✅ |
+| Journey, 5 steps, each opens its screen (rules in 11.6) | `journey` L349 | ✓ | ✅ |
+| Tiles: money in this month, money out this month, cash on hand ("Bank and cash together"), readiness score + label | L369–374 | ✓ | ✅ |
+| "Six months at a glance" bar chart + Cash flow button | L376 | ✓ | ✅ |
+| Next steps: top 4 unmet readiness items by points, "worth N points", Fix → Registration steps (documents) or Bookkeeping | L362, L377 | ✓ | ✅ |
+| Things to watch: all flags, pill "Act now" (bad) / "Check" (warn) | L380 | ✓ | ✅ |
+| Messages: latest 4 with Verified / Not verified pill | L381 | ✓ | ✅ |
+| "Add to home screen" hint after the second visit | none | ◇ | ✅ |
 
 ### 3.2 Registration steps (`vStart` L384)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Notice: Verified (with CIPC no.) or "Who checks your documents?" (adviser at {incubator}, or ProofPocket checker) | L387 | ✓ | ☐ |
-| CIPC number form, only when no number saved; error toast "CIPC numbers look like 2026/123456/07"; success "CIPC number saved. Upload the certificate next." | L388, L1011 | ✓ | ☐ |
-| Seven steps in order ID, CIPC, bank, address, tax, B-BBEE, CSD with title + how-to copy (`START_STEPS` L41) | L389 | ✓ | ☐ |
-| Pills: "Needed to verify" (joining docs), "Needed for funding" (tax), "Needed for tenders" (B-BBEE, CSD) | L390 | ✓ | ☐ |
-| Status pill: Verified / Being checked / Missing / Expired | `DOC_STATE` L40 | ✓ | ☐ |
-| Upload when missing, Replace when expired; none while pending or verified | L391 | ✓ | ☐ |
-| Fingerprint line "{file} · fingerprint {hash}" | L390 | ⚠ prototype shows 16 hex chars; the real hash is the full SHA-256, shown shortened | ☐ |
-| "Other documents funders ask for": business plan, signed management accounts, each with a hint | L392 | ✓ | ☐ |
-| Upload: 5 MB limit ("Files must be 5 MB or smaller"), status → pending, activity, route to checker; toast "Uploaded. {Incubator} will check it." / "Uploaded. Checking now." | L947–953 | ✓ signed URL + SHA-256 on the server | ☐ |
+| Notice: Verified (with CIPC no.) or "Who checks your documents?" (adviser at {incubator}, or ProofPocket checker) | L387 | ✓ | ✅ |
+| CIPC number form, only when no number saved; error toast "CIPC numbers look like 2026/123456/07"; success "CIPC number saved. Upload the certificate next." | L388, L1011 | ✓ | ✅ |
+| Seven steps in order ID, CIPC, bank, address, tax, B-BBEE, CSD with title + how-to copy (`START_STEPS` L41) | L389 | ✓ | ✅ |
+| Pills: "Needed to verify" (joining docs), "Needed for funding" (tax), "Needed for tenders" (B-BBEE, CSD) | L390 | ✓ | ✅ |
+| Status pill: Verified / Being checked / Missing / Expired | `DOC_STATE` L40 | ✓ | ✅ |
+| Upload when missing, Replace when expired; none while pending or verified | L391 | ✓ | ✅ |
+| Fingerprint line "{file} · fingerprint {hash}" | L390 | ⚠ prototype shows 16 hex chars; the real hash is the full SHA-256, shown shortened | ✅ |
+| "Other documents funders ask for": business plan, signed management accounts, each with a hint | L392 | ✓ | ✅ |
+| Upload: 5 MB limit ("Files must be 5 MB or smaller"), status → pending, activity, route to checker; toast "Uploaded. {Incubator} will check it." / "Uploaded. Checking now." | L947–953 | ✓ signed URL + SHA-256 on the server | ✅ |
 
 ### 3.3 Bookkeeping (`vBooks` L394)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| "From your bank feed" list: description (mono), date, ± amount, category select, **Add**, **Personal** (money out only) | L398, `inboxok`/`inboxpersonal` L869 | ⚠ becomes **Statement import** (CSV/PDF upload) ◇; see 12.5 | ☐ |
-| Sorting a line: method guessed from text (PAYSHAP → PayShap, POS → Card machine, else Bank EFT); Personal uses "Other expense"; receipt counted as kept | L870 | ✓ | ☐ |
+| "From your bank feed" list: description (mono), date, ± amount, category select, **Add**, **Personal** (money out only) | L398, `inboxok`/`inboxpersonal` L869 | ⚠ becomes **Statement import** (CSV/PDF upload) ◇; see 12.5 | ✅ |
+| Sorting a line: method guessed from text (PAYSHAP → PayShap, POS → Card machine, else Bank EFT); Personal uses "Other expense"; receipt counted as kept | L870 | ✓ | ✅ |
 | `syncbank` handler (random transactions) | L872 | ✚ never reachable, no button; dropped | n/a |
-| Add an entry: Money in / Money out toggle; amount, paid by (5 methods), category (in or out list), date (max today), "What was it for?" (placeholder changes with type), stock item + quantity (stock businesses with items), personal checkbox (out only), receipt photo | L399–409 | ✓ offline outbox ◇ | ☐ |
-| Error "Enter an amount greater than zero." | L969 | ✓ | ☐ |
-| Duplicate warning (copy at L972), press Save again to confirm; form values kept | L971–972, `keepEntry` L1046 | ✓ | ☐ |
-| Stock link: money in subtracts quantity, money out adds it | L973–974 | ✓ | ☐ |
-| Toast "Saved to your books"; activity "Recorded income/an expense of R…" | L976 | ✓ offline: "Saved on this phone, will sync" ◇ | ☐ |
-| Tiles: money in, money out, profit (this month) | L412 | ✓ | ☐ |
-| This month table: date, details (+ Personal pill), category, paid by, receipt (Kept/None), ± amount, **Paid back** on personal rows | L413–415 | ✓ | ☐ |
-| "N entries · last entry N days ago / never" | L413 | ✓ | ☐ |
-| Paid back: clears personal, appends "(paid back)" to the note, activity; toast "Marked as paid back" | `repaid` L868 | ✓ | ☐ |
-| Owner salary guidance notice | L416 | ✓ | ☐ |
-| Entries from earlier months (list, edit, delete) | none | ⚠ prototype shows this month only and has no edit or delete; see 12.13 | ☐ |
+| Add an entry: Money in / Money out toggle; amount, paid by (5 methods), category (in or out list), date (max today), "What was it for?" (placeholder changes with type), stock item + quantity (stock businesses with items), personal checkbox (out only), receipt photo | L399–409 | ✓ offline outbox ◇ | ✅ |
+| Error "Enter an amount greater than zero." | L969 | ✓ | ✅ |
+| Duplicate warning (copy at L972), press Save again to confirm; form values kept | L971–972, `keepEntry` L1046 | ✓ | ✅ |
+| Stock link: money in subtracts quantity, money out adds it | L973–974 | ✓ | ✅ |
+| Toast "Saved to your books"; activity "Recorded income/an expense of R…" | L976 | ✓ offline: "Saved on this phone, will sync" ◇ | ✅ |
+| Tiles: money in, money out, profit (this month) | L412 | ✓ | ✅ |
+| This month table: date, details (+ Personal pill), category, paid by, receipt (Kept/None), ± amount, **Paid back** on personal rows | L413–415 | ✓ | ✅ |
+| "N entries · last entry N days ago / never" | L413 | ✓ | ✅ |
+| Paid back: clears personal, appends "(paid back)" to the note, activity; toast "Marked as paid back" | `repaid` L868 | ✓ | ✅ |
+| Owner salary guidance notice | L416 | ✓ | ✅ |
+| Entries from earlier months (list, edit, delete) | none | ⚠ prototype shows this month only and has no edit or delete; see 12.13 | ✅ |
 
 ### 3.4 Stock (`vStock` L418)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Off message for non-stock types | L419 | ✓ | ☐ |
-| Tiles: items, stock value at cost (Σ qty × cost), running low (red when > 0) | L422 | ✓ | ☐ |
-| Table: item, in stock + unit, reorder at, cost each, Reorder/OK pill, **Use 1**, **Restock** | L423–425 | ✓ | ☐ |
-| Use 1: qty − 1 (min 0); toast "{item}: N {unit} left" | L890 | ✓ offline | ☐ |
-| Restock: adds max(1, reorder × 2 − qty); records money out add × cost, Bank EFT, "Stock and materials", "Restock {item} (N {unit})"; toast "Restocked {item}; R… added to your books" | L891 | ✓ offline | ☐ |
-| Add item: name, unit (default "units"), in stock, reorder at, cost each; error "Name the item"; toast "Item added" | L427–433, L1000 | ✓ | ☐ |
-| Edit or remove an item | none | ✚ not in prototype; suggest adding (12.13) | ☐ |
+| Off message for non-stock types | L419 | ✓ | ✅ |
+| Tiles: items, stock value at cost (Σ qty × cost), running low (red when > 0) | L422 | ✓ | ✅ |
+| Table: item, in stock + unit, reorder at, cost each, Reorder/OK pill, **Use 1**, **Restock** | L423–425 | ✓ | ✅ |
+| Use 1: qty − 1 (min 0); toast "{item}: N {unit} left" | L890 | ✓ offline | ✅ |
+| Restock: adds max(1, reorder × 2 − qty); records money out add × cost, Bank EFT, "Stock and materials", "Restock {item} (N {unit})"; toast "Restocked {item}; R… added to your books" | L891 | ✓ offline | ✅ |
+| Add item: name, unit (default "units"), in stock, reorder at, cost each; error "Name the item"; toast "Item added" | L427–433, L1000 | ✓ | ✅ |
+| Edit or remove an item | none | ✚ not in prototype; suggest adding (12.13) | ✅ |
 
 ### 3.5 Payments (`vPayments` L447)
 | Item | Prototype | Brief | Build |
@@ -128,10 +128,10 @@ Key:
 ### 3.6 Cash flow (`vCashflow` L509)
 | Item | Prototype | Brief | Build |
 |---|---|---|---|
-| Tiles: cash on hand now ("Start of month R… plus this month's profit"), usual month (avg in − out, "R… in, R… out"), expected in 30 days (red if < 0), cash lasts N.N months | L515–520 | ⚠ how opening balance carries forward, 12.9 | ☐ |
-| Money in and out chart | L521 | ✓ | ☐ |
-| Paying yourself: owner salary this month, personal purchases (red if > 0), guidance line | L523–526 | ✓ | ☐ |
-| Coming up: each Waiting request "{client} owes you +R…"; each low item "Restock {item} −R…"; "Nothing scheduled." | L527–530 | ✓ | ☐ |
+| Tiles: cash on hand now ("Start of month R… plus this month's profit"), usual month (avg in − out, "R… in, R… out"), expected in 30 days (red if < 0), cash lasts N.N months | L515–520 | ⚠ how opening balance carries forward, 12.9 | ✅ |
+| Money in and out chart | L521 | ✓ | ✅ |
+| Paying yourself: owner salary this month, personal purchases (red if > 0), guidance line | L523–526 | ✓ | ✅ |
+| Coming up: each Waiting request "{client} owes you +R…"; each low item "Restock {item} −R…"; "Nothing scheduled." | L527–530 | ✓ | ✅ |
 
 ### 3.7 Profile & marketing (`vMarkets` L533)
 | Item | Prototype | Brief | Build |
@@ -226,9 +226,9 @@ Key:
 |---|---|---|---|
 | Cohort board tiles: companies (+ N Starter), average readiness, documents to check + Open, support sessions logged | `ngoCohort` L672 | ✓ | ☐ |
 | Five stage columns with count; cards: name, level pill, sector · town, score bar, adviser, up to 2 flags + "+N" (Starter flag hidden) | L681–683 | ✓ | ☐ |
-| Document checks: company · document · level, file + fingerprint, CIPC number given (for CIPC), reason input, **Approve**, **Send back** | `ngoVerify` L685 | ✓ | ☐ |
-| Approve: doc verified, activity "… approved by {adviser or incubator}", support-log entry "Document check", toast "Approved" or "{company} is now Verified" | L912 | ✓ | ☐ |
-| Send back: reason required ("Add a reason so the founder knows what to fix"); doc → missing, file and fingerprint removed, message from the incubator "Please upload your … again: {reason}"; toast "Sent back to the founder" | L913–914 | ✓ | ☐ |
+| Document checks: company · document · level, file + fingerprint, CIPC number given (for CIPC), reason input, **Approve**, **Send back** | `ngoVerify` L685 | ✓ | ✅ |
+| Approve: doc verified, activity "… approved by {adviser or incubator}", support-log entry "Document check", toast "Approved" or "{company} is now Verified" | L912 | ✓ | ✅ |
+| Send back: reason required ("Add a reason so the founder knows what to fix"); doc → missing, file and fingerprint removed, message from the incubator "Please upload your … again: {reason}"; toast "Sent back to the founder" | L913–914 | ✓ | ✅ |
 | Needs attention: all cohort flags, bad first, Open | `ngoAttention` L692 | ✓ | ☐ |
 | Support log form: company, type (8 types), note; "Add a note about the support"; "Support logged"; activity "{incubator}: {type}." | `ngoSupport` L697, L1024 | ✓ | ☐ |
 | Introduction requests: "{company} asked to meet {buyer}", "To arrange" | L707 | ⚠ no action to mark arranged, 12.7 | ☐ |
@@ -239,7 +239,7 @@ Key:
 
 | Item | Implied by | Build |
 |---|---|---|
-| Checker queue for companies without an incubator (same approve / send back as advisers; acts as "ProofPocket checker") | `routeCheck` L846 | ☐ |
+| Checker queue for companies without an incubator (same approve / send back as advisers; acts as "ProofPocket checker") | `routeCheck` L846 | ✅ |
 | Verify funder, incubator and buyer organisations | `verified` on funders, "Verified funder" pills | ☐ |
 | Reports from the directory and payment pages | `reports` L915 | ☐ |
 | Feature-request review for posts (approve → featured, reject with note) | L1010 "reviews feature requests weekly" | ☐ |
