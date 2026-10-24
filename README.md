@@ -53,11 +53,11 @@ The build runs in phases (brief section 13). Each phase is committed and pushed 
 | 2 | Join and Start: join wizard, signed uploads, SHA-256, document checks, Verified | ✅ Done |
 | — | Secure sign-in: passwords, lockout, Google Authenticator two-step sign-in | ✅ Done |
 | 3 | Trade and cash flow: books, offline outbox, statements, stock, cash flow, Home | ✅ Done |
-| 4 | Get paid and stay safe: payment requests, public pay page, proofs, suppliers, fraud | ⏳ Next |
-| 5 | Formal markets and the other portals | ⏳ |
-| 6 | Deploy to Google Cloud (`africa-south1`) | ✅ Hosted at **https://proofpocket-aoty.web.app** (phases 1–3) |
+| 4 | Get paid and stay safe: payment requests, public pay page, proofs, suppliers, fraud, privacy | ✅ Done |
+| 5 | Formal markets, funder, incubator and admin portals, public directory | ✅ Done |
+| 6 | Deploy to Google Cloud (`africa-south1`) | ✅ Hosted at **https://proofpocket-aoty.web.app** |
 
-Screens not built yet show a "Being built" notice naming their phase.
+Every screen in `docs/feature-inventory.md` is built (162 rows) except editing a funder programme's amounts, which is partly built. Manual test cases: `docs/testing/manual-test-cases.md`.
 
 ## Quick start
 
@@ -232,7 +232,7 @@ With `MAIL_MODE=console`, nothing is sent; notification emails (such as "Two-ste
 
 ## The hosted site
 
-**https://proofpocket-aoty.web.app**: the installable PWA, with phases 1–3 working and the example data loaded.
+**https://proofpocket-aoty.web.app**: the installable PWA with every phase working and the example data loaded.
 
 | Part | Where |
 |---|---|
