@@ -2,7 +2,7 @@
 import { sql } from "drizzle-orm";
 import { bigint, bigserial, boolean, check, date, index, integer, jsonb, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import {
-  area, businessType, docStatus, docType, filePurpose, funderSharing, id, isExample, membershipStatus, money, orgType, otpPurpose, timestamps, userRole,
+  area, businessType, docStatus, docType, filePurpose, funderSharing, id, isExample, membershipStatus, money, orgType, timestamps, userRole,
 } from "./common";
 
 export const organisations = pgTable("organisations", {
@@ -29,10 +29,8 @@ export const users = pgTable("users", {
   orgId: uuid("org_id").references(() => organisations.id),
   /** Incubator lead adviser: may invite colleagues. */
   isLead: boolean("is_lead").notNull().default(false),
-  /** Firebase auth_time of the sign-in that passed the email PIN. */
+  /** auth_time of the sign-in that passed the Google Authenticator code. */
   otpVerifiedAuthTime: bigint("otp_verified_auth_time", { mode: "number" }),
-  /** Two-step sign-in (email PIN) chosen by a founder. Always on for funder, adviser and admin accounts. */
-  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   isExample: isExample(),
   ...timestamps,
 }, (t) => [
@@ -151,17 +149,21 @@ export const auditLog = pgTable("audit_log", {
   updatedAt: timestamps.updatedAt,
 }, (t) => [index("audit_entity_idx").on(t.entity, t.entityId)]);
 
-export const otpChallenges = pgTable("otp_challenges", {
-  id: id(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  purpose: otpPurpose("purpose").notNull(),
-  /** HMAC-SHA256 of the 6-digit code; the code itself is never stored. */
-  codeHash: text("code_hash").notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  attempts: smallint("attempts").notNull().default(0),
-  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+/**
+ * Google Authenticator (TOTP) two-step sign-in. One row per user, readable only by that user.
+ * The secret is AES-256-GCM encrypted by the API.
+ */
+export const userTotp = pgTable("user_totp", {
+  userId: uuid("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  secretEnc: text("secret_enc").notNull(),
+  /** Null until the first code is entered during set-up. */
+  enabledAt: timestamp("enabled_at", { withTimezone: true }),
+  /** Last time step accepted, so a code can't be used twice. */
+  lastStep: bigint("last_step", { mode: "number" }).notNull().default(0),
+  failedAttempts: smallint("failed_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
   ...timestamps,
-}, (t) => [index("otp_user_idx").on(t.userId, t.purpose)]);
+});
 
 /**
  * Email + password accounts for local development and tests only (AUTH_MODE=local).

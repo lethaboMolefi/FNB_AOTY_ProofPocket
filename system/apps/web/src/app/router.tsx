@@ -18,11 +18,13 @@ const PayPage = lazy(() => pub().then((m) => ({ default: m.PayPage })));
 const Join = lazy(() => import("../features/join/Join"));
 const Start = lazy(() => import("../features/founder/Start"));
 const Checks = lazy(() => import("../features/checks/Checks"));
+const Settings = lazy(() => import("../features/founder/Settings"));
 
 const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
 /** Screens that are built; everything else shows its placeholder until its phase. */
 const BUILT: Record<string, ReactNode> = {
   "founder/start": s(<Start />),
+  "founder/settings": s(<Settings />),
   "adviser/checks": s(<Checks scope="adviser" />),
   "admin/checks": s(<Checks scope="admin" />),
 };

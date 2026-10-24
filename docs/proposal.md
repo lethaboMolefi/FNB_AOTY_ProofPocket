@@ -109,7 +109,8 @@ The brief's six phases, with two changes: phase 5 is split in two because it is 
 
 ## 5. Decisions (approved 24 October 2026)
 
-1. **Email one-time PIN:** the API generates the PIN (`otp_challenges`, HMAC-hashed, 10 minutes, 5 tries, 5 per hour) and sends it from the team's Gmail account over SMTP with an app password. The password goes in Secret Manager; in development, PINs print to the API log. Gmail allows about 500 messages a day, which is enough for the hackathon. Move to a transactional provider before a public launch.
+1. **Two-step sign-in (changed 24 Oct 2026 at the team's request): Google Authenticator only.** TOTP codes (RFC 6238), required for funder, adviser and admin accounts, optional for founders, and asked for before changing payment details. No email or SMS codes. Gmail is used only for notification emails.
+   *Superseded:* the API generates the PIN (`otp_challenges`, HMAC-hashed, 10 minutes, 5 tries, 5 per hour) and sends it from the team's Gmail account over SMTP with an app password. The password goes in Secret Manager; in development, PINs print to the API log. Gmail allows about 500 messages a day, which is enough for the hackathon. Move to a transactional provider before a public launch.
 2. **Section 12 of the inventory:** all recommendations approved as written.
 3. **Folder:** the real system lives in `system/`. The old prototype copy at the repo root is git-ignored, and `v2/` is untouched.
 4. **Git:** `main`, pushed to https://github.com/lethaboMolefi/FNB_AOTY_ProofPocket.

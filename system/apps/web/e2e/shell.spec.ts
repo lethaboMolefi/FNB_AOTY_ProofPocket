@@ -60,11 +60,12 @@ test("each role sees only its own portal", async ({ page }) => {
   await expect(page).toHaveURL(/\/app\/home$/);
 });
 
-test("funders must enter an emailed PIN before the portal", async ({ page }) => {
+test("funders must set up Google Authenticator before the portal", async ({ page }) => {
   await signIn(page, "lesedi@proofpocket.example");
   await expect(page).toHaveURL(/\/verify$/);
-  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
-  await expect(page.getByText(/We sent a 6-digit PIN to le/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up two-step sign-in" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "QR code to scan with Google Authenticator" })).toBeVisible();
+  await expect(page.getByTestId("totp-secret")).toHaveText(/^[A-Z2-7 ]{32,40}$/);
   await page.goto("/funder/pipeline");
   await expect(page).toHaveURL(/\/verify$/);
 });

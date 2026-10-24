@@ -8,7 +8,7 @@ const { app } = testApp();
 const today = todayZA();
 const KHANYA = signIn("sipho@proofpocket.example");
 const MABELE = signIn("tumelo@proofpocket.example");
-const post = (token: string, path: string, body: unknown) => request(app).post(`/api/v1${path}`).set("Authorization", token).send(body);
+const post = (token: string, path: string, body: object) => request(app).post(`/api/v1${path}`).set("Authorization", token).send(body);
 const get = (token: string, path: string) => request(app).get(`/api/v1${path}`).set("Authorization", token);
 const entry = (over: Record<string, unknown> = {}) => ({ clientUuid: randomUUID(), direction: "out", amount: 777, method: "cash", category: "Transport", date: today, note: "Taxi to supplier", ...over });
 

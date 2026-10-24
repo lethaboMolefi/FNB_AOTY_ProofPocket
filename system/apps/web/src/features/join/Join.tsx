@@ -236,7 +236,7 @@ export default function Join() {
         </div>
         <Explainer />
       </div>
-      <Notice tone="info" icon="2"><span className="small">Once you've joined, turn on <b>two-step sign-in</b> in Business settings so nobody can use a stolen password to get in.</span></Notice>
+      <Notice tone="info" icon="2"><span className="small">Once you've joined, set up <b>Google Authenticator</b> in Business settings so nobody can use a stolen password to get in.</span></Notice>
     </AuthPageShell>
   );
 }

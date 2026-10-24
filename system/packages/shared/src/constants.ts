@@ -126,7 +126,7 @@ export type ApplicationStatus = keyof typeof APPLICATION_STATUS;
 export type PaymentStatus = "waiting" | "checking" | "paid" | "not_received" | "flagged" | "expired" | "cancelled";
 
 export type Role = "founder" | "funder" | "adviser" | "buyer" | "admin";
-/** Roles that sign in with an email one-time PIN as well as a password. */
+/** Roles that must use Google Authenticator two-step sign-in. */
 export const OTP_ROLES: Role[] = ["funder", "adviser", "admin"];
 
 export const PAYMENT_REQUEST_DAYS = 7;

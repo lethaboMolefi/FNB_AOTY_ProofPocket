@@ -1,12 +1,13 @@
-// Email one-time PIN after sign-in, for funder, adviser and admin accounts.
+// The step after the password: the Google Authenticator code, or setting it up first (required accounts).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Notice, Spinner } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { useAuth } from "../../lib/auth";
 import { meKey, useMe } from "../../lib/me";
 import { AuthPageShell } from "./SignIn";
+import { AuthenticatorSetup, CodeInput } from "./TwoFactor";
 
 export default function VerifyPin() {
   const { status, signOut } = useAuth();
@@ -14,39 +15,33 @@ export default function VerifyPin() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [code, setCode] = useState("");
-  const sentOnce = useRef(false);
-
-  const send = useMutation({ mutationFn: () => api<{ sentTo: string; expiresInMinutes: number }>("/auth/otp/request", { body: { purpose: "sign_in" } }) });
-  const verify = useMutation({
-    mutationFn: (c: string) => api("/auth/otp/verify", { body: { purpose: "sign_in", code: c } }),
-    onSuccess: async () => { await qc.invalidateQueries({ queryKey: meKey }); nav("/", { replace: true }); },
-  });
-
-  const needs = me.data?.needsOtp;
-  useEffect(() => {
-    if (needs && !sentOnce.current) { sentOnce.current = true; send.mutate(); }
-  }, [needs, send]);
+  const done = async () => { await qc.invalidateQueries({ queryKey: meKey }); nav("/", { replace: true }); };
+  const verify = useMutation({ mutationFn: () => api("/auth/totp/verify", { body: { code } }), onSuccess: done });
 
   if (status === "signedOut") return <Navigate to="/sign-in" replace />;
   if (me.isPending) return <Spinner />;
   if (me.data && !me.data.needsOtp) return <Navigate to="/" replace />;
+  const settingUp = me.data && !me.data.twoFactor.enabled;
 
-  const err = (verify.error ?? send.error) as ApiError | null;
   return (
     <AuthPageShell>
-      <div><h1>Check your email</h1>
-        <p className="muted mt-1.5">{send.data ? `We sent a 6-digit PIN to ${send.data.sentTo}. It expires in ${send.data.expiresInMinutes} minutes.` : "Sending a 6-digit PIN to your email…"}</p>
-      </div>
-      <form className="panel flex flex-col gap-3" noValidate onSubmit={(e) => { e.preventDefault(); verify.mutate(code); }}>
-        <label className="field"><span>PIN</span>
-          <input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} className="mono text-center text-xl tracking-[.4em]"
-            value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} autoFocus />
-        </label>
-        {err && <p className="err" role="alert">{err.message}</p>}
-        <button className="btn primary" type="submit" disabled={code.length !== 6 || verify.isPending}>Continue</button>
-        <button className="btn ghost self-start" type="button" onClick={() => send.mutate()} disabled={send.isPending}>Send a new PIN</button>
-      </form>
-      <Notice tone="warn" icon="!"><span className="small">ProofPocket will never phone you or message you to ask for this PIN.</span></Notice>
+      {settingUp ? (
+        <>
+          <div><h1>Set up two-step sign-in</h1><p className="muted mt-1.5">Funder, adviser and admin accounts use Google Authenticator to keep founders' records safe. It takes a minute, once.</p></div>
+          <section className="panel"><AuthenticatorSetup onDone={done} /></section>
+        </>
+      ) : (
+        <>
+          <div><h1>Enter your code</h1><p className="muted mt-1.5">Open Google Authenticator on your phone and enter the 6-digit code shown for ProofPocket.</p></div>
+          <form className="panel stack" noValidate onSubmit={(e) => { e.preventDefault(); verify.mutate(); }}>
+            <CodeInput value={code} onChange={setCode} label="Code" />
+            {verify.error && <p className="err" role="alert">{(verify.error as ApiError).message}</p>}
+            <button className="btn primary" type="submit" disabled={code.length !== 6 || verify.isPending}>Continue</button>
+          </form>
+          <p className="hint">Lost your phone? Contact ProofPocket: an admin can reset it after checking who you are.</p>
+        </>
+      )}
+      <Notice tone="warn" icon="!"><span className="small">ProofPocket will never phone you or message you to ask for your password or a code.</span></Notice>
       <button className="btn sm self-start" onClick={() => void signOut()}>Use a different account</button>
     </AuthPageShell>
   );

@@ -36,6 +36,20 @@
       "when": 1792800300526,
       "tag": "0004_phase3",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792801098030,
+      "tag": "0005_drop_email_pin",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792801099373,
+      "tag": "0006_totp",
+      "breakpoints": true
     }
   ]
 }

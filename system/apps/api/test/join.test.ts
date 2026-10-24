@@ -1,11 +1,10 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { ADMIN, ADVISER_N1, signIn, testApp } from "./helpers";
+import { ADMIN, ADVISER_N1, signIn, staffToken, testApp } from "./helpers";
 
 const { app, mailer } = testApp();
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
 const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489", "hex");
-const pinFrom = (t: string) => /\b(\d{6})\b/.exec(t)![1]!;
 
 /** Sign up with a password, as the Join wizard does. */
 async function signUp(email: string) {
@@ -14,13 +13,8 @@ async function signUp(email: string) {
   return `Bearer ${r.body.token}`;
 }
 
-/** Staff tokens need the email PIN first. */
-async function staff(email: string) {
-  const t = signIn(email);
-  await request(app).post("/api/v1/auth/otp/request").set("Authorization", t).send({ purpose: "sign_in" });
-  await request(app).post("/api/v1/auth/otp/verify").set("Authorization", t).send({ purpose: "sign_in", code: pinFrom(mailer.sent.at(-1)!.text) });
-  return t;
-}
+/** Staff sign in with Google Authenticator. */
+const staff = (email: string) => staffToken(app, email);
 
 async function upload(token: string, docType: string, bytes = PDF, contentType = "application/pdf", name = `${docType}.pdf`) {
   const start = await request(app).post("/api/v1/founder/uploads").set("Authorization", token).send({ purpose: "document", name, contentType, size: bytes.length });

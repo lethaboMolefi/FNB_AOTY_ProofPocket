@@ -11,7 +11,7 @@ import { readSessionToken } from "../lib/session-token";
 export interface VerifiedToken { uid: string; email: string | null; emailVerified: boolean; authTime: number }
 export type TokenVerifier = (token: string) => Promise<VerifiedToken>;
 
-export interface AuthUser { id: string; role: Role; orgId: string | null; email: string; displayName: string; otpVerifiedAuthTime: number | null; twoFactorEnabled: boolean }
+export interface AuthUser { id: string; role: Role; orgId: string | null; email: string; displayName: string; otpVerifiedAuthTime: number | null; totpEnabled: boolean }
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -67,13 +67,13 @@ export function authenticate(db: Db, verify: TokenVerifier) {
       return next(new AppError(401, "invalid_token", "Your sign-in has expired. Sign in again."));
     }
     try {
-      const rows = await db.execute<{ user_id: string; user_role: Role; org_id: string | null; email: string; display_name: string; otp_verified_auth_time: string | null; two_factor_enabled: boolean }>(
+      const rows = await db.execute<{ user_id: string; user_role: Role; org_id: string | null; email: string; display_name: string; otp_verified_auth_time: string | null; totp_enabled: boolean }>(
         sql`select * from auth_lookup_user(${verified.uid}, ${verified.email}, ${verified.emailVerified})`,
       );
       const u = rows.rows[0];
       req.auth = {
         token: verified,
-        user: u ? { id: u.user_id, role: u.user_role, orgId: u.org_id, email: u.email, displayName: u.display_name, otpVerifiedAuthTime: u.otp_verified_auth_time === null ? null : Number(u.otp_verified_auth_time), twoFactorEnabled: u.two_factor_enabled } : null,
+        user: u ? { id: u.user_id, role: u.user_role, orgId: u.org_id, email: u.email, displayName: u.display_name, otpVerifiedAuthTime: u.otp_verified_auth_time === null ? null : Number(u.otp_verified_auth_time), totpEnabled: u.totp_enabled } : null,
       };
       next();
     } catch (e) {
@@ -82,11 +82,11 @@ export function authenticate(db: Db, verify: TokenVerifier) {
   };
 }
 
-/** Funder, adviser and admin accounts always use two-step sign-in; founders choose to. */
+/** Funder, adviser and admin accounts must use Google Authenticator; founders choose to. */
 export const twoFactorRequired = (user: Pick<AuthUser, "role">) => OTP_ROLES.includes(user.role);
-export const twoFactorOn = (user: Pick<AuthUser, "role" | "twoFactorEnabled">) => twoFactorRequired(user) || user.twoFactorEnabled;
+export const twoFactorOn = (user: Pick<AuthUser, "role" | "totpEnabled">) => twoFactorRequired(user) || user.totpEnabled;
 
-/** With two-step sign-in on, each sign-in (token auth_time) must pass an email PIN. */
+/** With two-step sign-in on, each sign-in (token auth_time) must pass a Google Authenticator code. */
 export const otpSatisfied = (user: AuthUser, token: VerifiedToken) =>
   !twoFactorOn(user) || user.otpVerifiedAuthTime === token.authTime;
 
@@ -97,7 +97,7 @@ export function requireUser(roles?: Role[], opts: { otp?: boolean } = {}) {
     if (!a) return next(unauthenticated());
     if (!a.user) return next(new AppError(403, "no_account", "Finish joining ProofPocket first."));
     if (roles && !roles.includes(a.user.role)) return next(forbidden());
-    if (checkOtp && !otpSatisfied(a.user, a.token)) return next(new AppError(403, "otp_required", "Enter the PIN we emailed you to continue."));
+    if (checkOtp && !otpSatisfied(a.user, a.token)) return next(new AppError(403, "otp_required", "Enter the code from Google Authenticator to continue."));
     next();
   };
 }

@@ -25,3 +25,5 @@ export const FOUNDER_2 = "palesa@proofpocket.example";
 export const ADVISER_N1 = "n.mokoena@proofpocket.example";
 export const FUNDER_F1 = "lesedi@proofpocket.example";
 export const ADMIN = "admin@proofpocket.example";
+
+export { nextCode, resetTotpStore, staffToken } from "./totp-store";

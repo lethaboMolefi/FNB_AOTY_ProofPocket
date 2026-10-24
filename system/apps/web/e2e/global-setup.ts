@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { E2E_PASSWORD } from "./helpers";
+import { E2E_PASSWORD, clearTotpStore } from "./helpers";
 
 // Fresh example data in the test database before every end-to-end run.
 export default function setup() {
   rmSync(fileURLToPath(new URL("../.e2e-mail", import.meta.url)), { recursive: true, force: true });
+  clearTotpStore();
   execFileSync("pnpm", ["exec", "tsx", "src/db/seed/reset.ts"], {
     cwd: fileURLToPath(new URL("../../api", import.meta.url)),
     stdio: "inherit",

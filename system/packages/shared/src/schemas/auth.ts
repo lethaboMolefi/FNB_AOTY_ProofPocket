@@ -2,10 +2,9 @@ import { z } from "zod";
 
 export const roleSchema = z.enum(["founder", "funder", "adviser", "buyer", "admin"]);
 
-export const otpPurposeSchema = z.enum(["sign_in", "payment_details", "two_factor"]);
-export const otpRequestSchema = z.object({ purpose: otpPurposeSchema });
-export const pinSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit PIN from your email");
-export const otpVerifySchema = z.object({ purpose: otpPurposeSchema, code: pinSchema });
+/** A 6-digit code from Google Authenticator. */
+export const authenticatorCode = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from Google Authenticator");
+export const totpCodeSchema = z.object({ code: authenticatorCode });
 
 // Passwords people actually choose; blocked outright.
 const COMMON = new Set([
@@ -32,7 +31,6 @@ export const signUpSchema = z.object({ email: emailSchema, password: z.string() 
   if (!r.success) ctx.addIssue({ code: "custom", path: ["password"], message: r.error.issues[0]!.message });
 });
 
-export const twoFactorSchema = z.object({ enabled: z.boolean(), code: pinSchema });
 
 export const meSchema = z.object({
   id: z.string().uuid(),
@@ -47,8 +45,9 @@ export const meSchema = z.object({
     /** False until the Join wizard is finished. */
     joined: z.boolean(),
   }).nullable(),
-  /** Must enter an email PIN before continuing this sign-in. */
+  /** Must enter a Google Authenticator code (or set it up, if required) before continuing this sign-in. */
   needsOtp: z.boolean(),
+  /** enabled = Google Authenticator is set up; required = funder, adviser and admin accounts. */
   twoFactor: z.object({ enabled: z.boolean(), required: z.boolean() }),
 });
 export type Me = z.infer<typeof meSchema>;

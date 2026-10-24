@@ -25,3 +25,4 @@ test-results/
 .local-mail/
 .e2e-mail/
 .e2e-uploads/
+.e2e-totp.json

@@ -2,10 +2,9 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { decryptField, encryptField } from "../src/lib/crypto";
 import { loadConfig } from "../src/config";
-import { ADMIN, FOUNDER, FUNDER_F1, signIn, testApp } from "./helpers";
+import { ADMIN, FOUNDER, nextCode, signIn, testApp } from "./helpers";
 
 const { app, mailer, config } = testApp();
-const pinFrom = (text: string) => /\b(\d{6})\b/.exec(text)![1]!;
 
 describe("http basics", () => {
   it("health and OpenAPI", async () => {
@@ -18,7 +17,7 @@ describe("http basics", () => {
     const r = await request(app).get("/api/v1/nope");
     expect(r.status).toBe(404);
     expect(r.body).toEqual({ error: { code: "not_found", message: "Not found." } });
-    const bad = await request(app).post("/api/v1/auth/otp/request").set("Authorization", signIn(FOUNDER)).set("Content-Type", "application/json").send("{oops");
+    const bad = await request(app).post("/api/v1/auth/totp/verify").set("Authorization", signIn(FOUNDER)).set("Content-Type", "application/json").send("{oops");
     expect(bad.body.error.code).toBe("bad_json");
   });
 
@@ -55,45 +54,52 @@ describe("sign-in", () => {
     expect(r.body.company).toMatchObject({ name: "Nala Nails & Lashes", town: "Soweto", businessType: "beauty", verified: false, joined: true });
   });
 
-  it("funders must pass an email PIN on every sign-in", async () => {
-    const token = signIn(FUNDER_F1);
+  it("funders must set up Google Authenticator, then enter a code on every sign-in", async () => {
+    const email = "umnotho@proofpocket.example";
+    const token = signIn(email);
     const me = await request(app).get("/api/v1/me").set("Authorization", token);
-    expect(me.body).toMatchObject({ role: "funder", needsOtp: true, org: { name: "Lesedi Youth Fund", type: "funder", setupDone: true } });
+    expect(me.body).toMatchObject({ role: "funder", needsOtp: true, twoFactor: { enabled: false, required: true } });
+    // Nothing else works until then.
+    expect((await request(app).get("/api/v1/adviser/checks").set("Authorization", token)).status).toBe(403);
 
-    const sent = await request(app).post("/api/v1/auth/otp/request").set("Authorization", token).send({ purpose: "sign_in" });
-    expect(sent.body).toEqual({ sentTo: "le••••@proofpocket.example", expiresInMinutes: 10 });
-    const mail = mailer.sent.at(-1)!;
-    expect(mail.to).toBe(FUNDER_F1);
-    expect(mail.text).toContain("will never phone you");
-    const pin = pinFrom(mail.text);
+    const setup = await request(app).post("/api/v1/auth/totp/setup").set("Authorization", token).send({});
+    expect(setup.body.otpauthUri).toMatch(/^otpauth:\/\/totp\/ProofPocket%3Aumnotho%40proofpocket\.example\?secret=[A-Z2-7]+&issuer=ProofPocket/);
+    const secret = setup.body.secret as string;
+    expect((await request(app).post("/api/v1/auth/totp/activate").set("Authorization", token).send({ code: "000000" })).body.error.code).toBe("code_wrong");
+    const first = nextCode(secret, 0);
+    expect((await request(app).post("/api/v1/auth/totp/activate").set("Authorization", token).send({ code: first.code })).status).toBe(200);
+    expect(mailer.sent.at(-1)!.subject).toBe("Two-step sign-in is on");
+    expect((await request(app).get("/api/v1/me").set("Authorization", token)).body).toMatchObject({ needsOtp: false, twoFactor: { enabled: true, required: true } });
 
-    const wrong = await request(app).post("/api/v1/auth/otp/verify").set("Authorization", token).send({ purpose: "sign_in", code: pin === "000000" ? "111111" : "000000" });
-    expect(wrong.body.error.code).toBe("otp_wrong");
-    const ok = await request(app).post("/api/v1/auth/otp/verify").set("Authorization", token).send({ purpose: "sign_in", code: pin });
-    expect(ok.status).toBe(200);
-    expect((await request(app).get("/api/v1/me").set("Authorization", token)).body.needsOtp).toBe(false);
-
-    // The same PIN can't be used twice.
-    const again = await request(app).post("/api/v1/auth/otp/verify").set("Authorization", token).send({ purpose: "sign_in", code: pin });
-    expect(again.body.error.code).toBe("otp_expired");
-    // A new sign-in needs a new PIN.
-    expect((await request(app).get("/api/v1/me").set("Authorization", signIn(FUNDER_F1))).body.needsOtp).toBe(true);
+    // A new sign-in needs a code again, and the same code can't be used twice.
+    const next = signIn(email);
+    expect((await request(app).get("/api/v1/me").set("Authorization", next)).body.needsOtp).toBe(true);
+    expect((await request(app).post("/api/v1/auth/totp/verify").set("Authorization", next).send({ code: first.code })).body.error.code).toBe("code_used");
+    const second = nextCode(secret, first.step);
+    expect((await request(app).post("/api/v1/auth/totp/verify").set("Authorization", next).send({ code: second.code })).status).toBe(200);
+    expect((await request(app).get("/api/v1/me").set("Authorization", next)).body.needsOtp).toBe(false);
+    // Can't start set-up again while it's on.
+    expect((await request(app).post("/api/v1/auth/totp/setup").set("Authorization", next).send({})).body.error.code).toBe("authenticator_on");
   });
 
-  it("locks a PIN after five wrong tries", async () => {
-    const token = signIn(ADMIN);
-    await request(app).post("/api/v1/auth/otp/request").set("Authorization", token).send({ purpose: "sign_in" });
-    const pin = pinFrom(mailer.sent.at(-1)!.text);
-    const wrong = pin === "999999" ? "888888" : "999999";
-    for (let i = 0; i < 5; i++) await request(app).post("/api/v1/auth/otp/verify").set("Authorization", token).send({ purpose: "sign_in", code: wrong });
-    const r = await request(app).post("/api/v1/auth/otp/verify").set("Authorization", token).send({ purpose: "sign_in", code: pin });
-    expect(r.body.error.code).toBe("otp_locked");
+  it("locks after five wrong codes", async () => {
+    const email = "kopano@proofpocket.example";
+    const token = signIn(email);
+    const { secret } = (await request(app).post("/api/v1/auth/totp/setup").set("Authorization", token).send({})).body;
+    const ok = nextCode(secret, 0);
+    await request(app).post("/api/v1/auth/totp/activate").set("Authorization", token).send({ code: ok.code });
+    const t2 = signIn(email);
+    const wrong = ok.code === "123456" ? "654321" : "123456";
+    for (let i = 0; i < 4; i++) expect((await request(app).post("/api/v1/auth/totp/verify").set("Authorization", t2).send({ code: wrong })).body.error.code).toBe("code_wrong");
+    expect((await request(app).post("/api/v1/auth/totp/verify").set("Authorization", t2).send({ code: wrong })).body.error.code).toBe("code_locked");
+    const right = nextCode(secret, ok.step);
+    expect((await request(app).post("/api/v1/auth/totp/verify").set("Authorization", t2).send({ code: right.code })).body.error.code).toBe("code_locked");
   });
 
-  it("validates input with a readable message", async () => {
-    const r = await request(app).post("/api/v1/auth/otp/verify").set("Authorization", signIn(ADMIN)).send({ purpose: "sign_in", code: "12" });
+  it("validates codes with a readable message", async () => {
+    const r = await request(app).post("/api/v1/auth/totp/verify").set("Authorization", signIn(ADMIN)).send({ code: "12" });
     expect(r.status).toBe(400);
-    expect(r.body.error).toEqual({ code: "validation_failed", message: "code: Enter the 6-digit PIN from your email" });
+    expect(r.body.error).toEqual({ code: "validation_failed", message: "code: Enter the 6-digit code from Google Authenticator" });
   });
 });
 

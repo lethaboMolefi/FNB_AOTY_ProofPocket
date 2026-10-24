@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { PDF, signIn, signInWithPin } from "./helpers";
+import { PDF, signIn, signInWithAuthenticator } from "./helpers";
 
 test("join → upload → approve → Verified", async ({ page }, info) => {
   const email = `e2e.${info.project.name}.${Date.now()}@proofpocket.example`;
@@ -39,8 +39,8 @@ test("join → upload → approve → Verified", async ({ page }, info) => {
   await expect(page.getByText("Who checks your documents?")).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
 
-  // The ProofPocket checker (admin, with the email PIN) approves all four.
-  await signInWithPin(page, "admin@proofpocket.example");
+  // The ProofPocket checker (admin, with Google Authenticator) approves all four.
+  await signInWithAuthenticator(page, "admin@proofpocket.example");
   await expect(page).toHaveURL(/\/admin\/checks$/);
   for (let i = 0; i < 4; i++) {
     const row = page.locator(".li", { hasText: business }).first();
