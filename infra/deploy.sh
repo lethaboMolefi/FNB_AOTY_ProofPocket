@@ -106,7 +106,13 @@ step_registry() {
 }
 
 step_image() {
-  g builds submit "$SYSTEM" --tag "$IMAGE"
+  # Build from the committed code only (git archive): no local files or secrets can reach Cloud Build,
+  # and the image always matches its commit tag.
+  [ -z "$(git -C "$HERE/.." status --porcelain system)" ] || { echo "Commit your changes to system/ first."; exit 1; }
+  local stage; stage=$(mktemp -d)
+  git -C "$HERE/.." archive --format=tar "$TAG" system | tar -x -C "$stage"
+  g builds submit "$stage/system" --tag "$IMAGE"
+  rm -rf "$stage"
 }
 
 step_bootstrap() {
