@@ -5,6 +5,8 @@ const key32 = z.string().refine((s) => Buffer.from(s, "base64").length === 32, "
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(8787),
+  /** Proxies in front of the API (Firebase Hosting + Google front end = 2), so rate limits see each visitor's IP. */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
   DATABASE_URL: z.string().url(),
   WEB_ORIGIN: z.string().default("http://localhost:5173"),
   /** firebase = production. local = email + password stored by the API (development). dev = test tokens (tests only). */

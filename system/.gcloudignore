@@ -1,0 +1,13 @@
+# Sent to Cloud Build: sources only. Never secrets, local data or build output.
+.gcloudignore
+**/node_modules/
+**/dist/
+**/dev-dist/
+**/.env
+**/.env.*
+!**/.env.example
+**/.seed-credentials.json
+**/.local-*/
+**/.e2e-*
+**/test-results/
+**/playwright-report/

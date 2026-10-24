@@ -33,8 +33,8 @@ export const REDACT = ["req.headers.authorization", "req.headers.cookie", "*.acc
 export function createApp(deps: Deps) {
   const app = express();
   app.disable("x-powered-by");
-  // Cloud Run and Firebase Hosting sit in front; trust one proxy hop for client IPs (rate limits).
-  app.set("trust proxy", 1);
+  // Firebase Hosting and Cloud Run's front end sit in front; trust exactly that many hops for client IPs (rate limits).
+  app.set("trust proxy", deps.config.TRUST_PROXY_HOPS);
 
   app.use(pinoHttp({ logger: deps.log, genReqId: (req) => (req.headers["x-request-id"] as string) || randomUUID(), quietReqLogger: true }));
   app.use(helmet());

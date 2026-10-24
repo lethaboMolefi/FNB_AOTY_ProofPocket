@@ -34,8 +34,13 @@ export function createMailer(config: Config, log: Logger): Mailer {
     auth: { user: config.SMTP_USER, pass: config.SMTP_PASS },
   });
   return {
+    // Emails are notifications: a mail outage is logged and must not fail the request that triggered it.
     async send(mail) {
-      await transport.sendMail({ from: config.MAIL_FROM, to: mail.to, subject: mail.subject, text: mail.text });
+      try {
+        await transport.sendMail({ from: config.MAIL_FROM, to: mail.to, subject: mail.subject, text: mail.text });
+      } catch (err) {
+        log.warn({ subject: mail.subject, err: (err as Error).message }, "email not sent");
+      }
     },
   };
 }
