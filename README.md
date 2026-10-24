@@ -31,6 +31,7 @@ Built by team **KamosoByte** for the FNB App of the Year Hackathon 2026, in answ
 | [`v2/`](v2/) | The original prototype (`index.html`, `app.js`, `styles.css`). It is the specification and is never edited. |
 | [`docs/feature-inventory.md`](docs/feature-inventory.md) | Every screen, action and rule from the prototype, with a tick box per build phase. Section 12 lists the gaps found and the approved decisions. |
 | [`docs/proposal.md`](docs/proposal.md) | Folder structure, data model, phase plan, approved decisions and the ways the build differs from the brief. |
+| [`docs/testing/manual-test-cases.md`](docs/testing/manual-test-cases.md) | Hand test cases for everything built so far, with sample files in `docs/testing/files/`. |
 | [`CLAUDE.md`](CLAUDE.md) | Working notes for AI-assisted development: commands, rules, where things live. |
 
 Inside `system/`:
