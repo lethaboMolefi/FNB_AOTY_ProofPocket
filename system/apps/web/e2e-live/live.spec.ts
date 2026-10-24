@@ -30,3 +30,27 @@ test("the hosted PWA: install details, security headers, sign-in, Home, offline"
   await expect(page.getByText("Offline", { exact: true })).toBeVisible();
   await context.setOffline(false);
 });
+
+test("phases 4-5 on the hosted site (read-only)", async ({ page }) => {
+  await page.goto("/directory");
+  await expect(page.getByRole("heading", { name: "Verified local businesses" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("link", { name: /ReKasi Plastics/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Nala Nails/ })).toHaveCount(0);
+  await page.goto("/b/nala-nails-lashes");
+  await expect(page.getByText("Starter: not verified yet.")).toBeVisible();
+
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").fill("zanele@proofpocket.example");
+  await page.getByLabel("Password", { exact: true }).fill(creds["zanele@proofpocket.example"]!.password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible({ timeout: 20_000 });
+  await page.goto("/app/payments");
+  await expect(page.getByRole("heading", { name: "Payment requests" })).toBeVisible();
+  await expect(page.getByText(/PP-4821/)).toBeVisible();
+  await page.goto("/app/funding");
+  await expect(page.getByText("Funders can't see you yet")).toBeVisible();
+  await page.goto("/app/protection");
+  await expect(page.getByText("Funding Approvals Desk")).toBeVisible();
+  // The false fingerprint warnings were removed; none remain.
+  await expect(page.getByText(/no longer matches the file/)).toHaveCount(0);
+});

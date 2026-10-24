@@ -256,6 +256,10 @@ With `MAIL_MODE=console`, nothing is sent; notification emails (such as "Two-ste
 6. **Check it on a computer.** In Chrome, press F12 and open **Application**. **Manifest** should show the ProofPocket name and icons with no errors, and **Service workers** should show `sw.js` as activated. **Lighthouse → Progressive Web App** runs the installability checks.
 7. **Automated checks:** `cd system/apps/web && pnpm exec playwright test -c playwright.live.config.ts` runs sign-in, Home, the service worker and offline on phone and desktop against the live site. `bash infra/deploy.sh smoke` checks health, CORS, security headers and the manifest.
 
+### Two things waiting for a decision
+- **Scheduling the daily jobs.** Cloud Scheduler isn't offered in `africa-south1`, so `proofpocket-jobs` (document expiry, request expiry, and the weekly fingerprint check) runs only when started: `gcloud run jobs execute proofpocket-jobs --region africa-south1 --project hackathons-warroom`. Payment requests also expire whenever they're viewed. A scheduler in another region would only send the "start" signal; no data would leave South Africa.
+- **Admin invites on the hosted site** need the API's service account to hold `roles/firebaseauth.admin` (it has `firebaseauth.viewer`): `bash infra/deploy.sh identity`. Until then, inviting a person adds them but can't create their sign-in.
+
 ### Turning on email notifications
 Sign-in alerts are sent from Gmail and need an **app password** (Google account → Security → 2-Step Verification → App passwords). Store it without it appearing on screen, then redeploy the API:
 ```bash
