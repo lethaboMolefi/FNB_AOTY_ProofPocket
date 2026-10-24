@@ -43,7 +43,7 @@ function valid(y: string, mo: string, d: string) {
 
 /** "-1 234,56", "1,234.56", "R 315.00", "100.00 CR", "(50.00)" → signed number. */
 export function parseAmount(raw: string): number | null {
-  let s = raw.trim().replace(/ /g, " ");
+  let s = raw.trim().replace(/\u00a0/g, " ");
   if (!s) return null;
   let sign = 1;
   if (/\bDR\b$/i.test(s)) { sign = -1; s = s.replace(/\s*DR$/i, ""); }
@@ -80,7 +80,7 @@ function guessBank(text: string): string | null {
 }
 
 export function parseStatement(text: string, mapping?: Mapping): ParseResult {
-  const rows = (Papa.parse<string[]>(text.replace(/^﻿/, ""), { skipEmptyLines: "greedy" }).data ?? []).filter((r) => Array.isArray(r));
+  const rows = (Papa.parse<string[]>(text.replace(/^\uFEFF/, ""), { skipEmptyLines: "greedy" }).data ?? []).filter((r) => Array.isArray(r));
   const found = mapping ? { at: -1, map: mapping } : findHeader(rows);
   if (!found) return { ok: false, needsMapping: true, preview: rows.slice(0, 6), columnCount: Math.max(0, ...rows.slice(0, 6).map((r) => r.length)) };
   const lines: StatementLine[] = [];
