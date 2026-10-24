@@ -24,18 +24,30 @@ const Home = lazy(() => import("../features/founder/Home"));
 const Books = lazy(() => import("../features/founder/Books"));
 const StockPage = lazy(() => import("../features/founder/Stock"));
 const Cashflow = lazy(() => import("../features/founder/Cashflow"));
+const Payments = lazy(() => import("../features/founder/Payments"));
+const Protection = lazy(() => import("../features/founder/Protection"));
+const Privacy = lazy(() => import("../features/founder/Privacy"));
+const FundingReadiness = lazy(() => import("../features/founder/FundingReadiness"));
+const Procurement = lazy(() => import("../features/founder/Procurement"));
+const Markets = lazy(() => import("../features/founder/Markets"));
 
 const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
 /** Screens that are built; everything else shows its placeholder until its phase. */
 const BUILT: Record<string, ReactNode> = {
-  "founder/start": s(<Start />),
-  "founder/settings": s(<Settings />),
-  "founder/home": s(<Home />),
-  "founder/books": s(<Books />),
-  "founder/stock": s(<StockPage />),
-  "founder/cashflow": s(<Cashflow />),
-  "adviser/checks": s(<Checks scope="adviser" />),
-  "admin/checks": s(<Checks scope="admin" />),
+  "founder/start":       s(<Start />),
+  "founder/settings":    s(<Settings />),
+  "founder/home":        s(<Home />),
+  "founder/books":       s(<Books />),
+  "founder/stock":       s(<StockPage />),
+  "founder/cashflow":    s(<Cashflow />),
+  "founder/payments":    s(<Payments />),
+  "founder/protection":  s(<Protection />),
+  "founder/privacy":     s(<Privacy />),
+  "founder/funding":     s(<FundingReadiness />),
+  "founder/procurement": s(<Procurement />),
+  "founder/markets":     s(<Markets />),
+  "adviser/checks":      s(<Checks scope="adviser" />),
+  "admin/checks":        s(<Checks scope="admin" />),
 };
 const pages = (portal: string, list: NavPage[]): RouteObject[] =>
   list.map((p) => ({ path: p.path, element: BUILT[`${portal}/${p.path}`] ?? <Placeholder page={p} /> }));
