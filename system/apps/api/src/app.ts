@@ -15,6 +15,8 @@ import { authRoutes } from "./routes/auth";
 import { checkRoutes } from "./routes/checks";
 import { fileRoutes } from "./routes/files";
 import { founderBookRoutes } from "./routes/founder-books";
+import { founderPayRoutes } from "./routes/founder-pay";
+import { payRoutes } from "./routes/pay";
 import { founderDocRoutes } from "./routes/founder-docs";
 import { joinRoutes } from "./routes/join";
 
@@ -52,6 +54,8 @@ export function createApp(deps: Deps) {
   v1.use(fileRoutes(deps));
   v1.use(founderDocRoutes(deps));
   v1.use(founderBookRoutes(deps));
+  v1.use(founderPayRoutes(deps));
+  v1.use(payRoutes(deps));
   v1.use(checkRoutes(deps));
 
   app.use("/api/v1", v1);
