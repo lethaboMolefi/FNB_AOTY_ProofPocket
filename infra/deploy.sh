@@ -25,6 +25,8 @@ REPO=proofpocket
 SERVICE=proofpocket-api
 MAIL_USER="${MAIL_USER:-pegphina@gmail.com}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# Working files live here, not in /tmp: a snap-installed gcloud has its own private /tmp and can't see ours.
+WORK="$HERE/.work"; mkdir -p "$WORK"
 SYSTEM="$HERE/../system"
 TAG="${TAG:-$(git -C "$HERE/.." rev-parse --short HEAD)}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/api:${TAG}"
@@ -74,11 +76,11 @@ step_database() {
 step_storage() {
   exists g storage buckets describe "gs://$BUCKET" || g storage buckets create "gs://$BUCKET" --location "$REGION" \
     --uniform-bucket-level-access --public-access-prevention
-  cat > /tmp/proofpocket-cors.json <<EOF
+  cat > "$WORK/cors.json" <<EOF
 [{"origin": ["${WEB_ORIGIN}", "https://${SITE}.firebaseapp.com"], "method": ["PUT", "GET"],
   "responseHeader": ["Content-Type", "x-goog-content-length-range"], "maxAgeSeconds": 3600}]
 EOF
-  g storage buckets update "gs://$BUCKET" --cors-file=/tmp/proofpocket-cors.json
+  g storage buckets update "gs://$BUCKET" --cors-file="$WORK/cors.json"
 }
 
 step_secrets() {
@@ -109,7 +111,7 @@ step_image() {
   # Build from the committed code only (git archive): no local files or secrets can reach Cloud Build,
   # and the image always matches its commit tag.
   [ -z "$(git -C "$HERE/.." status --porcelain system)" ] || { echo "Commit your changes to system/ first."; exit 1; }
-  local stage; stage=$(mktemp -d)
+  local stage; stage=$(mktemp -d "$WORK/build.XXXXXX")
   git -C "$HERE/.." archive --format=tar "$TAG" system | tar -x -C "$stage"
   g builds submit "$stage/system" --tag "$IMAGE"
   rm -rf "$stage"
