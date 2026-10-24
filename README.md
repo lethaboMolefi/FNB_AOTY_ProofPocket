@@ -62,8 +62,8 @@ Screens not built yet show a "Being built" notice naming their phase.
 
 ### What you need
 
-- **Node.js 22 or newer** (`node -v`). The project is moving to Node 26, the latest release.
-- **pnpm** through Corepack: `corepack enable` (or see [pnpm: command not found](#pnpm-command-not-found)).
+- **Node.js 26** (`node -v`), the latest release (`system/.nvmrc`). With nvm: `nvm install && nvm use` in `system/`.
+- **pnpm 12**: `npm install -g pnpm@12.15.0`. Node 25 and later no longer include Corepack.
 - **Docker** (Docker Desktop or Docker Engine) for the local PostgreSQL database.
 - **Google Authenticator** on your phone, for staff accounts and any founder who turns on two-step sign-in.
 
@@ -89,7 +89,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"   # 
 Start the database and load the example data:
 
 ```bash
-pnpm db:up       # PostgreSQL 15 in Docker, on localhost:5433
+pnpm db:up       # PostgreSQL 18 in Docker, on localhost:5433
 pnpm db:reset    # creates the tables and loads the example businesses, funders and incubators
 ```
 
@@ -142,7 +142,7 @@ Run these in `system/`.
 | Command | What it does |
 |---|---|
 | `pnpm dev` | API (:8787) and web app (:5173, proxies `/api`) with live reload |
-| `pnpm db:up` | Start PostgreSQL in Docker |
+| `pnpm db:up` | Start PostgreSQL 18 in Docker |
 | `pnpm db:reset` | **Development only.** Drop everything, migrate, load the example data, print the passwords |
 | `pnpm db:migrate` | Apply new migrations without losing data |
 | `pnpm db:generate` | Create a migration from schema changes (`apps/api/src/db/schema`) |
@@ -155,6 +155,7 @@ To try the installable app and offline mode, run the production build: `pnpm --f
 
 ## How it's built
 
+- **Versions:** the latest stable release of everything as of October 2026: Node 26, pnpm 12, PostgreSQL 18, React 19, React Router 7, Vite 8, Tailwind CSS 4, Express 5, Vitest 5, ESLint 10. The one exception is TypeScript 6.0 (not 7), because typescript-eslint doesn't support TypeScript 7's native compiler yet.
 - **Web:** React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, React Hook Form + Zod, Workbox (installable PWA, offline app shell, update prompt). Phone first, with white as the primary colour.
 - **API:** Node.js, Express, Zod validation, Drizzle ORM, PostgreSQL. Errors are always `{ "error": { "code", "message" } }`. OpenAPI at `/api/v1/openapi.json`.
 - **Shared rules:** `packages/shared/src/rules` holds the readiness score, flags, Verified rules, programme gaps, tender eligibility, proof-of-payment checks, duplicate-payment check, stock and cash flow. They are ported line by line from the prototype, unit-tested, and used by both the API and the web app. The server is authoritative.
@@ -172,8 +173,14 @@ To try the installable app and offline mode, run the production build: `pnpm --f
 
 ## Troubleshooting
 
-### `pnpm: command not found`
-Run `corepack enable` (you may need `sudo`). Without admin rights: `corepack enable --install-directory ~/.local/bin pnpm`, then add `export PATH=~/.local/bin:$PATH` to `~/.bashrc`.
+### `pnpm: command not found`, or the wrong Node version
+ProofPocket needs **Node 26** and **pnpm 12**. Check with `node -v` and `pnpm -v`.
+- With nvm: `cd system && nvm install && nvm use` (reads `.nvmrc`), then `npm install -g pnpm@12.15.0`.
+- Without nvm or admin rights: download Node 26 from nodejs.org, unpack it to `~/.local/node26`, then `export PATH=~/.local/node26/bin:$PATH` (add that line to `~/.bashrc`) and `npm install -g pnpm@12.15.0`.
+- Node 25 and later don't include Corepack, so `corepack enable` no longer works.
+
+### `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` or `ERR_PNPM_IGNORED_BUILDS` during install
+These are deliberate supply-chain safety rules in `system/pnpm-workspace.yaml`. pnpm won't install a version published less than 24 hours ago, and only esbuild may run an install script. If a brand-new release is refused, wait a day or pin the previous version. Don't turn the rules off.
 
 ### `Cannot connect to the Docker daemon`
 Start Docker Desktop, or on Linux run `systemctl --user start docker-desktop` (Docker Desktop) or `sudo systemctl start docker` (Docker Engine). Check with `docker ps`.
@@ -189,6 +196,9 @@ Another `pnpm dev` is probably still running. Stop it with Ctrl+C, or find it wi
 
 ### Errors about a missing column or function after `git pull`
 New migrations arrived. Run `pnpm db:migrate`, or `pnpm db:reset` to start fresh with the example data.
+
+### The database won't start after updating (PostgreSQL 15 → 18)
+The local database moved to PostgreSQL 18, which stores data differently. Recreate it (this deletes local data, which is only example data): `docker compose down -v && pnpm db:up && pnpm db:reset`.
 
 ### "That email and password don't match"
 Check `system/apps/api/.seed-credentials.json` for the example accounts' passwords. They were regenerated if that file was deleted. After five wrong tries the account is locked for 15 minutes; `pnpm db:reset` clears it.

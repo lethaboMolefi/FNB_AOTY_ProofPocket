@@ -116,7 +116,11 @@ The brief's six phases, with two changes: phase 5 is split in two because it is 
 4. **Git:** `main`, pushed to https://github.com/lethaboMolefi/FNB_AOTY_ProofPocket.
 5. **Data location:** Firebase Auth keeps accounts outside South Africa; everything else stays in `africa-south1`. Region availability gets checked in phase 6.
 
-## 6. Changes from the brief made during phase 1
+## 6. Changes from the brief
+
+**Latest versions (24 October 2026, at the team's request):** Node 26.12.1, pnpm 12.15.0, PostgreSQL 18, React 19, React Router 7, Vite 8, Tailwind CSS 4, Express 5, Vitest 5, ESLint 10, pino 10, jsdom 30, Playwright 1.64. Exceptions: TypeScript 6.0.3 (typescript-eslint supports < 6.1, and TypeScript 7's native compiler has no JavaScript API yet), and packages published less than 24 hours ago, which pnpm's supply-chain rule holds back for a day. The brief named Node 20 and PostgreSQL 15+.
+
+### Earlier changes (phase 1)
 
 - **Node 22 LTS instead of Node 20.** Node 20 reached end-of-life in April 2026, and `firebase-admin` 14 (needed to drop the unpatched `node-forge`) requires Node 22.
 - **zod 4 instead of zod 3.** Every zod 3 release is affected by GHSA-mrhx-c7xc-m3w5 (memory exhaustion on oversized input); it is fixed in 4.6.6.

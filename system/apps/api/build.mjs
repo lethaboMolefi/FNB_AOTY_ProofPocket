@@ -13,7 +13,7 @@ await build({
   outdir: "dist",
   bundle: true,
   platform: "node",
-  target: "node22",
+  target: "node26",
   format: "esm",
   sourcemap: true,
   plugins: [externalPackages],

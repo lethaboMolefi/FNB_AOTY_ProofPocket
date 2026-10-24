@@ -25,6 +25,10 @@ const writeLocal = (t: string | null) => { try { if (t) localStorage.setItem(LOC
 /** The email inside a local session token (for display only; the API verifies the signature). */
 const emailOf = (t: string | null) => { try { return t ? (JSON.parse(atob(t.split(".")[1]!.replace(/-/g, "+").replace(/_/g, "/"))) as { email: string }).email : null; } catch { return null; } };
 
+// Local sessions are known at load time, so the token getter is registered before any query runs.
+// (Registering it in an effect is too late: child components' effects start their queries first.)
+if (AUTH_MODE === "local") setTokenGetter(async () => readLocal());
+
 /** Removes this person's cached API data from the phone (service worker cache). */
 function clearUserCache() {
   navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_USER_CACHE" });
@@ -32,19 +36,16 @@ function clearUserCache() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
-  const [status, setStatus] = useState<Status>("loading");
-  const [email, setEmail] = useState<string | null>(null);
+  // Local sessions are read straight away; Firebase reports its state once it has loaded.
+  const [status, setStatus] = useState<Status>(() => (AUTH_MODE === "local" ? (readLocal() ? "signedIn" : "signedOut") : "loading"));
+  const [email, setEmail] = useState<string | null>(() => (AUTH_MODE === "local" ? emailOf(readLocal()) : null));
 
   const reset = useCallback(() => { qc.clear(); clearUserCache(); }, [qc]);
 
   useEffect(() => {
     if (AUTH_MODE === "local") {
-      const t = readLocal();
-      setTokenGetter(async () => readLocal());
       // An expired or rejected session signs the person out instead of failing every screen.
       setUnauthorizedHandler(() => { writeLocal(null); reset(); setEmail(null); setStatus("signedOut"); });
-      setEmail(emailOf(t));
-      setStatus(t ? "signedIn" : "signedOut");
       return;
     }
     let unsub = () => {};

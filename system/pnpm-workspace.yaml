@@ -1,3 +1,12 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Exact versions only (no ^ or ~ when adding packages).
+savePrefix: ""
+# Supply-chain safety: don't install versions published in the last 24 hours (pnpm's default, kept on purpose).
+minimumReleaseAge: 1440
+allowBuilds:
+  '@firebase/util': false
+  esbuild: true
+  protobufjs: false

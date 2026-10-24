@@ -213,9 +213,10 @@ export default function Join() {
   const noAccount = me.error instanceof ApiError && me.error.code === "no_account";
   const unjoined = me.data?.role === "founder" && me.data.company && !me.data.company.joined;
   const docs = useQuery({ queryKey: ["founder-documents"], queryFn: () => api<DocumentsResponse>("/founder/documents"), enabled: !!unjoined });
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // A founder who comes back before finishing starts at Documents.
+  const [chosen, setStep] = useState<1 | 2 | 3 | null>(null);
+  const step = chosen ?? (unjoined ? 2 : 1);
   const [joined, setJoined] = useState(false);
-  useEffect(() => { if (unjoined && step === 1 && docs.data) setStep(2); }, [unjoined]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (joined) return <Navigate to="/app/start" replace />;
   if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending)) return <Spinner />;

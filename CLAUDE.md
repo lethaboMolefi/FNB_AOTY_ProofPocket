@@ -15,11 +15,11 @@ One shared business record for young founders and township or rural businesses, 
   - `apps/web`: React 18 + Vite + Tailwind PWA. `app/` (router, nav, guards), `components/`, `features/<area>/`, `lib/` (api, auth, me, pwa), `sw.ts` (Workbox).
 - The app at the repo root (`app.js`, `index.html`, `styles.css`, `v2.zip`) is an older prototype copy, git-ignored.
 
-## Commands (run in `system/`, Node 22)
+## Commands (run in `system/`, Node 26 + pnpm 12)
 
 ```
 pnpm install
-pnpm db:up                    # Postgres 15 in Docker on localhost:5433
+pnpm db:up                    # PostgreSQL 18 in Docker on localhost:5433
 pnpm db:reset                 # DEV ONLY: drop, migrate, load example data (refuses production/remote)
 pnpm db:generate              # new migration from schema changes (apps/api/drizzle)
 pnpm dev                      # API :8787 + web :5173 (proxy /api)
@@ -33,7 +33,7 @@ Local env files: `apps/api/.env` and `apps/web/.env`, copied from `.env.example`
 ## Working rules
 
 - Business rules go in `packages/shared/src/rules` with **unit tests written first**. The server is authoritative (readiness is computed on the server).
-- Ask before adding a dependency not already in a package.json. Pin exact versions (`save-exact`).
+- Ask before adding a dependency not already in a package.json. Use the latest stable version and pin it exactly. pnpm's 24-hour minimum release age and build-script allow-list (`pnpm-workspace.yaml`) stay on.
 - Small commits with clear messages.
 - Authorisation is enforced on the server for every route, and RLS is the second layer: each request runs in `withContext()` (transaction + `SET LOCAL app.user_id / app.role`) as `proofpocket_app`. Roles come from the database, never the client.
 - Never log ID numbers, account numbers, PINs or file contents. Account numbers are AES-256-GCM encrypted (`lib/crypto.ts`). `audit_log` is append-only.

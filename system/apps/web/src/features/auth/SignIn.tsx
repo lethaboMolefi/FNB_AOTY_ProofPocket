@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInSchema } from "@proofpocket/shared";
-import { forwardRef, useId, useState, type ReactNode } from "react";
+import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import type { z } from "zod";
@@ -21,7 +21,7 @@ export function AuthPageShell({ children, wide }: { children: ReactNode; wide?: 
  * Password field with its own label and a show/hide button (people type long passwords on small phones).
  * The button sits outside the label so the field's accessible name is just the label text.
  */
-export const PasswordField = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }>(
+export const PasswordField = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }>(
   function PasswordField({ label, error, ...props }, ref) {
     const [show, setShow] = useState(false);
     const id = useId();

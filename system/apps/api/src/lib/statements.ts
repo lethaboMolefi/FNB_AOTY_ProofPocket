@@ -88,7 +88,7 @@ export function parseStatement(text: string, mapping?: Mapping): ParseResult {
   for (const r of rows.slice(found.at + 1)) {
     const date = parseDate(r[found.map.date] ?? "");
     const description = (r[found.map.description] ?? "").trim().slice(0, 200);
-    let signed: number | null = null;
+    let signed: number | null;
     if (found.map.amount !== undefined) signed = parseAmount(r[found.map.amount] ?? "");
     else {
       const inn = parseAmount(r[found.map.moneyIn!] ?? ""), out = parseAmount(r[found.map.moneyOut!] ?? "");

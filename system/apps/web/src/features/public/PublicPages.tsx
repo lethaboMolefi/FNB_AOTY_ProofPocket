@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 // Public pages that need no account. Filled in by later phases; the routes exist now so links and QR codes resolve.
 import { useParams } from "react-router-dom";
 import { TopBar } from "../../components/layout/TopBar";
 import { Notice, PageHead } from "../../components/ui";
 
-function PublicShell({ children }: { children: React.ReactNode }) {
+function PublicShell({ children }: { children: ReactNode }) {
   return (
     <>
       <TopBar home="/directory" />
