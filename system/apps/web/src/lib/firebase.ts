@@ -1,8 +1,8 @@
 // Loaded only in firebase mode, and only when needed, to keep the first download small.
 import { initializeApp } from "@firebase/app";
 import {
-  browserLocalPersistence, createUserWithEmailAndPassword, getAuth, onAuthStateChanged, sendEmailVerification,
-  sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signOut, type User,
+  browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, onAuthStateChanged, sendEmailVerification,
+  sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signInWithPopup, signOut, type User,
 } from "@firebase/auth";
 
 const app = initializeApp({
@@ -22,5 +22,13 @@ export async function signUp(email: string, password: string) {
   await sendEmailVerification(cred.user);
   return cred;
 }
+
+const googleProvider = () => {
+  const p = new GoogleAuthProvider();
+  p.setCustomParameters({ prompt: "select_account" });
+  return p;
+};
+export const signInWithGoogle = () => signInWithPopup(auth, googleProvider());
+
 export const out = () => signOut(auth);
 export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);

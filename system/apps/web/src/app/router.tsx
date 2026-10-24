@@ -10,6 +10,7 @@ const FounderShell = lazy(() => import("../components/layout/FounderShell").then
 const PortalShell = lazy(() => import("../components/layout/PortalShell").then((m) => ({ default: m.PortalShell })));
 const More = lazy(() => import("../features/founder/More"));
 const SignIn = lazy(() => import("../features/auth/SignIn"));
+const SignUp = lazy(() => import("../features/auth/SignUp"));
 const VerifyPin = lazy(() => import("../features/auth/VerifyPin"));
 const pub = () => import("../features/public/PublicPages");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
@@ -34,6 +35,7 @@ const pages = (portal: string, list: NavPage[]): RouteObject[] =>
 export const routes: RouteObject[] = [
   { path: "/", element: <RoleHome /> },
   { path: "/sign-in", element: s(<SignIn />) },
+  { path: "/sign-up", element: s(<SignUp />) },
   { path: "/verify", element: s(<VerifyPin />) },
   { path: "/join", element: s(<Join />) },
   // Public, no account.
