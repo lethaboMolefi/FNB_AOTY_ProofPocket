@@ -25,7 +25,9 @@ describe("scheduled jobs", () => {
       const res = await runJobs(process.env.DATABASE_OWNER_URL!, store, { rehash: true });
       expect(res.requestsExpired).toBeGreaterThanOrEqual(1);
       expect(res.documentsExpired).toBeGreaterThanOrEqual(1);
-      expect(res.filesMismatched).toBeGreaterThanOrEqual(1);
+      // Exactly the swapped file: example data (no stored files) is skipped, and other uploads still match.
+      expect(res.filesMismatched).toBe(1);
+      expect(res.filesMissing).toBe(0);
 
       const msgs = (await request(app).get("/api/v1/founder/protection").set("Authorization", f.token)).body.messages.map((m: { body: string }) => m.body);
       expect(msgs).toEqual(expect.arrayContaining(["Your Owner ID copy has expired. Upload a current one under Registration steps.", expect.stringMatching(/no longer matches the file that was checked/)]));

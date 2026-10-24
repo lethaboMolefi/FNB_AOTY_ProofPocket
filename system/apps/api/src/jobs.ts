@@ -7,12 +7,12 @@ import pg from "pg";
 import type { Config } from "./config";
 import { gcsStore, localStore, type FileStore } from "./lib/storage";
 
-export interface JobResult { requestsExpired: number; documentsExpired: number; filesChecked: number; filesMismatched: number }
+export interface JobResult { requestsExpired: number; documentsExpired: number; filesChecked: number; filesMismatched: number; filesMissing: number }
 
 export async function runJobs(ownerUrl: string, store: FileStore | null, opts: { rehash: boolean; today?: string }): Promise<JobResult> {
   const today = opts.today ?? todayZA();
   const pool = new pg.Pool({ connectionString: ownerUrl, max: 1 });
-  const out: JobResult = { requestsExpired: 0, documentsExpired: 0, filesChecked: 0, filesMismatched: 0 };
+  const out: JobResult = { requestsExpired: 0, documentsExpired: 0, filesChecked: 0, filesMismatched: 0, filesMissing: 0 };
   try {
     const r = await pool.query(
       `update payment_requests set status = 'expired', updated_at = now()
@@ -33,16 +33,19 @@ export async function runJobs(ownerUrl: string, store: FileStore | null, opts: {
     if (opts.rehash && store) {
       const files = await pool.query<{ id: string; company_id: string; bucket_path: string; sha256: string; doc_type: DocType | null }>(
         `select f.id, f.company_id, f.bucket_path, f.sha256, d.doc_type from files f
-         left join documents d on d.file_id = f.id where f.sha256 is not null and f.purpose = 'document'`);
+         left join documents d on d.file_id = f.id
+         -- Example data has fingerprints but no stored files, so it's never checked.
+         where f.sha256 is not null and f.purpose = 'document' and not f.is_example`);
       for (const f of files.rows) {
         out.filesChecked++;
         let actual: string | null = null;
         try { actual = createHash("sha256").update(await store.read(f.bucket_path)).digest("hex"); } catch { actual = null; }
         if (actual === f.sha256) continue;
-        out.filesMismatched++;
+        if (actual === null) out.filesMissing++; else out.filesMismatched++;
         const name = f.doc_type ? DOCS[f.doc_type].name : "A document";
+        const what = actual === null ? "can't be found in storage" : "no longer matches the file that was checked";
         await pool.query(`insert into messages (company_id, kind, sender, sender_address, verified_sender, body, risk_flags) values ($1, 'system', 'ProofPocket', 'Verified', true, $2, $3)`,
-          [f.company_id, `${name} no longer matches the file that was checked. ProofPocket is looking into it; your adviser and funders see a warning.`, ["Document changed after it was checked"]]);
+          [f.company_id, `${name} ${what}. ProofPocket is looking into it; your adviser and funders see a warning.`, [actual === null ? "Document file missing" : "Document changed after it was checked"]]);
         await pool.query(`insert into audit_log (actor_role, action, entity, entity_id, company_id, after) values ('system', 'file.fingerprint_mismatch', 'file', $1, $2, $3)`,
           [f.id, f.company_id, JSON.stringify({ expected: f.sha256, found: actual ?? "missing" })]);
       }
