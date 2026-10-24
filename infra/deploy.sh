@@ -31,7 +31,8 @@ SYSTEM="$HERE/../system"
 TAG="${TAG:-$(git -C "$HERE/.." rev-parse --short HEAD)}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/api:${TAG}"
 
-g() { gcloud --project "$PROJECT" --quiet "$@"; }
+# Output always goes through pipes: snap-installed gcloud fails (exit 120) when writing straight into a file.
+g() { gcloud --project "$PROJECT" --quiet "$@" 2> >(cat >&2) | cat; }
 exists() { "$@" >/dev/null 2>&1; }
 secret_set() { # name value: create the secret or add a new version
   if exists g secrets describe "$1"; then printf '%s' "$2" | g secrets versions add "$1" --data-file=- >/dev/null
