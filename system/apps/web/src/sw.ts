@@ -37,6 +37,12 @@ registerRoute(
   }),
 );
 
+// Background Sync: ask open ProofPocket windows to send the offline outbox (they hold the sign-in token).
+self.addEventListener("sync", (event) => {
+  const e = event as Event & { tag: string; waitUntil(p: Promise<unknown>): void };
+  if (e.tag === "pp-outbox") e.waitUntil(self.clients.matchAll({ type: "window" }).then((cs) => cs.forEach((c) => c.postMessage({ type: "FLUSH_OUTBOX" }))));
+});
+
 self.addEventListener("message", (event) => {
   const type = (event.data as { type?: string } | undefined)?.type;
   // The page shows "A new version is ready. Refresh"; Refresh sends this.

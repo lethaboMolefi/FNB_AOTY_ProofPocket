@@ -2,6 +2,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ApiError, api, setTokenGetter, setUnauthorizedHandler } from "./api";
+import { setOutboxOwner } from "./outbox";
 
 export const AUTH_MODE: "local" | "firebase" = import.meta.env.VITE_AUTH_MODE === "firebase" ? "firebase" : "local";
 const LOCAL_KEY = "pp.session";
@@ -41,6 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(() => (AUTH_MODE === "local" ? emailOf(readLocal()) : null));
 
   const reset = useCallback(() => { qc.clear(); clearUserCache(); }, [qc]);
+  // Offline items belong to the account that saved them.
+  useEffect(() => { setOutboxOwner(status === "signedIn" ? email : null); }, [status, email]);
 
   useEffect(() => {
     if (AUTH_MODE === "local") {

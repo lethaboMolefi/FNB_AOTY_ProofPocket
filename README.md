@@ -51,7 +51,7 @@ The build runs in phases (brief section 13). Each phase is committed and pushed 
 | 1 | Foundations: monorepo, schema, RLS, API, PWA shell, seed | ✅ Done |
 | 2 | Join and Start: join wizard, signed uploads, SHA-256, document checks, Verified | ✅ Done |
 | — | Secure sign-in: passwords, lockout, Google Authenticator two-step sign-in | ✅ Done |
-| 3 | Trade and cash flow: books, offline outbox, statements, stock, cash flow, Home | 🟡 API done, screens in progress |
+| 3 | Trade and cash flow: books, offline outbox, statements, stock, cash flow, Home | ✅ Done |
 | 4 | Get paid and stay safe: payment requests, public pay page, proofs, suppliers, fraud | ⏳ Next |
 | 5 | Formal markets and the other portals | ⏳ |
 | 6 | Deploy to Google Cloud (`africa-south1`) | ⏳ Needs access to the Google Cloud project |

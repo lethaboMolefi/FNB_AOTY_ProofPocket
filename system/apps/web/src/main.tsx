@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router";
 import { ToastProvider } from "./components/ui";
 import { AuthProvider } from "./lib/auth";
+import { setOnSent, startOutbox } from "./lib/outbox";
 import { UpdatePrompt } from "./lib/pwa";
 import "./styles/index.css";
 
@@ -14,6 +15,10 @@ const queryClient = new QueryClient({
     queries: { networkMode: "offlineFirst", refetchOnWindowFocus: false },
   },
 });
+
+// After offline items reach the server, refresh the founder screens.
+setOnSent(() => { void queryClient.invalidateQueries(); });
+startOutbox();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

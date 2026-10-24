@@ -38,8 +38,9 @@ test("a founder lands on Home with the founder navigation", async ({ page, isMob
   } else {
     const rail = page.getByRole("navigation", { name: "Sections" });
     for (const g of ["Start", "Trade", "Get paid", "Manage cash flow", "Reach formal markets", "Stay safe"]) await expect(rail.getByText(g, { exact: true })).toBeVisible();
-    await rail.getByRole("link", { name: "Fraud protection" }).click();
-    await expect(page.getByRole("heading", { name: "Fraud protection" })).toBeVisible();
+    await rail.getByRole("link", { name: "Cash flow" }).click();
+    await expect(page.getByRole("heading", { name: "Cash flow", level: 1 })).toBeVisible();
+    await expect(page.getByText("Cash on hand now")).toBeVisible();
   }
 });
 

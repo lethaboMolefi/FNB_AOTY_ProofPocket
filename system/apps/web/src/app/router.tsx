@@ -19,12 +19,20 @@ const Join = lazy(() => import("../features/join/Join"));
 const Start = lazy(() => import("../features/founder/Start"));
 const Checks = lazy(() => import("../features/checks/Checks"));
 const Settings = lazy(() => import("../features/founder/Settings"));
+const Home = lazy(() => import("../features/founder/Home"));
+const Books = lazy(() => import("../features/founder/Books"));
+const StockPage = lazy(() => import("../features/founder/Stock"));
+const Cashflow = lazy(() => import("../features/founder/Cashflow"));
 
 const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
 /** Screens that are built; everything else shows its placeholder until its phase. */
 const BUILT: Record<string, ReactNode> = {
   "founder/start": s(<Start />),
   "founder/settings": s(<Settings />),
+  "founder/home": s(<Home />),
+  "founder/books": s(<Books />),
+  "founder/stock": s(<StockPage />),
+  "founder/cashflow": s(<Cashflow />),
   "adviser/checks": s(<Checks scope="adviser" />),
   "admin/checks": s(<Checks scope="admin" />),
 };
