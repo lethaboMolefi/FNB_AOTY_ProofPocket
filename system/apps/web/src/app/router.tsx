@@ -14,7 +14,7 @@ const VerifyPin = lazy(() => import("../features/auth/VerifyPin"));
 const pub = () => import("../features/public/PublicPages");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
 const BusinessProfile = lazy(() => pub().then((m) => ({ default: m.BusinessProfile })));
-const PayPage = lazy(() => pub().then((m) => ({ default: m.PayPage })));
+const PayPage = lazy(() => import("../features/public/PayPage"));
 const Join = lazy(() => import("../features/join/Join"));
 const Start = lazy(() => import("../features/founder/Start"));
 const Checks = lazy(() => import("../features/checks/Checks"));
@@ -23,6 +23,9 @@ const Home = lazy(() => import("../features/founder/Home"));
 const Books = lazy(() => import("../features/founder/Books"));
 const StockPage = lazy(() => import("../features/founder/Stock"));
 const Cashflow = lazy(() => import("../features/founder/Cashflow"));
+const Payments = lazy(() => import("../features/founder/Payments"));
+const Protection = lazy(() => import("../features/founder/Protection"));
+const Privacy = lazy(() => import("../features/founder/Privacy"));
 
 const s = (el: ReactNode) => <Suspense fallback={<Spinner />}>{el}</Suspense>;
 /** Screens that are built; everything else shows its placeholder until its phase. */
@@ -33,6 +36,9 @@ const BUILT: Record<string, ReactNode> = {
   "founder/books": s(<Books />),
   "founder/stock": s(<StockPage />),
   "founder/cashflow": s(<Cashflow />),
+  "founder/payments": s(<Payments />),
+  "founder/protection": s(<Protection />),
+  "founder/privacy": s(<Privacy />),
   "adviser/checks": s(<Checks scope="adviser" />),
   "admin/checks": s(<Checks scope="admin" />),
 };

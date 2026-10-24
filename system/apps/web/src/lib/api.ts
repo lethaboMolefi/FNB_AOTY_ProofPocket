@@ -20,7 +20,7 @@ let onUnauthorized: () => void = () => {};
 /** Called when the API says the sign-in is no longer valid (expired or revoked). */
 export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn; };
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {}): Promise<T> {
   const token = await tokenGetter();
   let res: Response;
   try {
@@ -30,6 +30,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
         Accept: "application/json",
         ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers ?? {}),
       },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       signal: init.signal,

@@ -36,14 +36,3 @@ export function BusinessProfile() {
     </PublicShell>
   );
 }
-
-export function PayPage() {
-  const { ref } = useParams();
-  return (
-    <PublicShell>
-      <PageHead label="Payment request" title={ref?.split("-").slice(0, 2).join("-") ?? ""} />
-      <Notice tone="warn" icon="!"><span className="small">Only pay to the details on this page. ProofPocket will never ask you to pay a different account.</span></Notice>
-      <Building phase={4} what="The payment page" />
-    </PublicShell>
-  );
-}
