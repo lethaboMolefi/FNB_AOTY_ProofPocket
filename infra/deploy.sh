@@ -14,9 +14,8 @@ REGION="${REGION:-africa-south1}"
 SITE="${SITE:-proofpocket-aoty}"                         # Firebase Hosting site → https://$SITE.web.app
 WEB_ORIGIN="https://${SITE}.web.app"
 # Google sign-in returns to https://$AUTH_DOMAIN/__/auth/handler, which must be an approved redirect URI on the
-# project's Google OAuth client. Firebase approves the project's default domain; to show ${SITE}.firebaseapp.com
-# on Google's screen instead, add that handler URI in Cloud Console (APIs & Services > Credentials) and set AUTH_DOMAIN.
-AUTH_DOMAIN="${AUTH_DOMAIN:-${PROJECT}.firebaseapp.com}"
+# project's Google OAuth client (Cloud Console > APIs & Services > Credentials). The site's own handler is approved.
+AUTH_DOMAIN="${AUTH_DOMAIN:-${SITE}.firebaseapp.com}"
 # Firebase Hosting can't route to Cloud Run in africa-south1, so the web app calls the API here directly.
 API_URL="https://${SERVICE:-proofpocket-api}-$(gcloud projects describe "$PROJECT" --format='value(projectNumber)' | cat).${REGION}.run.app"
 NETWORK=proofpocket-vpc
