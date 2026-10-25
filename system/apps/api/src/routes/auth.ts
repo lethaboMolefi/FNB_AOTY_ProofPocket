@@ -78,14 +78,14 @@ export function authRoutes(deps: Deps) {
       return res;
     });
     if (result !== "ok") throw codeError(result);
-    await deps.mailer.send({ to: user.email, subject: "Two-step sign-in was turned off", text: "Google Authenticator was removed from your ProofPocket account. If this wasn't you, sign in, set it up again and change your password." });
+    await deps.mailer.send({ to: user.email, subject: "Two-step sign-in was turned off", text: "Google Authenticator was removed from your ProofPocket account. If this wasn't you, sign in, set it up again and change your password.", action: { label: "Sign in", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { ok: true };
   }));
 
   /** Lost phone: the admin removes the authenticator after confirming who the person is. */
   r.post("/admin/users/:id/reset-authenticator", requireUser(["admin"]), handle(async (req) => {
     const u = await withContext(deps.db, contextOf(req), (tx) => adminReset(tx, actorOf(req), String(req.params.id)));
-    await deps.mailer.send({ to: u.email, subject: "Your ProofPocket authenticator was reset", text: "A ProofPocket admin removed Google Authenticator from your account at your request. Set it up again the next time you sign in. If you didn't ask for this, contact ProofPocket straight away." });
+    await deps.mailer.send({ to: u.email, subject: "Your ProofPocket authenticator was reset", text: "A ProofPocket admin removed Google Authenticator from your account at your request. Set it up again the next time you sign in. If you didn't ask for this, contact ProofPocket straight away.", action: { label: "Sign in", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { ok: true, message: `Authenticator reset for ${u.name}` };
   }));
 

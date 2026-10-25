@@ -4,8 +4,10 @@ import { join } from "node:path";
 import nodemailer from "nodemailer";
 import type { Logger } from "pino";
 import type { Config } from "../config";
+import { renderEmailHtml } from "./email-template";
 
-export interface Mail { to: string; subject: string; text: string }
+/** `text` is the plain-text version; the HTML version wraps it in the ProofPocket layout, with `action` as a button. */
+export interface Mail { to: string; subject: string; text: string; action?: { label: string; url: string } }
 export interface Mailer { send(mail: Mail): Promise<void> }
 
 export function createMailer(config: Config, log: Logger): Mailer {
@@ -37,7 +39,8 @@ export function createMailer(config: Config, log: Logger): Mailer {
     // Emails are notifications: a mail outage is logged and must not fail the request that triggered it.
     async send(mail) {
       try {
-        await transport.sendMail({ from: config.MAIL_FROM, to: mail.to, subject: mail.subject, text: mail.text });
+        const text = mail.action && !mail.text.includes(mail.action.url) ? `${mail.text}\n\n${mail.action.label}: ${mail.action.url}` : mail.text;
+        await transport.sendMail({ from: config.MAIL_FROM, to: mail.to, subject: mail.subject, text, html: renderEmailHtml(mail, config.PUBLIC_WEB_URL) });
       } catch (err) {
         log.warn({ subject: mail.subject, err: (err as Error).message }, "email not sent");
       }
