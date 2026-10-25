@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
+  /** Small line above the title, e.g. "Business · Town, Province". */
+  label?: string;
   title: string;
   sub?: string;
   badge?: ReactNode;
@@ -11,10 +13,11 @@ interface PageHeaderProps {
   className?: string;
 }
 
-export function PageHeader({ title, sub, badge, action, className }: PageHeaderProps) {
+export function PageHeader({ label, title, sub, badge, action, className }: PageHeaderProps) {
   return (
     <div className={cn("flex flex-wrap items-start justify-between gap-3", className)}>
       <div className="min-w-0 flex-1">
+        {label && <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>}
         <div className="flex items-center gap-2.5 flex-wrap">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
           {badge}

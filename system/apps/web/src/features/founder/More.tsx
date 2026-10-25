@@ -22,7 +22,7 @@ export default function More() {
       </div>
 
       <div className="space-y-4">
-        {groups.map((g, gi) => (
+        {groups.map((g) => (
           <Card key={g.group}>
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -35,7 +35,7 @@ export default function More() {
                   {i > 0 && <Separator />}
                   <Link
                     to={`/app/${p.path}`}
-                    className="flex items-center justify-between px-4 py-3 text-foreground no-underline hover:bg-muted/50 transition-colors rounded-md"
+                    className="flex items-center justify-between px-4 py-3 text-foreground no-underline hover:bg-surface-2 transition-colors rounded-md"
                     style={{ minHeight: 48 }}
                   >
                     <span className="text-sm font-medium">{p.label}</span>

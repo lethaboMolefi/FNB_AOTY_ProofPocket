@@ -16,6 +16,8 @@ interface AuthApi {
   signUp(email: string, password: string): Promise<void>;
   /** Firebase only. false when the person closed the Google window; a plain-language ApiError for anything else. */
   signInWithGoogle(): Promise<boolean>;
+  /** Firebase: picks up an email confirmed since sign-in (fresh token). Local sign-ins are already confirmed. */
+  refresh(): Promise<void>;
   /** Firebase only: emails a password reset link. */
   resetPassword(email: string): Promise<void>;
   signOut(): Promise<void>;
@@ -78,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       writeLocal(null);
       const { token } = await api<{ token: string }>("/auth/local/sign-up", { body: { email: e, password: p } });
       writeLocal(token); setEmail(emailOf(token)); setStatus("signedIn");
+    },
+    async refresh() {
+      if (AUTH_MODE === "firebase") await (await firebase()).reload();
     },
     async resetPassword(e) {
       if (AUTH_MODE !== "firebase") throw new ApiError(400, "not_available", "Password reset emails work once ProofPocket is connected to Firebase.");

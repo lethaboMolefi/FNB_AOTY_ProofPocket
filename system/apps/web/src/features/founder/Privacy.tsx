@@ -1,110 +1,146 @@
-// Privacy & sharing — control who can see your business.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { CheckCircle2, Info, Loader2 } from "lucide-react";
+// Privacy & sharing (v2/app.js vPrivacy), plus choosing or leaving an incubator (inventory 12.12).
+import { todayZA } from "@proofpocket/shared";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, Download, Loader2, Lock } from "lucide-react";
+import { useId, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { NativeSelect } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { FounderHead } from "./FounderHead";
 
 type Sharing = "none" | "summary" | "full";
+interface Data { sharing: Sharing; incubators: { id: string; name: string }[]; incubator: { id: string; name: string } | null; adviser: string | null; pendingRequest: { name: string } | null }
 
-interface PrivacyData {
-  sharing: Sharing;
-  explanation: { none: string; summary: string; full: string };
+const SUB = "You decide who sees what. You can change this at any time.";
+const OPTIONS: [Sharing, string, string][] = [
+  ["none", "Nothing", "Funders can't find you. Applying to a programme still shares your profile with that funder only."],
+  ["summary", "Summary", "Readiness score, document status (not the files) and monthly totals."],
+  ["full", "Full books", "Everything in Summary, plus each entry in your books. Funders with full access can decide faster."],
+];
+
+function SharingCard({ current, onSave }: { current: Sharing; onSave: (s: Sharing) => Promise<void> }) {
+  const [picked, setPicked] = useState<Sharing>(current);
+  const [busy, setBusy] = useState(false);
+  const save = async () => { setBusy(true); try { await onSave(picked); } finally { setBusy(false); } };
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">What verified funders can see</CardTitle>
+        <CardDescription>Your adviser always sees your records in order to help. This controls funders only.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <fieldset className="space-y-3">
+          <legend className="sr-only">What verified funders can see</legend>
+          {OPTIONS.map(([v, title, desc]) => (
+            <label key={v} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+              picked === v ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30")}>
+              <input type="radio" name="sharing" value={v} checked={picked === v} onChange={() => setPicked(v)} className="mt-1 h-4 w-4 accent-[var(--accent)]" />
+              <span className="flex-1">
+                <span className="flex items-center gap-2 text-sm font-semibold">{title}{current === v && <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">current</span>}</span>
+                <span className="mt-0.5 block text-sm text-muted-foreground">{desc}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <div className="flex justify-end pt-4">
+          <Button onClick={() => void save()} disabled={busy || picked === current}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
-const OPTIONS: { value: Sharing; title: string; tagline: string }[] = [
-  { value: "none",    title: "Hidden",       tagline: "No funder or adviser access" },
-  { value: "summary", title: "Summary",      tagline: "Name, sector, score and badge only" },
-  { value: "full",    title: "Full access",  tagline: "Books, documents and everything — best for funding" },
-];
+/** POPIA access, correction and deletion: download everything, or ask ProofPocket to change it. */
+function YourData() {
+  const toast = useToast();
+  const detailsId = useId();
+  const [kind, setKind] = useState<"" | "correction" | "deletion">("");
+  const [details, setDetails] = useState("");
+  const download = async () => {
+    try {
+      const data = await api<unknown>("/founder/privacy/export");
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = Object.assign(document.createElement("a"), { href: url, download: `proofpocket-my-data-${todayZA()}.json` });
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { toast(e instanceof ApiError ? e.message : "The download didn't work. Try again."); }
+  };
+  const send = async () => {
+    if (!kind) return;
+    if (kind === "deletion" && !window.confirm("Ask ProofPocket to delete your data? We'll contact you before anything is deleted.")) return;
+    try { toast((await api<{ message: string }>("/founder/privacy/requests", { body: { kind, details } })).message); setKind(""); setDetails(""); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Try again."); }
+  };
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Your data</CardTitle>
+        <CardDescription>Download everything ProofPocket keeps about your business, or ask us to correct or delete it. Read the <Link className="font-medium text-primary hover:underline" to="/privacy-notice">privacy notice</Link>.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button variant="outline" onClick={() => void download()}><Download className="h-4 w-4" />Download my data</Button>
+        <NativeSelect label="Ask ProofPocket to" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+          <option value="">Choose…</option>
+          <option value="correction">Correct something</option>
+          <option value="deletion">Delete my data</option>
+        </NativeSelect>
+        {kind && <div className="space-y-1.5"><Label htmlFor={detailsId}>What should we know? (optional)</Label><Textarea id={detailsId} maxLength={1000} value={details} onChange={(e) => setDetails(e.target.value)} /></div>}
+        {kind && <Button variant={kind === "deletion" ? "destructive" : "default"} onClick={() => void send()}>Send request</Button>}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Privacy() {
   const qc = useQueryClient();
   const toast = useToast();
-  const q = useQuery({ queryKey: ["founder", "privacy"], queryFn: () => api<PrivacyData>("/founder/privacy") });
-  const [selected, setSelected] = useState<Sharing | null>(null);
-
-  const save = useMutation({
-    mutationFn: () => api<{ message: string }>("/founder/privacy", {
-      method: "PUT", body: { sharing: selected ?? q.data?.sharing },
-    }),
-    onSuccess: (r) => { toast(r.message); void qc.invalidateQueries({ queryKey: ["founder", "privacy"] }); },
-    onError: (e) => toast(e instanceof ApiError ? e.message : "Try again."),
-  });
-
-  if (!q.data) return <><FounderHead title="Privacy & sharing" /><Spinner /></>;
+  const q = useQuery({ queryKey: ["founder", "privacy"], queryFn: () => api<Data>("/founder/privacy") });
+  const [choice, setChoice] = useState("");
+  const done = async (r: { message: string }) => { toast(r.message); await qc.invalidateQueries({ queryKey: ["founder"] }); };
+  const fail = (e: unknown) => toast(e instanceof ApiError ? e.message : "Try again.");
+  if (!q.data) return <><FounderHead title="Privacy & sharing" sub={SUB} /><Spinner /></>;
   const d = q.data;
-  const current = selected ?? d.sharing;
-
+  const setSharing = (s: Sharing) => api<{ message: string }>("/founder/privacy", { method: "PUT", body: { sharing: s } }).then(done, fail);
+  const incubator = (id: string | null) => api<{ message: string }>("/founder/incubator", { body: { incubatorId: id } }).then(done, fail);
   return (
     <>
-      <FounderHead
-        title="Privacy & sharing"
-        sub="You decide who sees what. You can change this at any time."
-      />
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Who can see your business?</CardTitle>
-          <CardDescription>Funders and advisers only see what you allow.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {OPTIONS.map((opt) => {
-            const isSelected = current === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setSelected(opt.value)}
-                className={cn(
-                  "w-full rounded-lg border p-4 text-left transition-all",
-                  isSelected
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border hover:border-foreground/30 hover:bg-muted/30",
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold">{opt.title}</span>
-                      {d.sharing === opt.value && (
-                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">current</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{opt.tagline}</p>
-                    <p className="text-sm text-foreground/70 mt-1.5">{d.explanation[opt.value]}</p>
-                  </div>
-                  <div className={cn(
-                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                    isSelected ? "border-primary bg-primary" : "border-border",
-                  )}>
-                    {isSelected && <CheckCircle2 className="h-3 w-3 text-white" />}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-
-          <div className="flex justify-end pt-1">
-            <Button onClick={() => save.mutate()} disabled={save.isPending || current === d.sharing}>
-              {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save preference
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-        <Info className="h-4 w-4 mt-0.5 shrink-0 text-foreground/60" />
-        <p>
-          Your documents are always private — only your adviser and the ProofPocket checker see them.
-          This setting only controls what funders see in their company pipeline.
-        </p>
+      <FounderHead title="Privacy & sharing" sub={SUB} />
+      <SharingCard key={d.sharing} current={d.sharing} onSave={setSharing} />
+      <div className="grid gap-6 desktop:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Lock className="h-4 w-4 text-primary" />Always private</CardTitle></CardHeader>
+          <CardContent className="space-y-2.5">
+            {["Your document files. Others see only whether they're checked.", "Your ID number and bank account number.", "Personal purchases you've marked."].map((t) => (
+              <div key={t} className="flex items-start gap-2.5 text-sm"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-good" /><span>{t}</span></div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Your incubator</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm">{d.incubator
+              ? `${d.incubator.name} supports you and can see your books and documents in order to help. Adviser: ${d.adviser ?? "not assigned yet"}.`
+              : "You haven't chosen an incubator."}</p>
+            {d.pendingRequest && <Callout tone="info">You asked to join <b>{d.pendingRequest.name}</b>. They'll accept you soon.</Callout>}
+            {d.incubator && <Button size="sm" variant="destructive" onClick={() => window.confirm(`Leave ${d.incubator!.name}? Your adviser will no longer see your records.`) && void incubator(null)}>Leave {d.incubator.name}</Button>}
+            <div className="flex flex-wrap items-end gap-2">
+              <NativeSelect className="min-w-[200px] flex-1" label={d.incubator ? "Move to another incubator" : "Ask an incubator to support you"} value={choice} onChange={(e) => setChoice(e.target.value)}>
+                <option value="">Choose…</option>
+                {d.incubators.filter((i) => i.id !== d.incubator?.id).map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </NativeSelect>
+              <Button variant="outline" disabled={!choice} onClick={() => void incubator(choice)}>Send request</Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+      <YourData />
     </>
   );
 }

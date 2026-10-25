@@ -3,18 +3,18 @@ import { R, plural, type Flag, type JourneyStep, type ReadinessItem, type Tone }
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  AlertCircle, AlertTriangle, ArrowRight, BadgeCheck, BarChart3,
+  AlertCircle, AlertTriangle, ArrowRight, BarChart3,
   CheckCircle2, ChevronRight, Mail, TrendingDown, TrendingUp, Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { BarChart, type Point } from "../../components/charts";
 import { api } from "../../lib/api";
-import { useMe } from "../../lib/me";
+import { FounderHead } from "./FounderHead";
 
 interface HomeData {
   company: { name: string; typeLabel: string; area: string; employees: number; foundedYear: number; verified: boolean };
@@ -45,7 +45,7 @@ const TONE_TEXT: Record<Tone, string> = {
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-md bg-muted/60", className)} />;
+  return <div className={cn("animate-pulse rounded-md bg-surface-2", className)} />;
 }
 
 function HomeSkeleton() {
@@ -57,7 +57,7 @@ function HomeSkeleton() {
         <Skeleton className="h-4 w-72" />
       </div>
       {/* Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
             <CardContent className="pt-4 pb-4">
@@ -69,13 +69,13 @@ function HomeSkeleton() {
         ))}
       </div>
       {/* Chart row */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="md:col-span-1">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
           <CardContent className="pt-4 space-y-3">
             {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
           </CardContent>
         </Card>
-        <Card className="md:col-span-2">
+        <Card className="lg:col-span-2">
           <CardContent className="pt-4">
             <Skeleton className="h-44 w-full" />
           </CardContent>
@@ -107,7 +107,6 @@ function MetricCard({
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function Home() {
-  const { data: me } = useMe();
   const q = useQuery({ queryKey: ["founder", "home"], queryFn: () => api<HomeData>("/founder/home") });
 
   if (!q.data) {
@@ -127,34 +126,37 @@ export default function Home() {
   const d = q.data;
   const c = d.company;
   const t = d.tiles;
-  const businessName = me?.company?.name ?? c.name;
   const tone = scoreTone(t.score);
 
   return (
     <div className="space-y-6">
 
       {/* ── Page header ── */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight">{businessName}</h1>
-            {c.verified
-              ? <Badge variant="success" className="gap-1 text-xs"><BadgeCheck className="h-3 w-3" />Verified</Badge>
-              : <Badge variant="secondary" className="text-xs">Starter</Badge>}
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {c.typeLabel} · {AREA[c.area] ?? c.area} · {c.employees} {plural(c.employees, "person", "people")} · since {c.foundedYear}
-          </p>
-        </div>
-        <Button size="sm" variant="outline" asChild>
-          <Link to="/app/books">
-            Add entry <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </Button>
-      </div>
+      <FounderHead
+        title="Home"
+        sub={`${c.typeLabel} · ${AREA[c.area] ?? c.area} · ${c.employees} ${plural(c.employees, "person", "people")} · trading since ${c.foundedYear}`}
+        action={<Button size="sm" variant="outline" asChild><Link to="/app/books">Add entry <ArrowRight className="h-3.5 w-3.5" /></Link></Button>}
+      />
+
+      {/* ── Notices ── */}
+      {d.notices.starter && (
+        <Callout tone="info" action={<Button size="sm" asChild className="shrink-0"><Link to="/app/start">Continue</Link></Button>}>
+          <b>You're on a Starter account.</b> You can keep books, take payments and build your profile now. Finish the registration steps to get verified, so funders and buyers can find you.
+        </Callout>
+      )}
+      {d.notices.proofsToCheck > 0 && (
+        <Callout tone="warn" action={<Button size="sm" variant="outline" asChild className="shrink-0"><Link to="/app/payments">Check</Link></Button>}>
+          <b>{d.notices.proofsToCheck} {d.notices.proofsToCheck > 1 ? "clients say they have" : "client says they have"} paid.</b> Check your banking app, then confirm so it goes into your books.
+        </Callout>
+      )}
+      {d.notices.fraudOpen > 0 && (
+        <Callout tone="bad" action={<Button size="sm" variant="destructive" asChild className="shrink-0"><Link to="/app/protection">Review</Link></Button>}>
+          <b>{d.notices.fraudOpen} possible {plural(d.notices.fraudOpen, "scam")} need your attention.</b> Check before you pay anyone.
+        </Callout>
+      )}
 
       {/* ── Key metrics ── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Money in this month"
           value={R(t.moneyIn)}
@@ -192,19 +194,20 @@ export default function Home() {
       </div>
 
       {/* ── Journey + chart ── */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
 
         {/* Journey */}
-        <Card className="md:col-span-1">
+        <Card className="lg:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Your journey</CardTitle>
           </CardHeader>
           <CardContent className="px-3 pb-3 pt-0">
+            <nav aria-label="Your journey">
             {d.journey.map((s, i) => (
               <Link
                 key={s.title}
                 to={`/app/${VIEW[s.view]}`}
-                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted/50 group"
+                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-2 group"
               >
                 <div className={cn(
                   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
@@ -223,11 +226,12 @@ export default function Home() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground transition-colors" />
               </Link>
             ))}
+            </nav>
           </CardContent>
         </Card>
 
         {/* Chart */}
-        <Card className="md:col-span-2">
+        <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Six months at a glance</CardTitle>
             <Button size="sm" variant="ghost" asChild className="text-muted-foreground gap-1.5">
@@ -250,7 +254,7 @@ export default function Home() {
       </div>
 
       {/* ── Next steps / flags / messages ── */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
 
         {/* Next steps */}
         <Card>
@@ -261,7 +265,7 @@ export default function Home() {
             {d.nextSteps.length ? (
               <div className="space-y-2">
                 {d.nextSteps.map((item) => (
-                  <div key={item.key} className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <div key={item.key} className="flex items-start gap-3 rounded-lg border border-border/60 bg-surface-2 p-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{item.label}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.hint}</p>

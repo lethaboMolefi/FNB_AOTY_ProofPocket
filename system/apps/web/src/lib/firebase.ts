@@ -30,5 +30,11 @@ const googleProvider = () => {
 };
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider());
 
+/** After the person opens the email confirmation link: fetch a fresh token that says the email is confirmed. */
+export async function reload() {
+  await auth.currentUser?.reload();
+  await auth.currentUser?.getIdToken(true);
+}
+
 export const out = () => signOut(auth);
 export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);

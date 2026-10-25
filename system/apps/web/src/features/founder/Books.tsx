@@ -17,12 +17,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { FilePick } from "../../components/FilePick";
-import { BarChart, type Point } from "../../components/charts";
 import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { useOnline } from "../../lib/pwa";
@@ -117,7 +115,7 @@ function Statement({ lines, onChange }: { lines: Line[]; onChange: () => void })
           </div>
         )}
         {mapping && (
-          <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          <div className="rounded-lg border border-border bg-surface-2 p-4 space-y-3">
             <p className="text-sm font-medium">Which columns are which?</p>
             <div className="overflow-x-auto rounded border border-border">
               <table className="text-xs w-full">
@@ -272,14 +270,14 @@ function EntryForm({ data }: { data: BooksData }) {
           <div className="flex rounded-lg border border-border overflow-hidden text-sm">
             <button
               type="button"
-              className={`px-4 py-1.5 font-medium transition-colors ${dir === "in" ? "bg-good text-white" : "hover:bg-muted/50 text-muted-foreground"}`}
+              className={`px-4 py-1.5 font-medium transition-colors ${dir === "in" ? "bg-good text-white" : "hover:bg-surface-2 text-muted-foreground"}`}
               onClick={() => { setDir("in"); setWarn(""); }}
             >
               <ArrowDown className="inline h-3.5 w-3.5 mr-1" />Money in
             </button>
             <button
               type="button"
-              className={`px-4 py-1.5 font-medium transition-colors border-l border-border ${dir === "out" ? "bg-destructive text-white" : "hover:bg-muted/50 text-muted-foreground"}`}
+              className={`px-4 py-1.5 font-medium transition-colors border-l border-border ${dir === "out" ? "bg-destructive text-white" : "hover:bg-surface-2 text-muted-foreground"}`}
               onClick={() => { setDir("out"); setWarn(""); }}
             >
               <ArrowUp className="inline h-3.5 w-3.5 mr-1" />Money out
@@ -554,7 +552,7 @@ function EarlierMonths({ history }: { history: BooksData["history"] }) {
     <Card>
       <button
         type="button"
-        className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-muted/30 transition-colors rounded-lg"
+        className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-surface-2 transition-colors rounded-lg"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
@@ -645,16 +643,12 @@ export default function Books() {
     <>
       <FounderHead title="Bookkeeping" sub={SUB} />
 
-      {/* ── Two-column on desktop: add entries left, view history right ── */}
+      {/* Two columns on desktop: add entries on the left, totals and history on the right. */}
       <div className="grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)]">
-
-        {/* Left: statement import + entry form */}
         <div className="space-y-4">
           <Statement lines={d.statementLines} onChange={refresh} />
           <EntryForm data={d} />
         </div>
-
-        {/* Right: summary totals + entries table */}
         <div className="space-y-4">
           {/* Month summary cards */}
           <div className="grid grid-cols-3 gap-3">
@@ -683,7 +677,7 @@ export default function Books() {
       </div>
 
       {/* Funder advice */}
-      <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+      <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-2 p-4 text-sm text-muted-foreground">
         <Info className="h-4 w-4 mt-0.5 shrink-0 text-foreground/60" />
         <p>
           Funders check that personal spending stays out of the business and that owners pay themselves a set salary.

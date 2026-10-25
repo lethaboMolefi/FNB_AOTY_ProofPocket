@@ -74,6 +74,7 @@ export const ADVISER_NAV: NavPage[] = [
 
 export const ADMIN_NAV: NavPage[] = [
   { path: "checks", label: "Checker queue", title: "Checker queue", sub: "Documents from companies without an incubator. Approve them or send them back with a reason.", phase: 2 },
+  { path: "applications", label: "Applications", title: "Applications", sub: "Funders and support organisations asking for a portal. Approve or turn down with a reason.", phase: 5 },
   { path: "organisations", label: "Organisations", title: "Organisations", sub: "Verify funders, incubators and buyers, and invite their people.", phase: 5 },
   { path: "reports", label: "Reports", title: "Reports", sub: "Businesses, payment requests and senders reported by founders and the public.", phase: 5 },
   { path: "features", label: "Feature requests", title: "Feature requests", sub: "Posts Verified businesses asked to feature in the directory this week.", phase: 5 },

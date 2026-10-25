@@ -1,228 +1,211 @@
 /**
- * Join ProofPocket — role-selection wizard.
- * Three tracks: Founder · Investor · Incubator / NGO
- * Each track is 2 steps: (1) Details  (2) Documents + submit.
+ * Join ProofPocket (v2/app.js vJoin, extended). Three tracks:
+ *  - Founder: Details → Documents → Join (creates the business straight away).
+ *  - Funder, and incubator / NGO: an application. It grants nothing until a ProofPocket admin approves it.
  */
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AREAS, BUSINESS_TYPES, BUSINESS_TYPE_KEYS, DOCS, PROVINCES, SECTORS,
-  coFounderSchema, investorDetailsSchema, joinCompleteSchema, joinDetailsSchema,
-  joinDocsFor, orgOnboardSchema, passwordFor, emailSchema, shortFingerprint,
-  type CoFounder, type DocType, type InvestorDetails, type JoinDetails, type Me, type OrgOnboard,
+  emailSchema, investorFieldsSchema, joinDetailsSchema, joinDocsFor, orgFieldsSchema, passwordFor, shortDate, shortFingerprint,
+  type DocType, type JoinDetails, type Me, type PortalApplicationKind,
 } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import {
+  ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, ChevronUp, Clock, Loader2, Plus, Upload, User, Users, X, XCircle,
+} from "lucide-react";
+import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement, type ReactNode } from "react";
+import { useFieldArray, useForm, type FieldErrors, type FieldValues, type UseFormReturn } from "react-hook-form";
 import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
-import {
-  AlertCircle, ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, ChevronUp,
-  Loader2, Plus, Trash2, Upload, User, Users, X,
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { selectClass } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { FilePick } from "../../components/FilePick";
-import { Spinner } from "../../components/ui";
+import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { AUTH_MODE, useAuth } from "../../lib/auth";
 import { HOME_FOR, meKey, useMe } from "../../lib/me";
 import { AuthPageShell, PasswordField } from "../auth/SignIn";
 import type { DocumentsResponse } from "../founder/types";
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// ─── options ────────────────────────────────────────────────────────────────
 
-type Role = "founder" | "investor" | "org";
-type FounderStep = 1 | 2 | 3;
-
-const ALL_SECTORS_FLAT: string[] = Object.values(SECTORS).flat();
+type Track = "founder" | "funder" | "support_org";
+const ALL_SECTORS_FLAT: string[] = [...new Set(Object.values(SECTORS).flat())];
 
 const INVESTOR_TYPES = [
-  { value: "vc", label: "Venture Capital (VC)" },
-  { value: "angel", label: "Angel Investor" },
-  { value: "pe", label: "Private Equity" },
-  { value: "dfi", label: "Development Finance Institution (DFI)" },
-  { value: "corporate_csi", label: "Corporate CSI / ESD Fund" },
-  { value: "bank", label: "Bank" },
-  { value: "family_office", label: "Family Office" },
-  { value: "grant_maker", label: "Grant Maker / Foundation" },
-  { value: "individual", label: "Individual Investor" },
+  { value: "vc", label: "Venture capital" }, { value: "angel", label: "Angel investor" }, { value: "pe", label: "Private equity" },
+  { value: "dfi", label: "Development finance institution" }, { value: "corporate_csi", label: "Corporate CSI or ESD fund" },
+  { value: "bank", label: "Bank" }, { value: "family_office", label: "Family office" }, { value: "grant_maker", label: "Grant maker or foundation" },
+  { value: "individual", label: "Individual investor" },
 ] as const;
-
 const ORG_TYPES = [
-  { value: "incubator", label: "Business Incubator" },
-  { value: "accelerator", label: "Accelerator" },
-  { value: "ngo", label: "NGO" },
-  { value: "npo", label: "NPO / NPC" },
-  { value: "cbo", label: "Community-Based Organisation (CBO)" },
+  { value: "incubator", label: "Business incubator" }, { value: "accelerator", label: "Accelerator" }, { value: "ngo", label: "NGO" },
+  { value: "npo", label: "NPO or NPC" }, { value: "cbo", label: "Community-based organisation" },
 ] as const;
-
-const STAGES_OPTIONS = [
-  { value: "idea", label: "Idea / Pre-revenue" },
-  { value: "seed", label: "Seed (early MVP)" },
-  { value: "early", label: "Early revenue" },
-  { value: "growth", label: "Growth" },
-  { value: "expansion", label: "Expansion" },
+const STAGES = [
+  { value: "idea", label: "Idea, no revenue yet" }, { value: "seed", label: "Seed" }, { value: "early", label: "Early revenue" },
+  { value: "growth", label: "Growth" }, { value: "expansion", label: "Expansion" },
 ];
-
-const INSTRUMENT_OPTIONS = [
-  { value: "equity", label: "Equity" },
-  { value: "debt", label: "Debt / Loan" },
-  { value: "grant", label: "Grant" },
-  { value: "convertible", label: "Convertible Note" },
-  { value: "blended", label: "Blended Finance" },
+const INSTRUMENTS = [
+  { value: "grant", label: "Grant" }, { value: "debt", label: "Loan" }, { value: "equity", label: "Equity" },
+  { value: "convertible", label: "Convertible note" }, { value: "blended", label: "Blended finance" },
 ];
-
 const AUM_BANDS = [
-  { value: "under_1m", label: "Under R1 million" },
-  { value: "1m_10m", label: "R1m – R10m" },
-  { value: "10m_100m", label: "R10m – R100m" },
-  { value: "over_100m", label: "Over R100m" },
+  { value: "under_1m", label: "Under R1 million" }, { value: "1m_10m", label: "R1 million to R10 million" },
+  { value: "10m_100m", label: "R10 million to R100 million" }, { value: "over_100m", label: "Over R100 million" },
 ];
-
 const BUDGET_BANDS = [
-  { value: "under_500k", label: "Under R500 000" },
-  { value: "500k_2m", label: "R500k – R2m" },
-  { value: "2m_10m", label: "R2m – R10m" },
-  { value: "over_10m", label: "Over R10m" },
+  { value: "under_500k", label: "Under R500 000" }, { value: "500k_2m", label: "R500 000 to R2 million" },
+  { value: "2m_10m", label: "R2 million to R10 million" }, { value: "over_10m", label: "Over R10 million" },
 ];
+const BENEFICIARY_GROUPS = ["Youth (18–35)", "Women", "People with disabilities", "Rural communities", "Township entrepreneurs", "Students and graduates", "Informal traders"];
 
-const BENEFICIARY_GROUPS = [
-  "Youth (18–35)", "Women", "People with disabilities", "Rural communities",
-  "Township entrepreneurs", "Students / graduates", "Informal traders", "Children",
-];
+// ─── form helpers ───────────────────────────────────────────────────────────
 
-/** Reusable form field wrapper */
-function Field({ label, error, children, hint }: { label: string; error?: string; children: React.ReactNode; hint?: string }) {
+/** react-hook-form keeps nested errors nested (account.email, coFounders.0.idNumber). */
+function errAt(errors: FieldErrors, path: string): string | undefined {
+  const e = path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], errors) as { message?: string } | undefined;
+  return e?.message;
+}
+
+/** A label tied to its single control (Input, Textarea or select). */
+function Field({ label, error, hint, children, className }: { label: string; error?: string; hint?: string; children: ReactElement; className?: string }) {
+  const id = useId();
+  const note = error || hint ? `${id}-note` : undefined;
   return (
-    <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-foreground">{label}</Label>
-      {children}
-      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
+    <div className={cn("space-y-1.5", className)}>
+      <label htmlFor={id} className="text-sm font-medium leading-none text-foreground">{label}</label>
+      {isValidElement(children) ? cloneElement(children as ReactElement<Record<string, unknown>>, { id, "aria-invalid": !!error || undefined, "aria-describedby": note }) : children}
+      {(error || hint) && <p id={note} className={cn("text-xs", error ? "text-bad" : "text-muted-foreground")}>{error ?? hint}</p>}
     </div>
   );
 }
 
-/** Multi-select toggle buttons */
-function MultiToggle({ options, value, onChange, error }: {
-  options: readonly { value: string; label: string }[];
-  value: string[];
-  onChange: (v: string[]) => void;
-  error?: string;
+/** Pick several: toggle buttons in a labelled group. */
+function MultiToggle({ legend, options, value, onChange, error }: {
+  legend: string; options: readonly { value: string; label: string }[]; value: string[]; onChange: (v: string[]) => void; error?: string;
 }) {
   const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
   return (
-    <div className="space-y-1.5">
+    <fieldset className="space-y-1.5">
+      <legend className="mb-1.5 text-sm font-medium">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
-          <button key={o.value} type="button"
-            onClick={() => toggle(o.value)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              value.includes(o.value)
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-background text-foreground hover:border-primary/50"
-            }`}>
+          <button key={o.value} type="button" aria-pressed={value.includes(o.value)} onClick={() => toggle(o.value)}
+            className={cn("min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              value.includes(o.value) ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:border-primary/50")}>
             {o.label}
           </button>
         ))}
       </div>
-      {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
-    </div>
+      {error && <p className="text-xs text-bad">{error}</p>}
+    </fieldset>
   );
 }
 
-/** Step progress bar shown at the top of each track */
 function WizardProgress({ step, total, label }: { step: number; total: number; label: string }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-foreground">{label}</span>
+        <span className="font-medium">{label}</span>
         <span className="text-muted-foreground">Step {step} of {total}</span>
       </div>
-      <Progress value={(step / total) * 100} className="h-1.5" />
+      <Progress value={(step / total) * 100} className="h-1.5" aria-label={`Step ${step} of ${total}`} />
     </div>
   );
 }
 
-// ─── Role selector ────────────────────────────────────────────────────────────
+const failMessage = (x: unknown) =>
+  x instanceof ApiError ? x.message
+  : AUTH_MODE === "firebase" && (x as { code?: string }).code === "auth/email-already-in-use" ? "There's already an account with this email. Sign in instead."
+  : "Something went wrong. Try again.";
 
-function RoleSelector({ onSelect }: { onSelect: (r: Role) => void }) {
-  const roles: { role: Role; icon: React.ReactNode; title: string; desc: string; badge?: string }[] = [
-    {
-      role: "founder",
-      icon: <User className="h-6 w-6" />,
-      title: "Business Founder",
-      desc: "Start or grow your business. Build a verified record that funders and buyers can trust.",
-      badge: "Most common",
-    },
-    {
-      role: "investor",
-      icon: <Building2 className="h-6 w-6" />,
-      title: "Investor / Funder",
-      desc: "A VC, angel, DFI, corporate CSI fund, or grant maker looking to fund South African businesses.",
-    },
-    {
-      role: "org",
-      icon: <Users className="h-6 w-6" />,
-      title: "Incubator / NGO / NPO",
-      desc: "An incubator, accelerator, NGO, NPO, or community organisation supporting founders.",
-    },
-  ];
+// ─── the new sign-in (all tracks, when signed out) ──────────────────────────
 
-  return (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Who are you joining as?</h1>
-        <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-          Choose the option that best describes you. Each path collects what's relevant to your role.
-        </p>
-      </div>
-      <div className="grid gap-3">
-        {roles.map(({ role, icon, title, desc, badge }) => (
-          <button key={role} type="button" onClick={() => onSelect(role)}
-            className="group relative flex items-start gap-4 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary group-hover:bg-primary/12 transition-colors">
-              {icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">{title}</span>
-                {badge && <Badge variant="success" className="text-[10px]">{badge}</Badge>}
-              </div>
-              <p className="mt-0.5 text-sm text-muted-foreground">{desc}</p>
-            </div>
-            <ArrowRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/40 group-hover:text-primary transition-colors" />
-          </button>
-        ))}
-      </div>
-      <p className="text-center text-xs text-muted-foreground">
-        Already have an account? <Link to="/sign-in" className="text-primary hover:underline font-medium">Sign in</Link>
-      </p>
-    </div>
-  );
-}
-
-// ─── Founder track ────────────────────────────────────────────────────────────
-
-const accountSchema = z.object({
-  email: emailSchema,
-  password: z.string(),
-  confirm: z.string(),
-}).superRefine((v, ctx) => {
+const accountSchema = z.object({ email: emailSchema, password: z.string(), confirm: z.string() }).superRefine((v, ctx) => {
   const p = passwordFor(v.email).safeParse(v.password);
   if (!p.success) ctx.addIssue({ code: "custom", path: ["password"], message: p.error.issues[0]!.message });
   if (v.password !== v.confirm) ctx.addIssue({ code: "custom", path: ["confirm"], message: "The two passwords don't match." });
 });
+type Account = z.infer<typeof accountSchema>;
 
-type FounderForm = JoinDetails & { account?: z.infer<typeof accountSchema> };
+/** Already signed in (e.g. with Google) but not joined: say which email this uses, and allow a different one. */
+function SignedInAs() {
+  const auth = useAuth();
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Your account</CardTitle>
+        <CardDescription>You're signing up as <b className="text-foreground">{auth.email ?? "this account"}</b>. You'll sign in with it.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button type="button" variant="outline" size="sm" onClick={() => void auth.signOut()}>Use a different email</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AccountCard<T extends FieldValues>({ form }: { form: UseFormReturn<T> }) {
+  const e = form.formState.errors;
+  const reg = (k: string) => form.register(k as never);
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-base">Your account</CardTitle>
+        <CardDescription>You'll sign in with this email and password.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Field label="Email" error={errAt(e, "account.email")}><Input type="email" autoComplete="username" inputMode="email" autoCapitalize="none" {...reg("account.email")} /></Field>
+        <PasswordField label="Password (at least 12 characters)" autoComplete="new-password" error={errAt(e, "account.password")} {...reg("account.password")} />
+        <PasswordField label="Type it again" autoComplete="new-password" error={errAt(e, "account.confirm")} {...reg("account.confirm")} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── track chooser ──────────────────────────────────────────────────────────
+
+function TrackChooser({ onSelect }: { onSelect: (t: Track) => void }) {
+  const tracks: { track: Track; icon: ReactNode; title: string; desc: string; badge?: string }[] = [
+    { track: "founder", icon: <User className="h-6 w-6" />, title: "Business founder", badge: "Most people",
+      desc: "Start or grow your business. Build a verified record that funders and buyers can trust." },
+    { track: "funder", icon: <Building2 className="h-6 w-6" />, title: "Funder or investor",
+      desc: "A fund, DFI, corporate CSI or ESD programme, grant maker or investor funding South African businesses." },
+    { track: "support_org", icon: <Users className="h-6 w-6" />, title: "Incubator, NGO or NPO",
+      desc: "An incubator, accelerator, NGO, NPO or community organisation supporting founders." },
+  ];
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Choose what fits you. Funders and support organisations are checked by ProofPocket before their portal opens.</p>
+      <div className="grid gap-3">
+        {tracks.map(({ track, icon, title, desc, badge }) => (
+          <button key={track} type="button" onClick={() => onSelect(track)}
+            className="group flex items-start gap-4 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-primary">{icon}</span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2"><span className="font-semibold">{title}</span>{badge && <Badge variant="success" className="text-[10px]">{badge}</Badge>}</span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">{desc}</span>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0 self-center text-muted-foreground group-hover:text-primary" />
+          </button>
+        ))}
+      </div>
+      <p className="text-center text-sm text-muted-foreground">Already have an account? <Link to="/sign-in" className="font-medium text-primary hover:underline">Sign in</Link></p>
+    </div>
+  );
+}
+
+// ─── founder track ──────────────────────────────────────────────────────────
+
+type FounderForm = JoinDetails & { account?: Account };
 
 function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () => void }) {
   const auth = useAuth();
@@ -233,20 +216,16 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
   const schema = signedOut ? joinDetailsSchema.and(z.object({ account: accountSchema })) : joinDetailsSchema;
   const form = useForm<FounderForm>({
     resolver: zodResolver(schema as never),
-    defaultValues: {
-      businessType: "beauty", sector: SECTORS.beauty[0], province: "Gauteng",
-      area: "township", incubatorId: null, registered: false, coFounders: [],
-    },
+    defaultValues: { businessType: "beauty", sector: SECTORS.beauty[0], province: "Gauteng", area: "township", incubatorId: null, registered: false, coFounders: [] },
   });
-  const { fields: coFounderFields, append, remove } = useFieldArray({ control: form.control, name: "coFounders" as never });
-  const cfFields = coFounderFields as { id: string }[];
+  const cofounders = useFieldArray({ control: form.control, name: "coFounders" as never });
   const type = form.watch("businessType");
   const registered = form.watch("registered");
   useEffect(() => {
     if (!SECTORS[type].includes(form.getValues("sector"))) form.setValue("sector", SECTORS[type][0]!);
   }, [type, form]);
-
-  const e = form.formState.errors as Record<string, { message?: string }>;
+  const e = form.formState.errors;
+  const reg = (k: string) => form.register(k as never);
 
   const submit = form.handleSubmit(async ({ account, ...d }) => {
     setErr("");
@@ -255,223 +234,114 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
       await api("/join", { body: { ...d, incubatorId: d.incubatorId || null } });
       await qc.invalidateQueries({ queryKey: meKey });
       onDone();
-    } catch (x) {
-      setErr(x instanceof ApiError ? x.message :
-        AUTH_MODE === "firebase" && (x as { code?: string }).code === "auth/email-already-in-use"
-          ? "There's already an account with this email. Sign in instead."
-          : "Something went wrong. Try again.");
-    }
+    } catch (x) { setErr(failMessage(x)); }
   });
 
   return (
-    <form className="space-y-5" onSubmit={submit} noValidate>
-      <WizardProgress step={1} total={3} label="Your details" />
+    <form className="space-y-6" onSubmit={submit} noValidate>
+      <WizardProgress step={1} total={3} label="About you and your business" />
+      {signedOut ? <AccountCard form={form} /> : <SignedInAs />}
 
-      {/* Account (signed-out only) */}
-      {signedOut && (
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Create your account</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Field label="Email address" error={e["account.email"]?.message}>
-              <Input type="email" autoComplete="username" autoCapitalize="none" placeholder="you@example.com" {...form.register("account.email")} />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Password (at least 10 characters)" error={e["account.password"]?.message}>
-                <PasswordField label="Password" autoComplete="new-password" error={e["account.password"]?.message} {...form.register("account.password")} />
-              </Field>
-              <Field label="Confirm password" error={e["account.confirm"]?.message}>
-                <PasswordField label="Confirm password" autoComplete="new-password" error={e["account.confirm"]?.message} {...form.register("account.confirm")} />
-              </Field>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Personal + Business details — side by side on large screens */}
-      <div className="grid gap-5 lg:grid-cols-2">
-
-        {/* Personal details */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">About you</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Field label="Your full name" error={e.founderName?.message}>
-              <Input type="text" autoComplete="name" placeholder="Zanele Mokoena" {...form.register("founderName")} />
-            </Field>
-            <Field label="SA ID number" error={e.idNumber?.message} hint="Your 13-digit South African ID number">
-              <Input type="text" inputMode="numeric" maxLength={13} placeholder="0001010000000" {...form.register("idNumber")} />
-            </Field>
-            <Field label="Mobile number" error={e.phone?.message} hint="e.g. 0821234567">
-              <Input type="tel" autoComplete="tel" placeholder="0821234567" {...form.register("phone")} />
-            </Field>
-          </CardContent>
-        </Card>
-
-        {/* Business details */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base">Your business</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Business name" error={e.businessName?.message}>
-                <Input type="text" placeholder="Zanele's Salon" {...form.register("businessName")} />
-              </Field>
-              <Field label="Type of business" error={e.businessType?.message}>
-                <Select value={form.watch("businessType")} onValueChange={(v) => form.setValue("businessType", v as never)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {BUSINESS_TYPE_KEYS.map((k) => <SelectItem key={k} value={k}>{BUSINESS_TYPES[k].label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Sector" error={e.sector?.message}>
-                <Select value={form.watch("sector")} onValueChange={(v) => form.setValue("sector", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SECTORS[type].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Town or township" error={e.town?.message}>
-                <Input type="text" placeholder="Soweto" {...form.register("town")} />
-              </Field>
-              <Field label="Province" error={e.province?.message}>
-                <Select value={form.watch("province")} onValueChange={(v) => form.setValue("province", v as never)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Area type" error={e.area?.message}>
-                <Select value={form.watch("area")} onValueChange={(v) => form.setValue("area", v as never)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(AREAS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Incubator or NGO supporting you" error={e.incubatorId?.message}>
-                <Select value={form.watch("incubatorId") ?? "none"} onValueChange={(v) => form.setValue("incubatorId", v === "none" ? null : v)}>
-                  <SelectTrigger><SelectValue placeholder="None yet" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None yet</SelectItem>
-                    {options.data?.incubators.map((n) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>{/* end lg:grid-cols-2 */}
-
-      {/* CIPC registration */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">Business registration</CardTitle>
-          <CardDescription>Is your business registered with CIPC?</CardDescription>
+          <CardTitle className="text-base">About you</CardTitle>
+          <CardDescription>Your ID number is encrypted and only you and ProofPocket's checker can see it.</CardDescription>
         </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field label="Your name" error={errAt(e, "founderName")}><Input autoComplete="name" {...reg("founderName")} /></Field>
+          <Field label="SA ID number" error={errAt(e, "idNumber")} hint="The 13 digits on your ID book or card"><Input inputMode="numeric" maxLength={13} autoComplete="off" {...reg("idNumber")} /></Field>
+          <Field label="Cellphone number" error={errAt(e, "phone")} hint="e.g. 082 123 4567"><Input type="tel" autoComplete="tel" {...reg("phone")} /></Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-4"><CardTitle className="text-base">Your business</CardTitle></CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field label="Business name" error={errAt(e, "businessName")}><Input {...reg("businessName")} /></Field>
+          <Field label="Type of business" error={errAt(e, "businessType")}>
+            <select className={selectClass} {...reg("businessType")}>{BUSINESS_TYPE_KEYS.map((k) => <option key={k} value={k}>{BUSINESS_TYPES[k].label}</option>)}</select>
+          </Field>
+          <Field label="Sector" error={errAt(e, "sector")}>
+            <select className={selectClass} {...reg("sector")}>{SECTORS[type].map((s) => <option key={s} value={s}>{s}</option>)}</select>
+          </Field>
+          <Field label="Town or township" error={errAt(e, "town")}><Input {...reg("town")} /></Field>
+          <Field label="Province" error={errAt(e, "province")}>
+            <select className={selectClass} {...reg("province")}>{PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}</select>
+          </Field>
+          <Field label="Area" error={errAt(e, "area")}>
+            <select className={selectClass} {...reg("area")}>{Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+          </Field>
+          <Field label="Incubator or NGO supporting you" className="sm:col-span-2">
+            <select className={selectClass} value={form.watch("incubatorId") ?? ""} onChange={(ev) => form.setValue("incubatorId", ev.target.value || null)}>
+              <option value="">None yet</option>
+              {options.data?.incubators.map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+            </select>
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-4"><CardTitle className="text-base">Is the business registered with CIPC?</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <RadioGroup value={registered ? "yes" : "no"} onValueChange={(v) => form.setValue("registered", v === "yes")}
-            className="grid gap-3 sm:grid-cols-2">
-            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${!registered ? "border-primary bg-primary/4" : "border-border hover:border-primary/40"}`}>
-              <RadioGroupItem value="no" className="mt-0.5" />
-              <div>
-                <div className="font-medium text-sm">Not yet</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Start as a Starter. We'll guide you through registering.</div>
-              </div>
-            </label>
-            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${registered ? "border-primary bg-primary/4" : "border-border hover:border-primary/40"}`}>
-              <RadioGroupItem value="yes" className="mt-0.5" />
-              <div>
-                <div className="font-medium text-sm">Yes, registered</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Upload your documents to get the Verified badge.</div>
-              </div>
-            </label>
-          </RadioGroup>
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="sr-only">Is the business registered with CIPC?</legend>
+            {([[false, "Not yet", "Start as a Starter. We'll guide you through registering."], [true, "Yes", "Upload your documents to get the Verified badge."]] as const).map(([v, title, desc]) => (
+              <label key={title} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+                registered === v ? "border-primary bg-primary/5" : "border-border hover:border-primary/40")}>
+                <input type="radio" name="registered" className="mt-0.5 h-4 w-4 accent-[var(--accent)]" checked={registered === v} onChange={() => form.setValue("registered", v)} />
+                <span><span className="block text-sm font-medium">{title}</span><span className="mt-0.5 block text-xs text-muted-foreground">{desc}</span></span>
+              </label>
+            ))}
+          </fieldset>
           {registered && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Registered company name" error={e.legalName?.message}>
-                <Input type="text" placeholder="Zanele's Salon (Pty) Ltd" {...form.register("legalName")} />
-              </Field>
-              <Field label="CIPC registration number" error={e.cipcNumber?.message} hint="Format: 2024/123456/07">
-                <Input type="text" className="font-mono" placeholder="2024/123456/07" {...form.register("cipcNumber")} />
-              </Field>
+              <Field label="Registered company name" error={errAt(e, "legalName")}><Input {...reg("legalName")} /></Field>
+              <Field label="CIPC number" error={errAt(e, "cipcNumber")} hint="Looks like 2024/123456/07"><Input className="font-mono" {...reg("cipcNumber")} /></Field>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Co-founders */}
       <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Co-founders / Directors</CardTitle>
-              <CardDescription className="mt-1">Do you have business partners or co-directors?</CardDescription>
-            </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowCoFounders((v) => !v)}>
-              {showCoFounders ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              {cfFields.length > 0 ? `${cfFields.length} added` : "Add"}
-            </Button>
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 pb-3">
+          <div className="space-y-1.5">
+            <CardTitle className="text-base">Co-founders and directors</CardTitle>
+            <CardDescription>Optional. Add business partners or co-directors.</CardDescription>
           </div>
+          <Button type="button" variant="outline" size="sm" aria-expanded={showCoFounders} onClick={() => setShowCoFounders((v) => !v)}>
+            {showCoFounders ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{cofounders.fields.length ? `${cofounders.fields.length} added` : "Add"}
+          </Button>
         </CardHeader>
         {showCoFounders && (
           <CardContent className="space-y-4">
-            {cfFields.map((field, i) => (
-              <div key={field.id} className="rounded-lg border border-border p-4 space-y-3">
+            {cofounders.fields.map((f, i) => (
+              <fieldset key={f.id} className="space-y-3 rounded-lg border border-border p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground">Co-founder {i + 1}</span>
-                  <button type="button" onClick={() => remove(i)} className="text-muted-foreground hover:text-destructive transition-colors">
-                    <X className="h-4 w-4" />
-                  </button>
+                  <legend className="text-sm font-medium">Co-founder {i + 1}</legend>
+                  <button type="button" aria-label={`Remove co-founder ${i + 1}`} onClick={() => cofounders.remove(i)} className="rounded p-1 text-muted-foreground hover:text-bad"><X className="h-4 w-4" /></button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Full name" error={(e as Record<string, { message?: string }>)[`coFounders.${i}.fullName`]?.message}>
-                    <Input type="text" placeholder="Thabo Nkosi" {...form.register(`coFounders.${i}.fullName` as never)} />
-                  </Field>
-                  <Field label="SA ID number" error={(e as Record<string, { message?: string }>)[`coFounders.${i}.idNumber`]?.message}>
-                    <Input type="text" inputMode="numeric" maxLength={13} placeholder="0001010000000" {...form.register(`coFounders.${i}.idNumber` as never)} />
-                  </Field>
-                  <Field label="Role" error={(e as Record<string, { message?: string }>)[`coFounders.${i}.role`]?.message}>
-                    <Input type="text" placeholder="Technical Lead" {...form.register(`coFounders.${i}.role` as never)} />
-                  </Field>
-                  <Field label="Email" error={(e as Record<string, { message?: string }>)[`coFounders.${i}.email`]?.message}>
-                    <Input type="email" placeholder="thabo@example.com" {...form.register(`coFounders.${i}.email` as never)} />
-                  </Field>
-                  <Field label="Phone" error={(e as Record<string, { message?: string }>)[`coFounders.${i}.phone`]?.message}>
-                    <Input type="tel" placeholder="0821234567" {...form.register(`coFounders.${i}.phone` as never)} />
-                  </Field>
-                  <Field label="Shareholding %" error={(e as Record<string, { message?: string }>)[`coFounders.${i}.shareholding`]?.message} hint="Optional">
-                    <Input type="number" min={1} max={99} placeholder="30" {...form.register(`coFounders.${i}.shareholding` as never)} />
-                  </Field>
+                  <Field label="Full name" error={errAt(e, `coFounders.${i}.fullName`)}><Input {...reg(`coFounders.${i}.fullName`)} /></Field>
+                  <Field label="SA ID number" error={errAt(e, `coFounders.${i}.idNumber`)}><Input inputMode="numeric" maxLength={13} autoComplete="off" {...reg(`coFounders.${i}.idNumber`)} /></Field>
+                  <Field label="Role" error={errAt(e, `coFounders.${i}.role`)}><Input placeholder="e.g. Director" {...reg(`coFounders.${i}.role`)} /></Field>
+                  <Field label="Email" error={errAt(e, `coFounders.${i}.email`)}><Input type="email" autoCapitalize="none" {...reg(`coFounders.${i}.email`)} /></Field>
+                  <Field label="Cellphone number" error={errAt(e, `coFounders.${i}.phone`)}><Input type="tel" {...reg(`coFounders.${i}.phone`)} /></Field>
+                  <Field label="Shareholding % (optional)" error={errAt(e, `coFounders.${i}.shareholding`)}><Input type="number" min={1} max={99} {...reg(`coFounders.${i}.shareholding`)} /></Field>
                 </div>
-              </div>
+              </fieldset>
             ))}
-            {cfFields.length < 5 && (
-              <Button type="button" variant="outline" className="w-full" size="sm"
-                onClick={() => append({ fullName: "", idNumber: "", role: "", email: "", phone: "" } as never)}>
-                <Plus className="h-4 w-4" /> Add co-founder / director
+            {cofounders.fields.length < 5 && (
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => cofounders.append({ fullName: "", idNumber: "", role: "", email: "", phone: "" } as never)}>
+                <Plus className="h-4 w-4" />Add a co-founder or director
               </Button>
             )}
           </CardContent>
         )}
       </Card>
 
-      {err && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          {err}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between pt-2">
-        <p className="text-xs text-muted-foreground">Takes about 5 minutes.</p>
+      {err && <Callout tone="bad" role="alert">{err}</Callout>}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">Takes about five minutes.</p>
         <Button type="submit" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : <>Continue <ArrowRight className="h-4 w-4" /></>}
         </Button>
@@ -480,223 +350,147 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
   );
 }
 
+const OPTIONAL_DOCS: Record<"registered" | "starter", { key: DocType; why: string }[]> = {
+  registered: [
+    { key: "tax", why: "Needed for tenders and most funders." },
+    { key: "bbbee", why: "Government and corporate buyers ask for it. An affidavit is enough for a small business." },
+    { key: "bplan", why: "Most funders ask for one." },
+    { key: "fin", why: "Funders use it to see how the business is doing." },
+    { key: "csd", why: "Needed to sell to government." },
+  ],
+  starter: [
+    { key: "bbbee", why: "You can get a sworn affidavit as a sole proprietor. Buyers and funders ask for it." },
+    { key: "tax", why: "Register on SARS eFiling and upload the notice. Most formal markets need it." },
+  ],
+};
+
+function DocRow({ doc, docType, hint, required, onAttach, onError }: {
+  doc: DocumentsResponse["documents"][number] | undefined; docType: DocType; hint: string; required: boolean;
+  onAttach: (k: DocType, fileId: string) => void; onError: (m: string) => void;
+}) {
+  const uploaded = !!doc && doc.state !== "missing";
+  return (
+    <div className={cn(required && "upload", "flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors", uploaded ? "border-good/40 bg-good-soft/40" : "border-border")}>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          {uploaded ? <CheckCircle2 className="h-4 w-4 shrink-0 text-good" /> : <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />}
+          <b className="text-sm">{DOCS[docType].name}</b>
+          {!required && !uploaded && DOCS[docType].pts > 0 && <Badge variant="secondary" className="text-[10px]">+{DOCS[docType].pts} points</Badge>}
+        </div>
+        {uploaded && doc.sha256
+          ? <><div className="ml-6 mt-1 text-xs">{doc.fileName}</div><div className="fp ml-6 font-mono text-xs text-muted-foreground">Fingerprint {shortFingerprint(doc.sha256)}</div></>
+          : <p className="ml-6 mt-1 text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <FilePick label={uploaded ? "Replace" : "Upload"} primary={required && !uploaded} onUploaded={(f) => onAttach(docType, f.fileId)} onError={onError} />
+    </div>
+  );
+}
+
+const REQUIRED_HINT: Partial<Record<DocType, string>> = {
+  id: "A clear copy of your green ID book or smart ID card. PDF or photo, up to 5 MB.",
+  cipc: "The registration certificate from CIPC. PDF preferred.",
+  bank: "A confirmation letter for the business bank account, usually downloadable from your banking app.",
+  addr: "A utility bill, lease, or a letter from your landlord or ward councillor showing where you trade.",
+};
+
 function FounderDocuments({ data, onBack, onNext }: { data: DocumentsResponse; onBack: () => void; onNext: () => void }) {
   const qc = useQueryClient();
   const [err, setErr] = useState("");
   const registered = data.company.registered;
-  const required = joinDocsFor(registered); // cipc+id+bank+addr or id+addr
+  const need = joinDocsFor(registered);
   const doc = (k: DocType) => data.documents.find((d) => d.docType === k);
-
-  // Optional docs — shown to everyone, not blocking
-  const optionalDocs: { key: DocType; why: string }[] = registered
-    ? [
-        { key: "tax",   why: "Increases your readiness score by 15 pts. Required for tenders and most funders." },
-        { key: "bbbee", why: "Required by government buyers and most corporate procurement. An affidavit is enough for small businesses." },
-        { key: "bplan", why: "Adds 10 pts to your readiness score. Most funders ask for it — upload it now while you have it ready." },
-        { key: "fin",   why: "Highest-value document: 15 pts. Funders use it to assess your financial health." },
-        { key: "csd",   why: "Required to sell to government departments and state-owned entities." },
-      ]
-    : [
-        { key: "bbbee", why: "You can get a sworn affidavit as a sole proprietor. Buyers and funders ask for it." },
-        { key: "tax",   why: "Register on SARS eFiling and upload your tax registration notice. Required for most formal markets." },
-      ];
-
   const attach = async (k: DocType, fileId: string) => {
     setErr("");
-    try {
-      await api("/founder/documents", { body: { docType: k, fileId } });
-      await qc.invalidateQueries({ queryKey: ["founder-documents"] });
-    } catch (x) { setErr(x instanceof ApiError ? x.message : "Try again."); }
+    try { await api("/founder/documents", { body: { docType: k, fileId } }); await qc.invalidateQueries({ queryKey: ["founder-documents"] }); }
+    catch (x) { setErr(x instanceof ApiError ? x.message : "Try again."); }
   };
-
   const next = () => {
-    const miss = required.filter((k) => doc(k)?.state === "missing");
-    if (miss.length) { setErr(`Please upload: ${miss.map((k) => DOCS[k].name).join(", ")}.`); return; }
+    const miss = need.filter((k) => !doc(k) || doc(k)!.state === "missing");
+    if (miss.length) { setErr(`Attach: ${miss.map((k) => DOCS[k].name).join(", ")}.`); return; }
     onNext();
   };
-
-  // Reusable upload row
-  const DocRow = ({ k, hint }: { k: DocType; hint?: string }) => {
-    const d = doc(k);
-    const uploaded = d && d.state !== "missing";
-    return (
-      <div className={`flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors ${uploaded ? "border-good/40 bg-good-soft/30" : "border-border"}`}>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            {uploaded
-              ? <CheckCircle2 className="h-4 w-4 text-good shrink-0" />
-              : <Upload className="h-4 w-4 text-muted-foreground shrink-0" />}
-            <span className="font-medium text-sm">{DOCS[k].name}</span>
-            {uploaded && <Badge variant="success" className="text-[10px]">Uploaded</Badge>}
-          </div>
-          {uploaded && d.sha256
-            ? <p className="mt-1 text-xs text-muted-foreground ml-6">{d.fileName} · Fingerprint {shortFingerprint(d.sha256)}</p>
-            : <p className="mt-1 text-xs text-muted-foreground ml-6">{hint ?? "PDF or photo, up to 5 MB"}</p>}
-        </div>
-        <FilePick label={uploaded ? "Replace" : "Upload"} primary={!uploaded} onUploaded={(f) => attach(k, f.fileId)} onError={setErr} />
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
       <WizardProgress step={2} total={3} label="Your documents" />
-
-      {/* ── Required documents ── */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">Required documents</CardTitle>
-          <CardDescription>
-            {registered
-              ? "These four documents are checked by a ProofPocket adviser. Each file gets a unique fingerprint to prevent fraud."
-              : "Upload your ID and proof of address so nobody can sign up as you."}
-          </CardDescription>
+          <CardTitle className="text-base">{registered ? "Documents that prove you're a registered business" : "Confirm who you are"}</CardTitle>
+          <CardDescription>{registered
+            ? "All four are checked by your adviser or a ProofPocket checker. Each file gets a fingerprint."
+            : "Starters show an ID and proof of address so nobody can sign up as you. You'll add business documents later."}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* ID selfie — first and most important */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <User className="h-4 w-4" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <span className="font-medium text-sm">ID selfie</span>
-                    <Badge className="ml-2 text-[10px]">Required</Badge>
-                  </div>
-                  <FilePick label={doc("id")?.state !== "missing" ? "Replace" : "Upload photo"} primary={doc("id")?.state === "missing"} accept="image/*" onUploaded={(f) => attach("id", f.fileId)} onError={setErr} />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  A photo of <strong>you holding your ID book or card next to your face</strong> — both your face and the ID must be clearly visible. Use good lighting. No sunglasses or face coverings.
-                </p>
-                {doc("id") && doc("id")!.state !== "missing" && doc("id")!.sha256 && (
-                  <p className="mt-1 text-xs text-good">{doc("id")!.fileName} · Fingerprint {shortFingerprint(doc("id")!.sha256!)}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* SA ID copy (separate from selfie) */}
-          <DocRow k="id" hint="A clear copy of your green ID book, smart ID card, or passport. PDF or photo." />
-
-          {registered && <DocRow k="cipc" hint="The certificate you received from CIPC when registering your company. PDF preferred." />}
-          {registered && <DocRow k="bank" hint="A confirmation letter from your business bank account. Usually downloadable from your banking app." />}
-          <DocRow k="addr" hint="A utility bill, lease agreement, or a letter from your landlord or ward councillor showing your trading address." />
+          {need.map((k) => <DocRow key={k} doc={doc(k)} docType={k} required hint={REQUIRED_HINT[k] ?? "PDF or photo, up to 5 MB"} onAttach={(t, f) => void attach(t, f)} onError={setErr} />)}
         </CardContent>
       </Card>
-
-      {/* ── Optional documents — value-driven ── */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">Additional documents <span className="text-xs font-normal text-muted-foreground ml-1">(optional — upload now or later)</span></CardTitle>
-          <CardDescription>
-            These are not required to join, but each one increases your readiness score and opens more opportunities. Upload as many as you have ready.
-          </CardDescription>
+          <CardTitle className="text-base">More documents (optional)</CardTitle>
+          <CardDescription>Not needed to join. Each one raises your readiness score and opens more opportunities. Add them now or later.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {optionalDocs.map(({ key, why }) => (
-            <div key={key} className={`rounded-lg border p-4 transition-colors ${doc(key)?.state !== "missing" ? "border-good/40 bg-good-soft/30" : "border-border"}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {doc(key)?.state !== "missing"
-                      ? <CheckCircle2 className="h-4 w-4 text-good shrink-0" />
-                      : <Upload className="h-4 w-4 text-muted-foreground shrink-0" />}
-                    <span className="font-medium text-sm">{DOCS[key].name}</span>
-                    {doc(key)?.state !== "missing"
-                      ? <Badge variant="success" className="text-[10px]">Uploaded</Badge>
-                      : DOCS[key].pts > 0 && <Badge variant="secondary" className="text-[10px]">+{DOCS[key].pts} pts</Badge>}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground ml-6">{why}</p>
-                  {doc(key)?.sha256 && (
-                    <p className="mt-1 text-xs text-muted-foreground ml-6">{doc(key)!.fileName} · Fingerprint {shortFingerprint(doc(key)!.sha256!)}</p>
-                  )}
-                </div>
-                <FilePick label={doc(key)?.state !== "missing" ? "Replace" : "Upload"} onUploaded={(f) => attach(key, f.fileId)} onError={setErr} />
-              </div>
-            </div>
-          ))}
+          {OPTIONAL_DOCS[registered ? "registered" : "starter"].map(({ key, why }) => <DocRow key={key} doc={doc(key)} docType={key} required={false} hint={why} onAttach={(t, f) => void attach(t, f)} onError={setErr} />)}
         </CardContent>
       </Card>
-
-      {err && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />{err}
-        </div>
-      )}
-
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
+      {err && <Callout tone="bad" role="alert">{err}</Callout>}
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" />Back</Button>
         <Button onClick={next}>Continue <ArrowRight className="h-4 w-4" /></Button>
       </div>
     </div>
   );
 }
 
+const Item = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div><span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span><div className="mt-1 font-medium">{children}</div></div>
+);
+
 function FounderConfirm({ data, onBack, onJoined }: { data: DocumentsResponse; onBack: () => void; onJoined: () => void }) {
   const { data: me } = useMe();
+  const toast = useToast();
   const qc = useQueryClient();
   const options = useQuery({ queryKey: ["join-options"], queryFn: () => api<{ incubators: { id: string; name: string }[] }>("/join/options") });
   const [agree, setAgree] = useState(false);
   const [err, setErr] = useState("");
   const need = joinDocsFor(data.company.registered);
   const c = data.company;
-
   const join = useMutation({
     mutationFn: () => api<{ message: string }>("/join/complete", { body: { agree: true } }),
     onSuccess: async (r) => {
+      toast(r.message);
+      onJoined();
+      // The cached account must say "joined" before the founder routes check it.
       qc.setQueryData<Me>(meKey, (m) => (m?.company ? { ...m, company: { ...m.company, joined: true } } : m));
       await qc.invalidateQueries({ queryKey: meKey });
-      onJoined();
     },
   });
-
   return (
     <div className="space-y-6">
-      <WizardProgress step={3} total={3} label="Review and join" />
+      <WizardProgress step={3} total={3} label="Check and join" />
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Check your details</CardTitle>
-          <CardDescription>Review everything before you submit.</CardDescription>
-        </CardHeader>
+        <CardHeader className="pb-4"><CardTitle className="text-base">Check and join</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 text-sm">
-            <div><span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Business</span><div className="mt-1 font-medium">{c.name}{c.cipcNumber && <span className="ml-2 font-mono text-xs text-muted-foreground">{c.cipcNumber}</span>}</div></div>
-            <div><span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Owner</span><div className="mt-1 font-medium">{me?.displayName}</div></div>
-            <div><span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Supported by</span><div className="mt-1">{options.data?.incubators.find((n) => n.id === c.incubatorId)?.name ?? "None yet"}</div></div>
-            <div><span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Account type</span><div className="mt-1">{c.registered ? <Badge variant="success">Verified (pending document check)</Badge> : <Badge variant="secondary">Starter</Badge>}</div></div>
+          <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <Item label="Business">{c.name}{c.cipcNumber && <span className="ml-2 font-mono text-xs text-muted-foreground">{c.cipcNumber}</span>}</Item>
+            <Item label="Owner">{me?.displayName}</Item>
+            <Item label="Supported by">{options.data?.incubators.find((n) => n.id === c.incubatorId)?.name ?? "None yet"}</Item>
+            <Item label="Account">{c.registered ? <Badge variant="success">Verified, once documents are checked</Badge> : <Badge variant="secondary">Starter</Badge>}</Item>
           </div>
           <Separator />
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Documents</p>
-            {need.map((k) => (
-              <div key={k} className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className="h-4 w-4 text-good" />
-                <span>{DOCS[k].name}</span>
-                <Badge variant="success" className="text-[10px]">Attached</Badge>
-              </div>
-            ))}
-          </div>
+          <ul className="space-y-2">{need.map((k) => (
+            <li key={k} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-good" />{DOCS[k].name}<Badge variant="success" className="text-[10px]">Attached</Badge></li>
+          ))}</ul>
           <Separator />
           <label className="flex cursor-pointer items-start gap-3">
-            <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-border" checked={agree}
-              onChange={(e) => { setAgree(e.target.checked); setErr(""); }} />
-            <span className="text-sm text-foreground leading-relaxed">
-              These documents belong to me and this business. I agree that my chosen incubator can see my records, and that verified funders see only what I allow under Privacy &amp; sharing.
-            </span>
+            <input type="checkbox" className="mt-0.5 h-4 w-4" checked={agree} onChange={(ev) => { setAgree(ev.target.checked); setErr(""); }} />
+            <span className="text-sm leading-relaxed">These documents belong to me and this business. I agree that my chosen incubator can see my records, and that verified funders see only what I allow under Privacy &amp; sharing. I've read the <a href="/privacy-notice" target="_blank" rel="noopener" className="font-medium text-primary hover:underline">privacy notice</a>.</span>
           </label>
-          {(err || join.error) && (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              {err || (join.error as ApiError)?.message}
-            </div>
-          )}
+          {(err || join.error) && <Callout tone="bad" role="alert">{err || (join.error as ApiError).message}</Callout>}
         </CardContent>
       </Card>
-      <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
-        <Button disabled={join.isPending} onClick={() => agree ? join.mutate() : setErr("Tick the box to confirm before joining.")}>
+      <div className="flex justify-between">
+        <Button variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" />Back</Button>
+        <Button disabled={join.isPending} onClick={() => (agree ? join.mutate() : setErr("Tick the box to confirm before joining."))}>
           {join.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />Joining…</> : "Join ProofPocket"}
         </Button>
       </div>
@@ -704,556 +498,234 @@ function FounderConfirm({ data, onBack, onJoined }: { data: DocumentsResponse; o
   );
 }
 
-// ─── Investor track ───────────────────────────────────────────────────────────
+// ─── funder and support-organisation applications ──────────────────────────
 
-function InvestorTrack({ onBack }: { onBack: () => void }) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [formData, setFormData] = useState<Partial<InvestorDetails>>({});
-  const [done, setDone] = useState(false);
+const funderStep1 = investorFieldsSchema.pick({
+  repName: true, repIdNumber: true, repRole: true, repEmail: true, repPhone: true, orgName: true, entityType: true,
+  website: true, email: true, phone: true, province: true, town: true, physicalAddress: true, cipcNumber: true,
+});
+const orgStep1 = orgFieldsSchema.pick({
+  contactName: true, contactIdNumber: true, contactRole: true, contactEmail: true, contactPhone: true, orgType: true, orgName: true,
+  website: true, orgEmail: true, orgPhone: true, province: true, town: true, physicalAddress: true, cipcNumber: true, npoNumber: true,
+});
+type Step1 = Record<string, unknown> & { account?: Account };
 
-  if (done) {
-    return (
-      <Card className="text-center py-8">
-        <CardContent className="space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-good-soft text-good">
-            <CheckCircle2 className="h-7 w-7" />
-          </div>
-          <CardTitle>Application received</CardTitle>
-          <CardDescription className="max-w-sm mx-auto">
-            Thank you. Our team will contact you within 2–3 business days to complete verification and activate your funder portal.
-          </CardDescription>
-          <Link to="/sign-in"><Button variant="outline">Back to sign in</Button></Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
+/** Step 1: the person and the organisation (plus the new sign-in when signed out). */
+function ApplicationStep1({ kind, signedOut, initial, onNext }: { kind: PortalApplicationKind; signedOut: boolean; initial: Step1; onNext: (d: Step1) => void }) {
+  const base = kind === "funder" ? funderStep1 : orgStep1;
+  const schema = signedOut ? base.and(z.object({ account: accountSchema })) : base;
+  const form = useForm<Step1>({ resolver: zodResolver(schema as never), defaultValues: initial });
+  const e = form.formState.errors;
+  const reg = (k: string) => form.register(k as never);
+  const p = kind === "funder" ? { name: "repName", id: "repIdNumber", role: "repRole", email: "repEmail", phone: "repPhone", orgEmail: "email", orgPhone: "phone" }
+    : { name: "contactName", id: "contactIdNumber", role: "contactRole", email: "contactEmail", phone: "contactPhone", orgEmail: "orgEmail", orgPhone: "orgPhone" };
+  const orgType = form.watch("orgType") as string | undefined;
+  const npo = orgType === "ngo" || orgType === "npo" || orgType === "cbo";
   return (
-    <div className="space-y-4">
-      <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to role selection
-      </button>
-      {step === 1 && <InvestorStep1 initial={formData} onNext={(d) => { setFormData(d); setStep(2); }} />}
-      {step === 2 && <InvestorStep2 initial={formData} onBack={() => setStep(1)} onDone={() => setDone(true)} />}
-    </div>
-  );
-}
-
-function InvestorStep1({ initial, onNext }: { initial: Partial<InvestorDetails>; onNext: (d: Partial<InvestorDetails>) => void }) {
-  const step1Schema = z.object({
-    repName: z.string().trim().min(1, "Add the representative's full name").max(80),
-    repIdNumber: z.string().trim().regex(/^\d{13}$/, "SA ID numbers are 13 digits"),
-    repRole: z.string().trim().min(1, "Add the representative's role").max(60),
-    repEmail: z.string().trim().toLowerCase().email("Enter a valid email address"),
-    repPhone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    orgName: z.string().trim().min(1, "Add the organisation name").max(120),
-    entityType: z.enum(["vc", "angel", "pe", "dfi", "corporate_csi", "bank", "family_office", "grant_maker", "individual"], { message: "Choose an investor type" }),
-    website: z.string().trim().url("Enter a valid website URL").max(255),
-    email: z.string().trim().toLowerCase().email("Enter a valid organisation email"),
-    phone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    province: z.enum(PROVINCES),
-    town: z.string().trim().min(1, "Add the town or city").max(60),
-    physicalAddress: z.string().trim().min(1, "Add the physical address").max(200),
-  });
-  const form = useForm({ resolver: zodResolver(step1Schema), defaultValues: initial as never });
-  const e = form.formState.errors as Record<string, { message?: string }>;
-  const submit = form.handleSubmit((d) => onNext(d as Partial<InvestorDetails>));
-
-  return (
-    <form className="space-y-6" onSubmit={submit} noValidate>
-      <WizardProgress step={1} total={2} label="Organisation details" />
-
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Your details</CardTitle>
-          <CardDescription>The person completing this application</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Full name" error={e.repName?.message}><Input placeholder="Sipho Dlamini" {...form.register("repName")} /></Field>
-            <Field label="SA ID number" error={e.repIdNumber?.message} hint="13 digits"><Input inputMode="numeric" maxLength={13} placeholder="0001010000000" {...form.register("repIdNumber")} /></Field>
-            <Field label="Your role" error={e.repRole?.message}><Input placeholder="Investment Manager" {...form.register("repRole")} /></Field>
-            <Field label="Your email" error={e.repEmail?.message}><Input type="email" placeholder="sipho@example.co.za" {...form.register("repEmail")} /></Field>
-            <Field label="Your phone" error={e.repPhone?.message}><Input type="tel" placeholder="0821234567" {...form.register("repPhone")} /></Field>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Organisation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Organisation name" error={e.orgName?.message}><Input placeholder="ABC Ventures" {...form.register("orgName")} /></Field>
-            <Field label="Investor / funder type" error={e.entityType?.message}>
-              <Select value={((form.watch("entityType" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("entityType" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Choose type" /></SelectTrigger>
-                <SelectContent>{INVESTOR_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Website" error={e.website?.message}><Input type="url" placeholder="https://example.co.za" {...form.register("website")} /></Field>
-            <Field label="Organisation email" error={e.email?.message}><Input type="email" placeholder="info@example.co.za" {...form.register("email")} /></Field>
-            <Field label="Organisation phone" error={e.phone?.message}><Input type="tel" placeholder="0111234567" {...form.register("phone")} /></Field>
-            <Field label="Province" error={e.province?.message}>
-              <Select value={((form.watch("province" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("province" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
-                <SelectContent>{PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Town / city" error={e.town?.message}><Input placeholder="Johannesburg" {...form.register("town")} /></Field>
-          </div>
-          <Field label="Physical address" error={e.physicalAddress?.message}>
-            <Textarea placeholder="123 Main Street, Sandton, Johannesburg, 2196" {...form.register("physicalAddress")} />
-          </Field>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end pt-2">
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          Continue <ArrowRight className="h-4 w-4" />
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function InvestorStep2({ initial, onBack, onDone }: { initial: Partial<InvestorDetails>; onBack: () => void; onDone: () => void }) {
-  const step2Schema = z.object({
-    sectors: z.array(z.string()).min(1, "Select at least one sector"),
-    stages: z.array(z.enum(["idea", "seed", "early", "growth", "expansion"])).min(1, "Select at least one stage"),
-    instruments: z.array(z.enum(["equity", "debt", "grant", "convertible", "blended"])).min(1, "Select at least one instrument"),
-    ticketMin: z.coerce.number().min(0, "Enter the minimum ticket size"),
-    ticketMax: z.coerce.number().min(1, "Enter the maximum ticket size"),
-    aumBand: z.enum(["under_1m", "1m_10m", "10m_100m", "over_100m"], { message: "Select AUM band" }),
-    description: z.string().trim().min(1, "Add a brief description of your investment mandate").max(1000),
-  });
-  const form = useForm({
-    resolver: zodResolver(step2Schema),
-    defaultValues: { sectors: [], stages: [], instruments: [], ticketMin: 0, ticketMax: 0, ...initial } as never,
-  });
-  const e = form.formState.errors as Record<string, { message?: string }>;
-  const [submitErr, setSubmitErr] = useState("");
-
-  const submit = form.handleSubmit(async (d) => {
-    setSubmitErr("");
-    try {
-      await api("/join/investor", { body: { ...initial, ...d } });
-      onDone();
-    } catch (x) { setSubmitErr(x instanceof ApiError ? x.message : "Something went wrong. Try again."); }
-  });
-
-  return (
-    <form className="space-y-6" onSubmit={submit} noValidate>
-      <WizardProgress step={2} total={2} label="Investment mandate" />
-
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Investment mandate</CardTitle>
-          <CardDescription>Tell founders what you fund so we can match you to the right businesses.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <Field label="Sectors you invest in" error={e.sectors?.message}>
-            <MultiToggle
-              options={ALL_SECTORS_FLAT.map((s) => ({ value: s, label: s }))}
-              value={((form.watch("sectors" as never) as unknown as string[]) ?? [])}
-              onChange={(v) => form.setValue("sectors" as never, v as never)}
-              error={e.sectors?.message}
-            />
-          </Field>
-          <Field label="Business stages" error={e.stages?.message}>
-            <MultiToggle options={STAGES_OPTIONS} value={((form.watch("stages" as never) as unknown as string[]) ?? [])} onChange={(v) => form.setValue("stages" as never, v as never)} />
-          </Field>
-          <Field label="Funding instruments" error={e.instruments?.message}>
-            <MultiToggle options={INSTRUMENT_OPTIONS} value={((form.watch("instruments" as never) as unknown as string[]) ?? [])} onChange={(v) => form.setValue("instruments" as never, v as never)} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Min ticket size (ZAR)" error={e.ticketMin?.message}>
-              <Input type="number" min={0} placeholder="50000" {...form.register("ticketMin")} />
-            </Field>
-            <Field label="Max ticket size (ZAR)" error={e.ticketMax?.message}>
-              <Input type="number" min={0} placeholder="2000000" {...form.register("ticketMax")} />
-            </Field>
-            <Field label="Assets under management" error={e.aumBand?.message}>
-              <Select value={((form.watch("aumBand" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("aumBand" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger>
-                <SelectContent>{AUM_BANDS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field label="Investment mandate description" error={e.description?.message}
-            hint="Describe your focus, typical deal terms, and what you look for in founders.">
-            <Textarea rows={4} placeholder="We invest in early-stage township and rural businesses in the tech and agri-processing sectors…" {...form.register("description")} />
-          </Field>
-        </CardContent>
-      </Card>
-
-      {submitErr && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />{submitErr}
-        </div>
-      )}
-
-      <div className="flex justify-between pt-2">
-        <Button type="button" variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Submitting…</> : "Submit application"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-// ─── Org (Incubator / NGO) track ──────────────────────────────────────────────
-
-function OrgTrack({ onBack }: { onBack: () => void }) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [formData, setFormData] = useState<Partial<OrgOnboard>>({});
-  const [done, setDone] = useState(false);
-
-  if (done) {
-    return (
-      <Card className="text-center py-8">
-        <CardContent className="space-y-4">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-good-soft text-good">
-            <CheckCircle2 className="h-7 w-7" />
-          </div>
-          <CardTitle>Application received</CardTitle>
-          <CardDescription className="max-w-sm mx-auto">
-            Thank you. Our team will call the number you provided within 2–3 business days to verify your organisation before activating your portal.
-          </CardDescription>
-          <Link to="/sign-in"><Button variant="outline">Back to sign in</Button></Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to role selection
-      </button>
-      {step === 1 && <OrgStep1 initial={formData} onNext={(d) => { setFormData(d); setStep(2); }} />}
-      {step === 2 && <OrgStep2 initial={formData} onBack={() => setStep(1)} onDone={() => setDone(true)} />}
-    </div>
-  );
-}
-
-function OrgStep1({ initial, onNext }: { initial: Partial<OrgOnboard>; onNext: (d: Partial<OrgOnboard>) => void }) {
-  const step1Schema = z.object({
-    contactName: z.string().trim().min(1, "Add the contact person's full name").max(80),
-    contactIdNumber: z.string().trim().regex(/^\d{13}$/, "SA ID numbers are 13 digits"),
-    contactRole: z.string().trim().min(1, "Add their role").max(60),
-    contactEmail: z.string().trim().toLowerCase().email("Enter a valid email address"),
-    contactPhone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    orgType: z.enum(["incubator", "accelerator", "ngo", "npo", "cbo"], { message: "Choose an organisation type" }),
-    orgName: z.string().trim().min(1, "Add the organisation name").max(120),
-    website: z.string().trim().url("Enter a valid website URL").max(255),
-    orgEmail: z.string().trim().toLowerCase().email("Enter a valid organisation email"),
-    orgPhone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    province: z.enum(PROVINCES),
-    town: z.string().trim().min(1, "Add the town or city").max(60),
-    physicalAddress: z.string().trim().min(1, "Add the physical address").max(200),
-    cipcNumber: z.string().trim().optional(),
-    npoNumber: z.string().trim().optional(),
-  });
-  const form = useForm({ resolver: zodResolver(step1Schema), defaultValues: initial as never });
-  const e = form.formState.errors as Record<string, { message?: string }>;
-  const orgType = (form.watch("orgType" as never) as unknown) as string | undefined;
-  const isNgo = orgType === "ngo" || orgType === "npo" || orgType === "cbo";
-  const submit = form.handleSubmit((d) => onNext(d as Partial<OrgOnboard>));
-
-  return (
-    <form className="space-y-6" onSubmit={submit} noValidate>
-      <WizardProgress step={1} total={2} label="Organisation details" />
-
+    <form className="space-y-6" onSubmit={form.handleSubmit(onNext)} noValidate>
+      <WizardProgress step={1} total={2} label="You and your organisation" />
+      {signedOut ? <AccountCard form={form} /> : <SignedInAs />}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-base">Contact person</CardTitle>
-          <CardDescription>The person completing this application — we will call this number to verify your organisation.</CardDescription>
+          <CardDescription>The person applying. ProofPocket calls this number to check the application. The ID number is encrypted.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Full name" error={e.contactName?.message}><Input placeholder="Nomsa Khumalo" {...form.register("contactName")} /></Field>
-            <Field label="SA ID number" error={e.contactIdNumber?.message} hint="13 digits"><Input inputMode="numeric" maxLength={13} placeholder="0001010000000" {...form.register("contactIdNumber")} /></Field>
-            <Field label="Your role" error={e.contactRole?.message}><Input placeholder="Programme Manager" {...form.register("contactRole")} /></Field>
-            <Field label="Your email" error={e.contactEmail?.message}><Input type="email" placeholder="nomsa@example.org" {...form.register("contactEmail")} /></Field>
-            <Field label="Your phone" error={e.contactPhone?.message} hint="We will call this number">
-              <Input type="tel" placeholder="0821234567" {...form.register("contactPhone")} />
-            </Field>
-          </div>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field label="Full name" error={errAt(e, p.name)}><Input autoComplete="name" {...reg(p.name)} /></Field>
+          <Field label="SA ID number" error={errAt(e, p.id)} hint="13 digits"><Input inputMode="numeric" maxLength={13} autoComplete="off" {...reg(p.id)} /></Field>
+          <Field label="Your role" error={errAt(e, p.role)}><Input placeholder={kind === "funder" ? "e.g. Investment manager" : "e.g. Programme manager"} {...reg(p.role)} /></Field>
+          <Field label="Your work email" error={errAt(e, p.email)}><Input type="email" autoCapitalize="none" {...reg(p.email)} /></Field>
+          <Field label="Your cellphone number" error={errAt(e, p.phone)}><Input type="tel" autoComplete="tel" {...reg(p.phone)} /></Field>
         </CardContent>
       </Card>
-
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base">Organisation</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-4"><CardTitle className="text-base">Organisation</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Organisation type" error={e.orgType?.message}>
-              <Select value={((form.watch("orgType" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("orgType" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Choose type" /></SelectTrigger>
-                <SelectContent>{ORG_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Organisation name" error={e.orgName?.message}><Input placeholder="Soweto Business Hub" {...form.register("orgName")} /></Field>
-            <Field label="Website" error={e.website?.message}><Input type="url" placeholder="https://example.org.za" {...form.register("website")} /></Field>
-            <Field label="Organisation email" error={e.orgEmail?.message}><Input type="email" placeholder="info@example.org.za" {...form.register("orgEmail")} /></Field>
-            <Field label="Organisation phone" error={e.orgPhone?.message}><Input type="tel" placeholder="0111234567" {...form.register("orgPhone")} /></Field>
-            <Field label="Province" error={e.province?.message}>
-              <Select value={((form.watch("province" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("province" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
-                <SelectContent>{PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Town / city" error={e.town?.message}><Input placeholder="Cape Town" {...form.register("town")} /></Field>
+            {kind === "funder"
+              ? <Field label="Type of funder" error={errAt(e, "entityType")}><select className={selectClass} defaultValue="" {...reg("entityType")}><option value="" disabled>Choose…</option>{INVESTOR_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></Field>
+              : <Field label="Type of organisation" error={errAt(e, "orgType")}><select className={selectClass} defaultValue="" {...reg("orgType")}><option value="" disabled>Choose…</option>{ORG_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></Field>}
+            <Field label="Organisation name" error={errAt(e, "orgName")}><Input {...reg("orgName")} /></Field>
+            <Field label="Website" error={errAt(e, "website")}><Input type="url" placeholder="https://" {...reg("website")} /></Field>
+            <Field label="Organisation email" error={errAt(e, p.orgEmail)}><Input type="email" autoCapitalize="none" {...reg(p.orgEmail)} /></Field>
+            <Field label="Organisation phone" error={errAt(e, p.orgPhone)} hint="A landline is fine"><Input type="tel" {...reg(p.orgPhone)} /></Field>
+            <Field label="Province" error={errAt(e, "province")}><select className={selectClass} defaultValue="" {...reg("province")}><option value="" disabled>Choose…</option>{PROVINCES.map((x) => <option key={x} value={x}>{x}</option>)}</select></Field>
+            <Field label="Town or city" error={errAt(e, "town")}><Input {...reg("town")} /></Field>
+            {kind === "support_org" && npo
+              ? <Field label="NPO number" error={errAt(e, "npoNumber")} hint="Looks like 123-456"><Input {...reg("npoNumber")} /></Field>
+              : <Field label={kind === "funder" ? "CIPC number (if registered)" : "CIPC number"} error={errAt(e, "cipcNumber")} hint="Looks like 2024/123456/07"><Input className="font-mono" {...reg("cipcNumber")} /></Field>}
           </div>
-          <Field label="Physical address" error={e.physicalAddress?.message}>
-            <Textarea placeholder="23 Main Road, Khayelitsha, Cape Town, 7784" {...form.register("physicalAddress")} />
-          </Field>
-          <Separator />
-          {isNgo ? (
-            <Field label="NPO registration number" error={e.npoNumber?.message} hint="Format: 123-456 (from DSD NPO Directorate)">
-              <Input placeholder="123-456" {...form.register("npoNumber")} />
-            </Field>
-          ) : (
-            <Field label="CIPC registration number" error={e.cipcNumber?.message} hint="Format: 2024/123456/07">
-              <Input className="font-mono" placeholder="2024/123456/07" {...form.register("cipcNumber")} />
-            </Field>
-          )}
+          <Field label="Physical address" error={errAt(e, "physicalAddress")}><Textarea rows={2} {...reg("physicalAddress")} /></Field>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end pt-2">
-        <Button type="submit" disabled={form.formState.isSubmitting}>Continue <ArrowRight className="h-4 w-4" /></Button>
-      </div>
+      <div className="flex justify-end"><Button type="submit">Continue <ArrowRight className="h-4 w-4" /></Button></div>
     </form>
   );
 }
 
-function OrgStep2({ initial, onBack, onDone }: { initial: Partial<OrgOnboard>; onBack: () => void; onDone: () => void }) {
-  const step2Schema = z.object({
-    sectors: z.array(z.string()).min(1, "Select at least one sector or cause area"),
-    description: z.string().trim().min(1, "Describe your organisation's mission and programmes").max(1000),
-    foundedYear: z.coerce.number().min(1900).max(new Date().getFullYear()),
-    beneficiaryGroups: z.array(z.string()).min(1, "Select at least one beneficiary group"),
-    annualBudgetBand: z.enum(["under_500k", "500k_2m", "2m_10m", "over_10m"], { message: "Select a budget band" }),
-  });
-  const form = useForm({
-    resolver: zodResolver(step2Schema),
-    defaultValues: { sectors: [], beneficiaryGroups: [], foundedYear: new Date().getFullYear(), ...initial } as never,
-  });
-  const e = form.formState.errors as Record<string, { message?: string }>;
-  const [submitErr, setSubmitErr] = useState("");
+const funderStep2 = investorFieldsSchema.pick({ sectors: true, stages: true, instruments: true, ticketMin: true, ticketMax: true, aumBand: true, description: true });
+const orgStep2 = orgFieldsSchema.pick({ sectors: true, beneficiaryGroups: true, foundedYear: true, annualBudgetBand: true, description: true });
 
-  const submit = form.handleSubmit(async (d) => {
-    setSubmitErr("");
-    try {
-      await api("/join/org", { body: { ...initial, ...d } });
-      onDone();
-    } catch (x) { setSubmitErr(x instanceof ApiError ? x.message : "Something went wrong. Try again."); }
+/** Step 2: what they fund or how they support founders; then the application is sent. */
+function ApplicationStep2({ kind, initial, busy, onBack, onSend }: { kind: PortalApplicationKind; initial: Step1; busy: boolean; onBack: () => void; onSend: (d: Record<string, unknown>) => void }) {
+  const form = useForm<Record<string, unknown>>({
+    resolver: zodResolver((kind === "funder" ? funderStep2 : orgStep2) as never),
+    defaultValues: { sectors: [], stages: [], instruments: [], beneficiaryGroups: [], foundedYear: new Date().getFullYear(), ...initial },
   });
-
+  const e = form.formState.errors;
+  const reg = (k: string) => form.register(k as never);
+  const list = (k: string) => (form.watch(k) as string[] | undefined) ?? [];
+  const set = (k: string) => (v: string[]) => form.setValue(k, v, { shouldValidate: form.formState.isSubmitted });
   return (
-    <form className="space-y-6" onSubmit={submit} noValidate>
-      <WizardProgress step={2} total={2} label="Programme profile" />
-
+    <form className="space-y-6" onSubmit={form.handleSubmit(onSend)} noValidate>
+      <WizardProgress step={2} total={2} label={kind === "funder" ? "What you fund" : "How you support founders"} />
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-base">Programme profile</CardTitle>
-          <CardDescription>This helps match you with relevant founders and funders.</CardDescription>
+          <CardTitle className="text-base">{kind === "funder" ? "What you fund" : "Your programmes"}</CardTitle>
+          <CardDescription>{kind === "funder" ? "Founders see this when they look at your programmes." : "Founders see this when they choose who supports them."}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <Field label="Sectors / cause areas" error={e.sectors?.message}>
-            <MultiToggle
-              options={ALL_SECTORS_FLAT.map((s) => ({ value: s, label: s }))}
-              value={((form.watch("sectors" as never) as unknown as string[]) ?? [])}
-              onChange={(v) => form.setValue("sectors" as never, v as never)}
-            />
-          </Field>
-          <Field label="Beneficiary groups" error={e.beneficiaryGroups?.message}>
-            <MultiToggle
-              options={BENEFICIARY_GROUPS.map((g) => ({ value: g, label: g }))}
-              value={((form.watch("beneficiaryGroups" as never) as unknown as string[]) ?? [])}
-              onChange={(v) => form.setValue("beneficiaryGroups" as never, v as never)}
-            />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Year founded" error={e.foundedYear?.message}>
-              <Input type="number" min={1900} max={new Date().getFullYear()} placeholder="2018" {...form.register("foundedYear")} />
-            </Field>
-            <Field label="Annual budget band" error={e.annualBudgetBand?.message}>
-              <Select value={((form.watch("annualBudgetBand" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("annualBudgetBand" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger>
-                <SelectContent>{BUDGET_BANDS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-          </div>
-          <Field label="Mission and programmes" error={e.description?.message}
-            hint="Describe your mission, who you support, and what services you offer.">
-            <Textarea rows={4} placeholder="We support township entrepreneurs in Gauteng with business mentorship, workspace, and access to funding…" {...form.register("description")} />
-          </Field>
+          <MultiToggle legend={kind === "funder" ? "Sectors you fund" : "Sectors or causes you support"} options={ALL_SECTORS_FLAT.map((s) => ({ value: s, label: s }))} value={list("sectors")} onChange={set("sectors")} error={errAt(e, "sectors")} />
+          {kind === "funder" ? <>
+            <MultiToggle legend="Business stages" options={STAGES} value={list("stages")} onChange={set("stages")} error={errAt(e, "stages")} />
+            <MultiToggle legend="How you fund" options={INSTRUMENTS} value={list("instruments")} onChange={set("instruments")} error={errAt(e, "instruments")} />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Smallest amount (R)" error={errAt(e, "ticketMin")}><Input type="number" min={0} inputMode="numeric" {...reg("ticketMin")} /></Field>
+              <Field label="Largest amount (R)" error={errAt(e, "ticketMax")}><Input type="number" min={1} inputMode="numeric" {...reg("ticketMax")} /></Field>
+              <Field label="Funds under management" error={errAt(e, "aumBand")}><select className={selectClass} defaultValue="" {...reg("aumBand")}><option value="" disabled>Choose…</option>{AUM_BANDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}</select></Field>
+            </div>
+          </> : <>
+            <MultiToggle legend="Who you support" options={BENEFICIARY_GROUPS.map((g) => ({ value: g, label: g }))} value={list("beneficiaryGroups")} onChange={set("beneficiaryGroups")} error={errAt(e, "beneficiaryGroups")} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Year started" error={errAt(e, "foundedYear")}><Input type="number" min={1900} max={new Date().getFullYear()} {...reg("foundedYear")} /></Field>
+              <Field label="Yearly budget" error={errAt(e, "annualBudgetBand")}><select className={selectClass} defaultValue="" {...reg("annualBudgetBand")}><option value="" disabled>Choose…</option>{BUDGET_BANDS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}</select></Field>
+            </div>
+          </>}
+          <Field label={kind === "funder" ? "Describe what you fund" : "Your mission and programmes"} error={errAt(e, "description")}><Textarea rows={4} maxLength={1000} {...reg("description")} /></Field>
         </CardContent>
       </Card>
-
-      {submitErr && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />{submitErr}
-        </div>
-      )}
-
-      <div className="flex justify-between pt-2">
-        <Button type="button" variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" /> Back</Button>
-        <Button type="submit" disabled={form.formState.isSubmitting}>
-          {form.formState.isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Submitting…</> : "Submit application"}
-        </Button>
+      <div className="flex justify-between">
+        <Button type="button" variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4" />Back</Button>
+        <Button type="submit" disabled={busy}>{busy ? <><Loader2 className="h-4 w-4 animate-spin" />Sending…</> : "Send application"}</Button>
       </div>
     </form>
   );
 }
 
-// ─── Sidebar content per state ───────────────────────────────────────────────
+function ApplicationTrack({ kind, signedOut, onBack }: { kind: PortalApplicationKind; signedOut: boolean; onBack: () => void }) {
+  const auth = useAuth();
+  const qc = useQueryClient();
+  const [step, setStep] = useState<1 | 2>(1);
+  const [first, setFirst] = useState<Step1>({});
+  const [pending, setPending] = useState<Record<string, unknown> | null>(null);
+  const [verify, setVerify] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
-function JoinSidebar({ role, founderStep }: { role: Role | null; founderStep: number }) {
-  if (!role) {
+  const send = async (details: Record<string, unknown>) => {
+    setErr(""); setBusy(true);
+    try {
+      await api("/join/applications", { body: { kind, details } });
+      await qc.invalidateQueries({ queryKey: ["join-application"] });
+    } catch (x) {
+      if (x instanceof ApiError && x.code === "verify_email") { setPending(details); setVerify(auth.email); }
+      else setErr(failMessage(x));
+    } finally { setBusy(false); }
+  };
+  const submit = async (rest: Record<string, unknown>) => {
+    const { account, ...d1 } = first;
+    setErr("");
+    if (account) {
+      setBusy(true);
+      try { await auth.signUp(account.email, account.password); }
+      catch (x) { setBusy(false); setErr(failMessage(x)); return; }
+      setFirst(d1);
+    }
+    await send({ ...d1, ...rest });
+  };
+
+  if (verify !== null) {
     return (
-      <div className="space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-          <h3 className="font-semibold text-foreground">Why ProofPocket?</h3>
-          <ul className="space-y-2.5 text-sm text-muted-foreground">
-            {[
-              "Verified badge funders and buyers look for",
-              "Live books, cash flow and stock from your phone",
-              "Fraud protection on every payment",
-              "Direct connections to funders, buyers and incubators",
-              "All your documents in one trusted place",
-            ].map((text) => (
-              <li key={text} className="flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-good mt-0.5" />
-                <span>{text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 space-y-2">
-          <h3 className="font-semibold text-foreground">Free for founders</h3>
-          <p className="text-sm text-muted-foreground">
-            ProofPocket is free to join and use. There are no hidden fees, and we never hold or move your money.
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground">Safe from fraud</p>
-          <p>We verify every funder and incubator on the platform. If anyone asks you to pay upfront fees, that is a scam — report it immediately.</p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Confirm your email address</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm">We sent a link to <b>{verify}</b>. Open it, then come back here and send your application.</p>
+          {err && <Callout tone="bad" role="alert">{err}</Callout>}
+          <Button disabled={busy} onClick={() => void auth.refresh().then(() => send(pending!))}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}I've confirmed it. Send application</Button>
+        </CardContent>
+      </Card>
     );
   }
-
-  if (role === "founder") {
-    const steps = [
-      { n: 1, label: "Your details", desc: "About you and your business" },
-      { n: 2, label: "Documents", desc: "Upload your ID and proof" },
-      { n: 3, label: "Review and join", desc: "Check and confirm" },
-    ];
-    return (
-      <div className="space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-          <h3 className="font-semibold text-foreground">Your progress</h3>
-          <ol className="space-y-3">
-            {steps.map(({ n, label, desc }) => (
-              <li key={n} className="flex items-start gap-3">
-                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold mt-0.5 ${
-                  founderStep > n ? "bg-good text-white" :
-                  founderStep === n ? "bg-primary text-primary-foreground" :
-                  "bg-secondary text-muted-foreground"
-                }`}>
-                  {founderStep > n ? "✓" : n}
-                </div>
-                <div>
-                  <div className={`text-sm font-medium ${founderStep === n ? "text-foreground" : "text-muted-foreground"}`}>{label}</div>
-                  <div className="text-xs text-muted-foreground">{desc}</div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-foreground">Starter vs Verified</h3>
-          <div className="space-y-2 text-sm">
-            <div className="rounded-lg bg-secondary/50 p-3">
-              <div className="font-medium text-foreground">Starter</div>
-              <div className="text-muted-foreground text-xs mt-0.5">Books, stock, payments, cash flow and the registration guide.</div>
-            </div>
-            <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
-              <div className="font-medium text-foreground">Verified</div>
-              <div className="text-muted-foreground text-xs mt-0.5">Everything in Starter, plus the badge, funder matching, buyer introductions and tenders.</div>
-            </div>
-            <p className="text-xs text-muted-foreground">Both are free. Register with CIPC to become Verified.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (role === "investor") {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h3 className="font-semibold text-foreground">How funder verification works</h3>
-          <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-            <li>Submit your application with organisation and mandate details</li>
-            <li>We verify your CIPC registration, FSCA status and representative ID</li>
-            <li>Our team contacts you within 2–3 business days</li>
-            <li>Once approved, your funder portal is activated</li>
-          </ol>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground">No upfront fees</p>
-          <p>ProofPocket never charges funders upfront fees to list or access deal flow. If you are asked for payment, contact us immediately.</p>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 space-y-2 text-sm text-muted-foreground">
-          <h3 className="font-semibold text-foreground">What you get</h3>
-          <ul className="space-y-1.5">
-            {[
-              "Verified founder profiles with live financial data",
-              "B-BBEE, sector and stage filters",
-              "Fraud-checked documents and payment history",
-              "Direct messaging with shortlisted founders",
-            ].map((t) => <li key={t} className="flex items-start gap-2"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-good mt-0.5" />{t}</li>)}
-          </ul>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-        <h3 className="font-semibold text-foreground">How org verification works</h3>
-        <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
-          <li>Submit your application with registration and programme details</li>
-          <li>We call the phone number you provide to verify your organisation</li>
-          <li>We check your CIPC or NPO registration number</li>
-          <li>Once approved, your adviser portal is activated</li>
-        </ol>
-      </div>
-      <div className="rounded-xl border border-border bg-card p-5 space-y-2 text-sm text-muted-foreground">
-        <h3 className="font-semibold text-foreground">What you get</h3>
-        <ul className="space-y-1.5">
-          {[
-            "A cohort dashboard for your incubatees",
-            "Document and readiness tracking per business",
-            "Direct messaging with founders",
-            "Funder matching for your cohort",
-          ].map((t) => <li key={t} className="flex items-start gap-2"><CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-good mt-0.5" />{t}</li>)}
-        </ul>
-      </div>
+      <button type="button" onClick={onBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />Choose again</button>
+      {step === 1 && <ApplicationStep1 kind={kind} signedOut={signedOut} initial={first} onNext={(d) => { setFirst(d); setStep(2); }} />}
+      {step === 2 && <ApplicationStep2 kind={kind} initial={first} busy={busy} onBack={() => setStep(1)} onSend={(d) => void submit(d)} />}
+      {err && <Callout tone="bad" role="alert">{err}</Callout>}
     </div>
   );
 }
 
-// ─── Root component ───────────────────────────────────────────────────────────
+interface MyApplication { kind: PortalApplicationKind; orgName: string; status: "pending" | "approved" | "rejected"; reason: string | null; sentOn: string }
+
+/** What an applicant sees each time they sign in, until (and after) a decision. */
+function ApplicationStatus({ a }: { a: MyApplication }) {
+  const auth = useAuth();
+  const portal = a.kind === "funder" ? "funder portal" : "support organisation portal";
+  return (
+    <Card>
+      <CardContent className="space-y-4 pt-6 text-center">
+        <span className={cn("mx-auto flex h-14 w-14 items-center justify-center rounded-full", a.status === "rejected" ? "bg-bad-soft text-bad" : "bg-accent-soft text-primary")}>
+          {a.status === "rejected" ? <XCircle className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
+        </span>
+        {a.status === "rejected" ? <>
+          <h2 className="text-lg font-semibold">We couldn't approve this application</h2>
+          <p className="text-sm text-muted-foreground">The {portal} for <b className="text-foreground">{a.orgName}</b> wasn't approved.</p>
+          {a.reason && <Callout tone="bad" className="text-left"><b>The reason:</b> {a.reason}</Callout>}
+          <p className="text-sm text-muted-foreground">If something can be fixed, reply to the email we sent you and we'll look at it again.</p>
+        </> : <>
+          <h2 className="text-lg font-semibold">We're checking your application</h2>
+          <p className="text-sm text-muted-foreground">You applied for a {portal} for <b className="text-foreground">{a.orgName}</b> on {shortDate(String(a.sentOn).slice(0, 10))}. ProofPocket will call you to confirm the details, usually within 2–3 business days, and email you once it's decided.</p>
+        </>}
+        <Button variant="outline" onClick={() => void auth.signOut()}>Sign out</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── side panel ─────────────────────────────────────────────────────────────
+
+function Aside({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <h2 className="font-semibold">{title}</h2>
+      <ul className="space-y-2 text-sm text-muted-foreground">
+        {items.map((t) => <li key={t} className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-good" /><span>{t}</span></li>)}
+      </ul>
+    </div>
+  );
+}
+
+function JoinSidebar({ track }: { track: Track | null }) {
+  if (track === "funder") return <div className="space-y-4">
+    <Aside title="How funders are checked" items={["Send this application", "ProofPocket calls the contact person and checks the registration", "You hear back by email, usually within 2–3 business days", "Once approved, set your programme requirements and see Verified businesses"]} />
+    <Callout tone="info">ProofPocket never charges funders or founders a fee. If anyone asks you to pay to be listed, report it.</Callout>
+  </div>;
+  if (track === "support_org") return <div className="space-y-4">
+    <Aside title="How organisations are checked" items={["Send this application", "ProofPocket calls the contact person and checks the CIPC or NPO number", "You hear back by email, usually within 2–3 business days", "Once approved, founders can choose you and you check their documents"]} />
+    <Aside title="What you get" items={["A cohort board of the businesses you support", "Document checks for your founders", "A list of businesses that need attention", "Support requests from your founders"]} />
+  </div>;
+  return <div className="space-y-4">
+    <Aside title="Starter or Verified?" items={["Starter: books, stock, payments, cash flow, the registration guide and sharing posts from your own accounts", "Verified: everything in Starter, plus the badge, the public directory, funder matching, buyer introductions and tenders", "Both are free"]} />
+    <Callout tone="info">ProofPocket never holds or moves your money. Clients pay you directly.</Callout>
+  </div>;
+}
+
+// ─── page ───────────────────────────────────────────────────────────────────
+
+const TITLES: Record<Track | "choose", string> = {
+  choose: "Join ProofPocket", founder: "Start your business record", funder: "Apply for a funder portal", support_org: "Apply for a support organisation portal",
+};
 
 export default function Join() {
   const auth = useAuth();
@@ -1261,75 +733,43 @@ export default function Join() {
   const signedOut = auth.status === "signedOut";
   const noAccount = me.error instanceof ApiError && me.error.code === "no_account";
   const unjoined = me.data?.role === "founder" && me.data.company && !me.data.company.joined;
-  const docs = useQuery({
-    queryKey: ["founder-documents"],
-    queryFn: () => api<DocumentsResponse>("/founder/documents"),
-    enabled: !!unjoined,
-  });
-
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [founderStep, setFounderStep] = useState<FounderStep>(unjoined ? 2 : 1);
+  const docs = useQuery({ queryKey: ["founder-documents"], queryFn: () => api<DocumentsResponse>("/founder/documents"), enabled: !!unjoined });
+  const mine = useQuery({ queryKey: ["join-application"], queryFn: () => api<{ application: MyApplication | null }>("/join/application"), enabled: noAccount });
+  const [chosen, setChosen] = useState<Track | null>(null);
+  const [founderStep, setFounderStep] = useState<1 | 2 | 3 | null>(null);
   const [joined, setJoined] = useState(false);
 
   if (joined) return <Navigate to="/app/start" replace />;
-  if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending)) return <Spinner />;
+  if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending) || (noAccount && mine.isPending)) return <Spinner />;
   if (me.data && !unjoined) return <Navigate to={HOME_FOR[me.data.role]} replace />;
   if (me.data?.needsOtp) return <Navigate to="/verify" replace />;
 
-  const isReturningFounder = !signedOut && !noAccount && unjoined;
-  const activeRole: Role | null = selectedRole ?? (isReturningFounder ? "founder" : null);
+  const application = mine.data?.application ?? null;
+  const track: Track | null = unjoined ? "founder" : chosen;
+  // A founder who comes back before finishing starts at Documents.
+  const step = founderStep ?? (unjoined ? 2 : 1);
 
   return (
-    <AuthPageShell wide>
-      {/* Header */}
-      <div className="text-center space-y-1 py-2">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">ProofPocket</h1>
-        <p className="text-muted-foreground text-sm">One business record. Trusted by funders, buyers and the public.</p>
+    <AuthPageShell wide toSignIn>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">{application ? "Your application" : TITLES[track ?? "choose"]}</h1>
+        {!application && !track && <p className="text-sm text-muted-foreground">Anyone can start. Registered businesses that pass the document check get the Verified badge, which funders, buyers and customers look for.</p>}
       </div>
-
-      {/* Two-column on desktop, single column on mobile */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-
-        {/* ── Main content (left / full on mobile) ── */}
         <div className="w-full min-w-0 lg:flex-1">
-
-          {/* Role selector */}
-          {!isReturningFounder && !selectedRole && (
-            <RoleSelector onSelect={setSelectedRole} />
-          )}
-
-          {/* Founder track */}
-          {(selectedRole === "founder" || isReturningFounder) && (
-            <>
-              {founderStep === 1 && (
-                <FounderDetails signedOut={signedOut} onDone={() => setFounderStep(2)} />
-              )}
-              {founderStep === 2 && docs.data && (
-                <FounderDocuments data={docs.data} onBack={() => setFounderStep(1)} onNext={() => setFounderStep(3)} />
-              )}
-              {founderStep === 3 && docs.data && (
-                <FounderConfirm data={docs.data} onBack={() => setFounderStep(2)} onJoined={() => setJoined(true)} />
-              )}
-              {founderStep > 1 && !docs.data && <Spinner />}
-            </>
-          )}
-
-          {/* Investor track */}
-          {selectedRole === "investor" && (
-            <InvestorTrack onBack={() => setSelectedRole(null)} />
-          )}
-
-          {/* Org track */}
-          {selectedRole === "org" && (
-            <OrgTrack onBack={() => setSelectedRole(null)} />
-          )}
+          {application ? <ApplicationStatus a={application} />
+            : !track ? <TrackChooser onSelect={setChosen} />
+            : track === "founder" ? <>
+                {step === 1 && (signedOut || noAccount || unjoined) && <FounderDetails signedOut={signedOut} onDone={() => setFounderStep(2)} />}
+                {step === 2 && docs.data && <FounderDocuments data={docs.data} onBack={() => setFounderStep(1)} onNext={() => setFounderStep(3)} />}
+                {step === 3 && docs.data && <FounderConfirm data={docs.data} onBack={() => setFounderStep(2)} onJoined={() => setJoined(true)} />}
+                {step > 1 && !docs.data && <Spinner />}
+              </>
+            : <ApplicationTrack kind={track} signedOut={signedOut} onBack={() => setChosen(null)} />}
         </div>
-
-        {/* ── Sidebar (right on desktop, below on mobile) ── */}
-        <aside className="w-full lg:w-72 xl:w-80 lg:shrink-0 lg:sticky lg:top-8 lg:self-start">
-          <JoinSidebar role={activeRole} founderStep={founderStep} />
-        </aside>
+        <aside className="w-full lg:sticky lg:top-8 lg:w-80 lg:shrink-0 lg:self-start"><JoinSidebar track={application ? application.kind : track} /></aside>
       </div>
+      {!application && track !== "funder" && track !== "support_org" && <Callout tone="info">Once you've joined, set up <b>Google Authenticator</b> in Business settings so nobody can use a stolen password to get in.</Callout>}
     </AuthPageShell>
   );
 }

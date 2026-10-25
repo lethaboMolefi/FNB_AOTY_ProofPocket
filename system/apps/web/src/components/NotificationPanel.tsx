@@ -48,7 +48,7 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
         aria-label={count > 0 ? `${count} notification${count !== 1 ? "s" : ""}` : "Notifications"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Bell className="h-4 w-4" />
         {count > 0 && (
@@ -100,7 +100,7 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
               type="button"
               aria-label="Close notifications"
               onClick={() => setOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -111,7 +111,7 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
         <div className="flex-1 overflow-y-auto">
           {visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-center px-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2">
                 <CheckCircle2 className="h-6 w-6 text-muted-foreground/60" />
               </div>
               <p className="text-sm font-medium text-foreground">You're all caught up</p>
@@ -165,7 +165,7 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
                           type="button"
                           aria-label={`Dismiss: ${n.title}`}
                           onClick={() => dismiss(n.id)}
-                          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:bg-muted hover:text-foreground transition-all"
+                          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:bg-surface-2 hover:text-foreground transition-all"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>

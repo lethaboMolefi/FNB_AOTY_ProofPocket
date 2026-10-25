@@ -1,9 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"] },
-    "ignoreDeprecations": "6.0",
     "lib": [
       "ES2022",
       "DOM",
@@ -14,7 +11,10 @@
     "types": [
       "vite/client",
       "vite-plugin-pwa/client"
-    ]
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": [
     "src",

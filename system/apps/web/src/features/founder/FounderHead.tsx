@@ -25,5 +25,5 @@ export function FounderHead({ title, sub, action }: FounderHeadProps) {
       )
   ) : undefined;
 
-  return <PageHeader title={title} sub={sub} badge={badge} action={action} />;
+  return <PageHeader label={c ? `${c.name} · ${c.town}, ${c.province}` : undefined} title={title} sub={sub} badge={badge} action={action} />;
 }

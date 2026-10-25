@@ -132,39 +132,22 @@ function BusinessForm({ s }: { s: SettingsData }) {
 
 export default function Settings() {
   const q = useQuery({ queryKey: ["founder", "settings"], queryFn: () => api<SettingsData>("/founder/settings") });
-
   return (
     <>
       <FounderHead title="Business settings" sub="Two-step sign-in, opening balance, people and the year you started trading." />
-
-      {/* ── Two-column on desktop: form left, security + info right ── */}
+      {/* Two columns on desktop: the form on the left, security and help on the right. */}
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_360px]">
-
-        {/* Left: business details form */}
-        <div>
-          {q.data ? <BusinessForm key={JSON.stringify(q.data)} s={q.data} /> : <Spinner />}
-        </div>
-
-        {/* Right: 2FA card + help info */}
+        <div>{q.data ? <BusinessForm key={JSON.stringify(q.data)} s={q.data} /> : <Spinner />}</div>
         <div className="space-y-4">
           <TwoFactorCard />
-
-          <Card className="border-border/60 bg-muted/30">
+          <Card className="bg-surface-2">
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-                <CardTitle className="text-sm">Your data is private</CardTitle>
-              </div>
+              <CardTitle as="h2" className="flex items-center gap-2 text-sm"><ShieldCheck className="h-4 w-4 shrink-0 text-primary" />Who sees your records</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground pb-4">
-              <p>Funders and advisers only see what you choose to share. Your books, payments and documents are yours.</p>
+            <CardContent className="space-y-3 pb-4 text-sm text-muted-foreground">
+              <p>Your incubator's adviser sees your books and documents in order to help. Funders see only what you allow under Privacy &amp; sharing.</p>
               <Separator />
-              <div className="flex items-start gap-2 pt-1">
-                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/60" />
-                <p className="text-xs leading-relaxed">
-                  ProofPocket never holds or moves money. Clients pay you directly with PayShap, EFT, a card machine, or cash.
-                </p>
-              </div>
+              <p className="flex items-start gap-2 text-xs leading-relaxed"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />ProofPocket never holds or moves money. Clients pay you directly with PayShap, EFT, a card machine or cash.</p>
             </CardContent>
           </Card>
         </div>

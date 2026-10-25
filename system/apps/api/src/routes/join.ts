@@ -1,20 +1,20 @@
-import { investorDetailsSchema, joinCompleteSchema, joinDetailsSchema, orgOnboardSchema } from "@proofpocket/shared";
+import { joinCompleteSchema, joinDetailsSchema, portalApplicationSchema } from "@proofpocket/shared";
 import { and, asc, eq } from "drizzle-orm";
 import { Router } from "express";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
-import { organisations, users } from "../db/schema/index";
+import { organisations } from "../db/schema/index";
 import { AppError, unauthenticated } from "../lib/errors";
-import { audit, addActivity } from "../lib/audit";
 import { actorOf, contextOf, requireUser } from "../middleware/auth";
-import { handle, parse } from "../middleware/http";
+import { handle, limits, parse } from "../middleware/http";
 import { myCompany } from "../repositories/companies";
+import { myApplication, submitApplication } from "../services/applications";
 import { completeJoin, saveDetails } from "../services/join";
 
 export function joinRoutes(deps: Deps) {
   const r = Router();
 
-  // ── Public: options the join wizard needs ─────────────────────────────────
+  // Public: the incubators a founder can choose.
   r.get("/join/options", handle(async () => {
     const incubators = await withContext(deps.db, { role: "public" }, (tx) =>
       tx.select({ id: organisations.id, name: organisations.name }).from(organisations)
@@ -22,8 +22,7 @@ export function joinRoutes(deps: Deps) {
     return { incubators };
   }));
 
-  // ── Founder track ─────────────────────────────────────────────────────────
-  // Step 1: save founder + business details (creates account if needed).
+  // Step 1: needs a signed-in account (just created) that is either new or a founder who hasn't finished.
   r.post("/join", handle(async (req) => {
     const a = req.auth;
     if (!a) throw unauthenticated();
@@ -31,7 +30,7 @@ export function joinRoutes(deps: Deps) {
     if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
     const d = parse(joinDetailsSchema, req.body);
     const { company } = await withContext(deps.db, contextOf(req), (tx) =>
-      saveDetails(tx, { firebaseUid: a.token.uid, email: a.token.email!, existingUserId: a.user?.id ?? null }, d));
+      saveDetails(tx, { firebaseUid: a.token.uid, email: a.token.email!, existingUserId: a.user?.id ?? null }, d, deps.config.ACCOUNT_NUMBER_KEY));
     return { companyId: company.id };
   }));
 
@@ -44,89 +43,23 @@ export function joinRoutes(deps: Deps) {
     });
   }));
 
-  // ── Investor / Funder track ───────────────────────────────────────────────
-  // Saves an investor application for admin review. Does not create a user yet.
-  r.post("/join/investor", handle(async (req) => {
+  // Funders and support organisations apply for a portal. Grants nothing until an admin approves it.
+  r.post("/join/applications", limits.auth(), handle(async (req) => {
     const a = req.auth;
     if (!a) throw unauthenticated();
     if (a.user) throw new AppError(409, "already_joined", "This account already has a ProofPocket portal.");
     if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
-    const d = parse(investorDetailsSchema, req.body);
-
-    await withContext(deps.db, contextOf(req), async (tx) => {
-      // Create the user account, pending admin approval.
-      const [u] = await tx.insert(users).values({
-        firebaseUid: a.token.uid,
-        email: a.token.email!,
-        displayName: d.repName,
-        role: "funder",
-      }).returning({ id: users.id });
-
-      // Create the organisation record (not verified until admin approves).
-      await tx.insert(organisations).values({
-        type: "funder",
-        name: d.orgName,
-        kind: d.instruments.join(", "),
-        verified: false,
-        setupDone: false,
-      });
-
-      await audit(tx, { userId: u!.id, role: "funder", requestId: undefined }, {
-        action: "investor.applied",
-        entity: "user",
-        entityId: u!.id,
-        after: { orgName: d.orgName, entityType: d.entityType, repEmail: d.repEmail },
-      });
-    });
-
-    return { ok: true, message: "Application received. We will contact you within 2–3 business days to complete verification." };
+    if (!a.token.emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: open the link we emailed you, then sign in again.");
+    const input = parse(portalApplicationSchema, req.body);
+    return withContext(deps.db, contextOf(req), (tx) => submitApplication(tx, deps.config, { firebaseUid: a.token.uid, email: a.token.email! }, input));
   }));
 
-  // ── Incubator / NGO / NPO track ───────────────────────────────────────────
-  // Saves an org application for admin review and manual validation.
-  r.post("/join/org", handle(async (req) => {
+  /** The signed-in applicant's own application (null if they haven't sent one). */
+  r.get("/join/application", handle(async (req) => {
     const a = req.auth;
     if (!a) throw unauthenticated();
-    if (a.user) throw new AppError(409, "already_joined", "This account already has a ProofPocket portal.");
-    if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
-    const d = parse(orgOnboardSchema, req.body);
-
-    // Map the orgOnboard type to the DB orgType enum.
-    const dbType = (d.orgType === "ngo" || d.orgType === "npo" || d.orgType === "cbo") ? "incubator" as const : "incubator" as const;
-    // (The DB currently uses 'incubator' for all support orgs; a migration will add ngo/npo later.)
-
-    await withContext(deps.db, contextOf(req), async (tx) => {
-      const [u] = await tx.insert(users).values({
-        firebaseUid: a.token.uid,
-        email: a.token.email!,
-        displayName: d.contactName,
-        role: "adviser",
-      }).returning({ id: users.id });
-
-      await tx.insert(organisations).values({
-        type: dbType,
-        name: d.orgName,
-        verified: false,
-        setupDone: false,
-      });
-
-      await audit(tx, { userId: u!.id, role: "adviser", requestId: undefined }, {
-        action: "org.applied",
-        entity: "user",
-        entityId: u!.id,
-        after: {
-          orgName: d.orgName,
-          orgType: d.orgType,
-          contactEmail: d.contactEmail,
-          contactPhone: d.contactPhone,
-          website: d.website,
-          npoNumber: d.npoNumber,
-          cipcNumber: d.cipcNumber,
-        },
-      });
-    });
-
-    return { ok: true, message: "Application received. Our team will call the number you provided within 2–3 business days to verify your organisation." };
+    if (a.user) return { application: null };
+    return withContext(deps.db, contextOf(req), (tx) => myApplication(tx, a.token.uid));
   }));
 
   return r;

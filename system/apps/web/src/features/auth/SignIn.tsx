@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInSchema } from "@proofpocket/shared";
-import { forwardRef, useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useId, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -14,18 +14,21 @@ import { ApiError } from "../../lib/api";
 import { AUTH_MODE, useAuth } from "../../lib/auth";
 import { AuthShell, GoogleIcon } from "./AuthShell";
 
-export function AuthPageShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
+/**
+ * Page frame for signing in, joining and the code step. With `toSignIn`, the logo always leads to the sign-in page:
+ * someone part-way through joining is signed out first (what they saved is kept), so "/" can't send them back here.
+ */
+export function AuthPageShell({ children, wide, toSignIn }: { children: ReactNode; wide?: boolean; toSignIn?: boolean }) {
+  const auth = useAuth();
+  const nav = useNavigate();
+  const leave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (auth.status === "signedIn") await auth.signOut();
+    nav("/sign-in");
+  };
   return (
-    <main
-      id="main"
-      className={`mx-auto flex min-h-screen flex-col gap-5 px-4 pb-10 pt-[calc(env(safe-area-inset-top,0px)+32px)] ${
-        wide ? "max-w-[1100px]" : "max-w-md"
-      }`}
-    >
-      <Link to="/" className="flex items-center gap-2.5 text-ink no-underline">
-        <BrandMark />
-        <span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span>
-      </Link>
+    <main id="main" className={`mx-auto flex min-h-screen flex-col gap-5 px-4 pb-10 pt-[calc(env(safe-area-inset-top,0px)+32px)] ${wide ? "max-w-[1100px]" : "max-w-md"}`}>
+      <Link to={toSignIn ? "/sign-in" : "/"} onClick={toSignIn ? (e) => void leave(e) : undefined} aria-label={toSignIn ? "ProofPocket: go to sign in" : "ProofPocket"} className="flex items-center gap-2.5 self-start text-ink no-underline"><BrandMark /><span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span></Link>
       {children}
     </main>
   );
@@ -35,77 +38,25 @@ export function AuthPageShell({ children, wide }: { children: ReactNode; wide?: 
  * Password field with its own label and a show/hide button (people type long passwords on small phones).
  * The button sits outside the label so the field's accessible name is just the label text.
  */
-export const PasswordField = forwardRef<
-  HTMLInputElement,
-  InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }
->(function PasswordField({ label, error, ...props }, ref) {
-  const [show, setShow] = useState(false);
-  const id = useId();
-  return (
-    <div className="field">
-      <label htmlFor={id}>
-        <span className="text-[.82rem] font-semibold text-muted">{label}</span>
-      </label>
-      <div className="flex gap-2">
-        <input
-          id={id}
-          ref={ref}
-          {...props}
-          type={show ? "text" : "password"}
-          spellCheck={false}
-          autoCapitalize="none"
-          aria-invalid={!!error || undefined}
-        />
-        <button
-          type="button"
-          className="btn shrink-0"
-          onClick={() => setShow((v) => !v)}
-          aria-pressed={show}
-          aria-label={show ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-        >
-          {show ? "Hide" : "Show"}
-        </button>
+export const PasswordField = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }>(
+  function PasswordField({ label, error, ...props }, ref) {
+    const [show, setShow] = useState(false);
+    const id = useId();
+    return (
+      <div className="field">
+        <label htmlFor={id}><span className="text-[.82rem] font-semibold text-muted">{label}</span></label>
+        <div className="flex gap-2">
+          <input id={id} ref={ref} {...props} type={show ? "text" : "password"} spellCheck={false} autoCapitalize="none" aria-invalid={!!error || undefined} />
+          <button type="button" className="btn shrink-0" onClick={() => setShow((v) => !v)} aria-pressed={show} aria-label={show ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}>{show ? "Hide" : "Show"}</button>
+        </div>
+        {error && <p className="err">{error}</p>}
       </div>
-      {error && <p className="err">{error}</p>}
-    </div>
-  );
-});
+    );
+  });
 
 const firebaseMessage = (code: string) =>
-  code === "auth/too-many-requests"
-    ? "Too many tries. For your safety, wait a few minutes and try again."
-    : "That email and password don't match. Check them and try again.";
-
-/** shadcn-style password input with show/hide toggle. */
-const PasswordInput = forwardRef<
-  HTMLInputElement,
-  InputHTMLAttributes<HTMLInputElement> & { error?: string }
->(function PasswordInput({ error, ...props }, ref) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="relative">
-      <Input
-        ref={ref}
-        type={show ? "text" : "password"}
-        spellCheck={false}
-        autoCapitalize="none"
-        aria-invalid={!!error || undefined}
-        {...props}
-        className="pr-10"
-      />
-      <button
-        type="button"
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-        onClick={() => setShow((v) => !v)}
-        aria-label={show ? "Hide password" : "Show password"}
-        tabIndex={-1}
-      >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-      {error && <p className="err mt-1">{error}</p>}
-    </div>
-  );
-});
+  code === "auth/too-many-requests" ? "Too many tries. For your safety, wait a few minutes and try again."
+  : "That email and password don't match. Check them and try again.";
 
 export default function SignIn() {
   const auth = useAuth();
@@ -117,34 +68,20 @@ export default function SignIn() {
   const form = useForm<z.infer<typeof signInSchema>>({ resolver: zodResolver(signInSchema) });
 
   const submit = form.handleSubmit(async ({ email, password }) => {
-    setErr("");
-    setNote("");
+    setErr(""); setNote("");
     try {
       await auth.signIn(email, password);
       nav("/", { replace: true });
     } catch (e) {
-      setErr(
-        e instanceof ApiError
-          ? e.message
-          : firebaseMessage((e as { code?: string }).code ?? "")
-      );
+      setErr(e instanceof ApiError ? e.message : firebaseMessage((e as { code?: string }).code ?? ""));
     }
   });
 
   const forgot = async () => {
     const email = form.getValues("email");
-    if (!email) {
-      setErr("Enter your email first, then choose Forgot password.");
-      return;
-    }
-    try {
-      await auth.resetPassword(email);
-    } catch (e) {
-      if (e instanceof ApiError) {
-        setErr(e.message);
-        return;
-      }
-    }
+    if (!email) { setErr("Enter your email first, then choose Forgot password."); return; }
+    try { await auth.resetPassword(email); } catch (e) { if (e instanceof ApiError) { setErr(e.message); return; } }
+    // Same message whether or not the account exists.
     setNote("If there's an account for that email, we've sent a link to reset the password.");
   };
 
@@ -163,7 +100,7 @@ export default function SignIn() {
     <AuthShell>
       <Card className="border-border shadow-lg">
         <CardHeader className="space-y-3 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight"><h1>Sign in</h1></CardTitle>
+          <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Sign in</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
             Your books, payments and proof, in one place.
           </CardDescription>
@@ -234,3 +171,20 @@ export default function SignIn() {
     </AuthShell>
   );
 }
+
+/** shadcn-style password input with show/hide toggle. */
+const PasswordInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { error?: string }>(
+  function PasswordInput({ error, ...props }, ref) {
+    const [show, setShow] = useState(false);
+    return (
+      <div className="relative">
+        <Input ref={ref} type={show ? "text" : "password"} spellCheck={false} autoCapitalize="none"
+          aria-invalid={!!error || undefined} {...props} className="pr-10" />
+        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          onClick={() => setShow((v) => !v)} aria-label={show ? "Hide password" : "Show password"} tabIndex={-1}>
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+        {error && <p className="err mt-1">{error}</p>}
+      </div>
+    );
+  });

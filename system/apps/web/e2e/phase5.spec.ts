@@ -68,7 +68,7 @@ test("founder: apply for funding, post, and tenders", async ({ page, isMobile })
   await page.getByLabel("What do you want to tell customers?").fill(text);
   await page.getByRole("button", { name: "Save and request a feature" }).click();
   await expect(page.getByText("Saved. ProofPocket reviews feature requests weekly.")).toBeVisible();
-  await expect(page.locator(".li", { hasText: text }).getByText("Feature requested")).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: text }).getByText("Feature requested")).toBeVisible();
   await page.goto("/app/procurement");
   await expect(page.getByRole("heading", { name: "Procurement" })).toBeVisible();
 });
