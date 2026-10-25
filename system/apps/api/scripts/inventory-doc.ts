@@ -8,17 +8,17 @@ const cell = (allow: MatrixRole[], role: MatrixRole, token?: boolean) => (token 
 // Web pages and their guards (apps/web/src/app/router.tsx, guards.tsx, nav.ts).
 const FOUNDER_PAGES = ["home", "start", "books", "stock", "payments", "cashflow", "markets", "funding", "procurement", "protection", "privacy", "settings", "more"];
 const PAGES: { id: string; page: string; what: string; access: Record<MatrixRole, string> }[] = [
-  { id: "UI-01", page: "/", what: "Sends each person to their own home (sign-in, Join, code step or portal)", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ /funder/pipeline", adviser: "→ /adviser/cohort", buyer: "→ /directory", admin: "→ /admin/checks" } },
-  { id: "UI-02", page: "/sign-in", what: "Sign in; Continue with Google (production)", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
-  { id: "UI-03", page: "/join", what: "Join: founder track, funder and support-organisation applications, application status", access: { public: "Allowed", joining: "Allowed", founder: "Allowed until joined, then → /app/home", funder: "→ portal", adviser: "→ portal", buyer: "→ /directory", admin: "→ portal" } },
-  { id: "UI-04", page: "/verify", what: "Google Authenticator set-up or code", access: { public: "→ /sign-in", joining: "→ /join", founder: "When two-step is on", funder: "Required", adviser: "Required", buyer: "When two-step is on", admin: "Required" } },
-  { id: "UI-05", page: "/directory, /b/:slug", what: "Public directory and business pages", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
-  { id: "UI-06", page: "/pay/:ref-token", what: "Client payment page", access: Object.fromEntries(ROLES.map((r) => [r, "Link"])) as Record<MatrixRole, string> },
-  { id: "UI-07", page: "/privacy-notice", what: "Privacy notice", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
-  { id: "UI-08", page: `/app/{${FOUNDER_PAGES.join(", ")}}`, what: "Founder portal (12 pages + More on phones)", access: { public: "→ /sign-in", joining: "→ /join", founder: "Allowed", funder: "→ own portal", adviser: "→ own portal", buyer: "→ /directory", admin: "→ own portal" } },
-  { id: "UI-09", page: "/funder/{setup, pipeline, applications, programmes}", what: "Funder portal (set-up first)", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "Allowed", adviser: "→ own portal", buyer: "→ /directory", admin: "→ own portal" } },
-  { id: "UI-10", page: "/adviser/{cohort, checks, attention, support}", what: "Incubator (adviser) portal", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ own portal", adviser: "Allowed", buyer: "→ /directory", admin: "→ own portal" } },
-  { id: "UI-11", page: "/admin/{checks, applications, organisations, reports, features, flagged, tenders}", what: "Admin portal", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ own portal", adviser: "→ own portal", buyer: "→ /directory", admin: "Allowed" } },
+  { id: "F-UI-01", page: "/", what: "Sends each person to their own home (sign-in, Join, code step or portal)", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ /funder/pipeline", adviser: "→ /adviser/cohort", buyer: "→ /directory", admin: "→ /admin/checks" } },
+  { id: "F-UI-02", page: "/sign-in", what: "Sign in; Continue with Google (production)", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
+  { id: "F-UI-03", page: "/join", what: "Join: founder track, funder and support-organisation applications, application status", access: { public: "Allowed", joining: "Allowed", founder: "Allowed until joined, then → /app/home", funder: "→ portal", adviser: "→ portal", buyer: "→ /directory", admin: "→ portal" } },
+  { id: "F-UI-04", page: "/verify", what: "Google Authenticator set-up or code", access: { public: "→ /sign-in", joining: "→ /join", founder: "When two-step is on", funder: "Required", adviser: "Required", buyer: "When two-step is on", admin: "Required" } },
+  { id: "F-UI-05", page: "/directory, /b/:slug", what: "Public directory and business pages", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
+  { id: "F-UI-06", page: "/pay/:ref-token", what: "Client payment page", access: Object.fromEntries(ROLES.map((r) => [r, "Link"])) as Record<MatrixRole, string> },
+  { id: "F-UI-07", page: "/privacy-notice", what: "Privacy notice", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
+  { id: "F-UI-08", page: `/app/{${FOUNDER_PAGES.join(", ")}}`, what: "Founder portal (12 pages + More on phones)", access: { public: "→ /sign-in", joining: "→ /join", founder: "Allowed", funder: "→ own portal", adviser: "→ own portal", buyer: "→ /directory", admin: "→ own portal" } },
+  { id: "F-UI-09", page: "/funder/{setup, pipeline, applications, programmes}", what: "Funder portal (set-up first)", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "Allowed", adviser: "→ own portal", buyer: "→ /directory", admin: "→ own portal" } },
+  { id: "F-UI-10", page: "/adviser/{cohort, checks, attention, support}", what: "Incubator (adviser) portal", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ own portal", adviser: "Allowed", buyer: "→ /directory", admin: "→ own portal" } },
+  { id: "F-UI-11", page: "/admin/{checks, applications, organisations, reports, features, flagged, tenders}", what: "Admin portal", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ own portal", adviser: "→ own portal", buyer: "→ /directory", admin: "Allowed" } },
 ];
 
 const modules = [...new Set(MATRIX.map((e) => e.module))];
@@ -74,7 +74,7 @@ for (const n of NON_HTTP) md += `| ${n.id} | ${n.module} | ${n.feature} | ${n.wh
 
 md += `\n## 4. Role-by-feature access matrix (API)\n\n| ID | Feature | ${ROLES.map((r) => NAMES[r]).join(" | ")} |\n|---|---|${ROLES.map(() => "---").join("|")}|\n`;
 for (const e of MATRIX) md += `| ${e.id} | ${e.feature} | ${ROLES.map((r) => cell(e.allow, r, e.token)).join(" | ")} |\n`;
-md += `| JOB-01, JOB-02 | Background jobs | ${ROLES.map(() => "Not applicable").join(" | ")} |\n`;
+md += `| F-JOB-01, F-JOB-02 | Background jobs | ${ROLES.map(() => "Not applicable").join(" | ")} |\n`;
 
 const counts = Object.fromEntries(ROLES.map((r) => [r, MATRIX.filter((e) => !e.token && e.allow.includes(r)).length]));
 md += `\n**Totals:** ${MATRIX.length} API endpoints, ${PAGES.length} page groups, ${NON_HTTP.length} other features. Endpoints allowed per role, not counting link-only ones (${MATRIX.filter((e) => e.token).length}): ${ROLES.map((r) => `${NAMES[r]} ${counts[r]}`).join(", ")}.\n`;
