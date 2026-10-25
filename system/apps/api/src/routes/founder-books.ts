@@ -3,13 +3,13 @@ import {
   BUSINESS_TYPES, cashflowSummary, clientUuidSchema, entrySchema, fraudOpen, historyMonthSchema, monthOf, monthTotals, nextSteps, scoreLabel, scoreTone,
   settingsSchema, statementImportSchema, statementLineActionSchema, stockEditSchema, stockItemSchema, todayZA, cashOnHand, lastEntryDays, voidSchema,
 } from "@proofpocket/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { Router, type Request } from "express";
 import { z } from "zod";
 import type { Deps } from "../app";
 import { withContext, type Tx } from "../db/client";
 import { messages, paymentRequests, stockItems } from "../db/schema/index";
-import { badRequest } from "../lib/errors";
+import { badRequest, notFound } from "../lib/errors";
 import { actorOf, contextOf, requireUser } from "../middleware/auth";
 import { handle, parse } from "../middleware/http";
 import { myCompany, type CompanyRow } from "../repositories/companies";
@@ -106,15 +106,17 @@ export function founderBookRoutes(deps: Deps) {
   r.patch("/founder/stock/:id", founder, handle((req) => {
     const s = parse(stockEditSchema, req.body);
     return asFounder(req, async (tx, c) => {
-      await tx.update(stockItems).set({
+      const rows = await tx.update(stockItems).set({
         ...(s.name ? { name: s.name } : {}), ...(s.unit ? { unit: s.unit } : {}),
         ...(s.reorderAt !== undefined ? { reorderAt: s.reorderAt.toFixed(2) } : {}), ...(s.cost !== undefined ? { cost: s.cost.toFixed(2) } : {}),
-      }).where(and(eq(stockItems.id, String(req.params.id)), eq(stockItems.companyId, c.id)));
+      }).where(and(eq(stockItems.id, String(req.params.id)), eq(stockItems.companyId, c.id), isNull(stockItems.archivedAt))).returning({ id: stockItems.id });
+      if (!rows.length) throw notFound("That item");
       return { message: "Item updated" };
     });
   }));
   r.delete("/founder/stock/:id", founder, handle((req) => asFounder(req, async (tx, c) => {
-    await tx.update(stockItems).set({ archivedAt: new Date() }).where(and(eq(stockItems.id, String(req.params.id)), eq(stockItems.companyId, c.id)));
+    const rows = await tx.update(stockItems).set({ archivedAt: new Date() }).where(and(eq(stockItems.id, String(req.params.id)), eq(stockItems.companyId, c.id), isNull(stockItems.archivedAt))).returning({ id: stockItems.id });
+    if (!rows.length) throw notFound("That item");
     return { message: "Item removed" };
   })));
   r.post("/founder/stock/:id/use", founder, handle((req) => {
