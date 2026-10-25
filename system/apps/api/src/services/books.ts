@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import {
   addDays, clampQty, duplicateWarning, findDuplicate, matchExisting, methodFromDescription, monthOf, R, restockQuantity,
-  sameLine, stockDelta, todayZA, type EntryInput, type StatementLine,
+  sameLine, stockDelta, todayZA, velocityFlag, type EntryInput, type StatementLine,
 } from "@proofpocket/shared";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
@@ -119,6 +119,21 @@ export async function addEntry(tx: Tx, actor: Actor, c: CompanyRow, e: EntryInpu
   }).returning();
   if (e.stockItemId && e.qty) await move(tx, c, e.stockItemId, stockDelta(e.direction, e.qty), e.direction === "in" ? "sale" : "purchase", randomUUID(), actor, row!.id);
   await addActivity(tx, c.id, `Recorded ${e.direction === "in" ? "income" : "an expense"} of ${R(e.amount)}.`, actor.userId);
+
+  // Behavioural velocity check: flag unnatural bursts of manual cash entries (anti-gaming).
+  // Only runs for manual entries so automated flows (payfast_itn, proof, restock) are not flagged.
+  if ((opts.source ?? "manual") === "manual" && e.method === "cash") {
+    const recent = await tx.select({ createdAt: ledgerEntries.createdAt })
+      .from(ledgerEntries)
+      .where(and(eq(ledgerEntries.companyId, c.id), isNull(ledgerEntries.voidedAt)))
+      .orderBy(desc(ledgerEntries.createdAt))
+      .limit(20);
+    const flag = velocityFlag(recent.map((r) => r.createdAt));
+    if (flag) {
+      await addActivity(tx, c.id, `⚠️ ${flag}`, actor.userId);
+    }
+  }
+
   return { entry: entryView(row!), created: true };
 }
 

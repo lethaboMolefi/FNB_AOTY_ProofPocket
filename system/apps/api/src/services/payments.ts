@@ -246,6 +246,7 @@ export async function payPageView(tx: Tx, config: Config, requestId: string) {
     if (rail === "eft" && d?.accountNumberEnc) ways.eft = { bank: d.bank, accountName: d.accountName, accountNumber: decryptField(d.accountNumberEnc, config.ACCOUNT_NUMBER_KEY) };
     if (rail === "cash") ways.cash = true;
     if (rail === "card_machine") ways.card_machine = true;
+    if (rail === "payfast") ways.payfast = true;
   }
   return {
     business: { name: c!.name, verified: c!.verifiedAt !== null, slug: c!.slug, whatsapp: prof?.whatsapp ?? "" },

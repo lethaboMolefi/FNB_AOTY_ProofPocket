@@ -90,15 +90,18 @@ export const PAY_METHODS = {
   eft: "Bank EFT",
   payshap: "PayShap",
   wallet: "Mobile wallet",
+  payfast: "Card / EFT (PayFast)",
 } as const;
 export type PayMethod = keyof typeof PAY_METHODS;
 export const PAY_METHOD_KEYS = Object.keys(PAY_METHODS) as PayMethod[];
 
 /** Ways a client can pay a payment request. */
-export const RAILS = { payshap: "PayShap", eft: "Bank EFT", cash: "Cash", card_machine: "Card machine" } as const;
+export const RAILS = { payshap: "PayShap", eft: "Bank EFT", cash: "Cash", card_machine: "Card machine", payfast: "Card / EFT (PayFast)" } as const;
 export type Rail = keyof typeof RAILS;
 export const RAIL_KEYS = Object.keys(RAILS) as Rail[];
 export const DIGITAL_RAILS: Rail[] = ["payshap", "eft"];
+/** Rails where ProofPocket can auto-confirm once the gateway notifies (no manual proof needed). */
+export const GATEWAY_RAILS: Rail[] = ["payfast"];
 
 export const PROVINCES = [
   "Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo",
