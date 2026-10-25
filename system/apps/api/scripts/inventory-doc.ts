@@ -19,6 +19,8 @@ const PAGES: { id: string; page: string; what: string; access: Record<MatrixRole
   { id: "F-UI-09", page: "/funder/{setup, pipeline, applications, programmes}", what: "Funder portal (set-up first)", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "Allowed", adviser: "→ own portal", buyer: "→ /directory", admin: "→ own portal" } },
   { id: "F-UI-10", page: "/adviser/{cohort, checks, attention, support}", what: "Incubator (adviser) portal", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ own portal", adviser: "Allowed", buyer: "→ /directory", admin: "→ own portal" } },
   { id: "F-UI-11", page: "/admin/{checks, applications, organisations, reports, features, flagged, tenders}", what: "Admin portal", access: { public: "→ /sign-in", joining: "→ /join", founder: "→ /app/home", funder: "→ own portal", adviser: "→ own portal", buyer: "→ /directory", admin: "Allowed" } },
+  { id: "F-UI-12", page: "(buyer screens)", what: "Buyer portal: none exists; buyers land on the public directory (see BUG-06)", access: { public: "Not applicable", joining: "Not applicable", founder: "Not applicable", funder: "Not applicable", adviser: "Not applicable", buyer: "→ /directory", admin: "Not applicable" } },
+  { id: "F-UI-13", page: "* (any unknown address)", what: "Page not found, with a link home", access: Object.fromEntries(ROLES.map((r) => [r, "Allowed"])) as Record<MatrixRole, string> },
 ];
 
 const modules = [...new Set(MATRIX.map((e) => e.module))];

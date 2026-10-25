@@ -58,6 +58,7 @@ describe("two-step sign-in for founders (Google Authenticator)", () => {
     const { secret } = (await request(app).post("/api/v1/auth/totp/setup").set("Authorization", token).send({})).body;
     const a = nextCode(secret, 0);
     expect((await request(app).post("/api/v1/auth/totp/activate").set("Authorization", token).send({ code: a.code })).status).toBe(200);
+    expect(mailer.sent.at(-1)).toMatchObject({ to: FOUNDER_2, subject: "Two-step sign-in is on" });
     expect((await request(app).get("/api/v1/me").set("Authorization", token)).body).toMatchObject({ needsOtp: false, twoFactor: { enabled: true, required: false } });
 
     const next = signIn(FOUNDER_2);
@@ -68,7 +69,12 @@ describe("two-step sign-in for founders (Google Authenticator)", () => {
     const b = nextCode(secret, a.step);
     await request(app).post("/api/v1/auth/totp/verify").set("Authorization", next).send({ code: b.code });
     expect((await request(app).post("/api/v1/auth/totp/disable").set("Authorization", next).send({ code: b.code })).body.error.code).toBe("code_used");
-  });
+    // With the next code it turns off, and the founder is told by email. (Codes are single-use, so wait for the next 30-second step.)
+    let c: ReturnType<typeof nextCode> | null = null;
+    while (!c) { try { c = nextCode(secret, b.step); } catch { await new Promise((r) => setTimeout(r, 1000)); } }
+    expect((await request(app).post("/api/v1/auth/totp/disable").set("Authorization", next).send({ code: c.code })).status).toBe(200);
+    expect(mailer.sent.at(-1)).toMatchObject({ to: FOUNDER_2, subject: "Two-step sign-in was turned off" });
+  }, 70_000);
 
   it("a founder without it can't be asked for it, and can start set-up any time", async () => {
     const r = await request(app).post("/api/v1/auth/totp/setup").set("Authorization", signIn("sipho@proofpocket.example")).send({});

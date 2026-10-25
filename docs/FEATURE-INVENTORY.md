@@ -287,6 +287,8 @@ The endpoint tables are generated from [`system/apps/api/test/access-matrix.ts`]
 | F-UI-09 | `/funder/{setup, pipeline, applications, programmes}` | Funder portal (set-up first) | → /sign-in | → /join | → /app/home | Allowed | → own portal | → /directory | → own portal |
 | F-UI-10 | `/adviser/{cohort, checks, attention, support}` | Incubator (adviser) portal | → /sign-in | → /join | → /app/home | → own portal | Allowed | → /directory | → own portal |
 | F-UI-11 | `/admin/{checks, applications, organisations, reports, features, flagged, tenders}` | Admin portal | → /sign-in | → /join | → /app/home | → own portal | → own portal | → /directory | Allowed |
+| F-UI-12 | `(buyer screens)` | Buyer portal: none exists; buyers land on the public directory (see BUG-06) | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | → /directory | Not applicable |
+| F-UI-13 | `* (any unknown address)` | Page not found, with a link home | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed |
 
 A redirect ("→") is how the web app refuses a page; the API behind it refuses the same role with 401/403 (section 4).
 
@@ -443,4 +445,4 @@ A redirect ("→") is how the web app refuses a page; the API behind it refuses 
 | F-ADM-16 | Arrange or decline tender interest (no incubator) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-JOB-01, F-JOB-02 | Background jobs | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable |
 
-**Totals:** 128 API endpoints, 11 page groups, 12 other features. Endpoints allowed per role, not counting link-only ones (9): Public 8, Joining 11, Founder 73, Funder 27, Adviser 28, Buyer 16, Admin 35.
+**Totals:** 128 API endpoints, 13 page groups, 12 other features. Endpoints allowed per role, not counting link-only ones (9): Public 8, Joining 11, Founder 73, Funder 27, Adviser 28, Buyer 16, Admin 35.

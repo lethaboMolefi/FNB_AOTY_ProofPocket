@@ -8,6 +8,27 @@ import { signIn, signInWithAuthenticator } from "./helpers";
 
 const PORTALS = ["/app/home", "/funder/pipeline", "/adviser/cohort", "/admin/checks"] as const;
 
+/** The pages anyone may open, as a signed-in role whose home is `home`. */
+async function publicPages(page: Page, home: RegExp) {
+  for (const p of ["/directory", "/privacy-notice", "/sign-in"]) {
+    await page.goto(p);
+    await expect(page, `${p} stays open`).toHaveURL(new RegExp(`${p}$`));
+    await expect(page.locator("h1").first()).toBeVisible();
+  }
+  await page.goto("/directory");
+  await page.getByRole("link").filter({ hasText: /Mabele AgriLink/ }).first().click();
+  await expect(page).toHaveURL(/\/b\/[a-z0-9-]+$/);
+  await expect(page.getByRole("heading", { name: "Mabele AgriLink", level: 1 })).toBeVisible();
+  await page.goto("/pay/PP-0000-not-a-real-token");
+  await expect(page.getByText("This payment link isn't valid.")).toBeVisible();
+  await page.goto("/no-such-page");
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  // Join and the code step send someone who already has an account (and needs no code) home.
+  await expectLanding(page, "/join", home);
+  await expectLanding(page, "/verify", home);
+  await expectLanding(page, "/", home);
+}
+
 async function expectLanding(page: Page, from: string, to: RegExp) {
   await page.goto(from);
   await expect(page, `${from} → ${to}`).toHaveURL(to);
@@ -15,6 +36,10 @@ async function expectLanding(page: Page, from: string, to: RegExp) {
 
 test("signed out: every portal sends you to sign-in; public pages open", async ({ page }) => {
   for (const p of [...PORTALS, "/"]) await expectLanding(page, p, /\/sign-in$/);
+  // An unknown address shows the not-found page with a way back.
+  await page.goto("/no-such-page");
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go to ProofPocket" })).toHaveAttribute("href", "/");
   for (const p of ["/directory", "/privacy-notice", "/join", "/sign-in"]) {
     await page.goto(p);
     await expect(page).toHaveURL(new RegExp(`${p}$`));
@@ -29,6 +54,7 @@ test("joining (signed in, no account): every portal sends you to Join", async ({
   await page.goto("/sign-in");
   await page.evaluate((t) => localStorage.setItem("pp.session", t), (await r.json()).token);
   for (const p of [...PORTALS, "/"]) await expectLanding(page, p, /\/join$/);
+  await publicPages(page, /\/join$/);
   // The API refuses the same person on portal endpoints.
   const me = await page.request.get("/api/v1/founder/home", { headers: { Authorization: `Bearer ${(await r.json()).token}` } });
   expect(me.status()).toBe(403);
@@ -37,19 +63,19 @@ test("joining (signed in, no account): every portal sends you to Join", async ({
 test("founder: own portal only", async ({ page }) => {
   await signIn(page, "zanele@proofpocket.example");
   for (const p of PORTALS.slice(1)) await expectLanding(page, p, /\/app\/home$/);
-  await expectLanding(page, "/join", /\/app\/home$/);
-  await page.goto("/directory");
-  await expect(page).toHaveURL(/\/directory$/);
+  await publicPages(page, /\/app\/home$/);
 });
 
 test("funder: own portal only", async ({ page, isMobile }) => {
   await signInWithAuthenticator(page, isMobile ? "lesedi@proofpocket.example" : "kopano@proofpocket.example");
   for (const p of ["/app/home", "/adviser/cohort", "/admin/checks", "/join", "/"]) await expectLanding(page, p, /\/funder\/pipeline$/);
+  await publicPages(page, /\/funder\/pipeline$/);
 });
 
 test("adviser: own portal only", async ({ page, isMobile }) => {
   await signInWithAuthenticator(page, isMobile ? "n.mokoena@proofpocket.example" : "l.dube@proofpocket.example");
   for (const p of ["/app/home", "/funder/pipeline", "/admin/checks", "/join", "/"]) await expectLanding(page, p, /\/adviser\/cohort$/);
+  await publicPages(page, /\/adviser\/cohort$/);
 });
 
 test("admin invites a buyer; the buyer signs in with the emailed password and lands on the directory", async ({ page, isMobile }) => {
@@ -63,6 +89,7 @@ test("admin invites a buyer; the buyer signs in with the emailed password and la
   // Buyers have no invite form in the admin screen today (people are invited for funders and incubators only).
   await expect(firstBuyer.getByRole("button", { name: "Invite" })).toHaveCount(0);
   for (const p of ["/app/home", "/funder/pipeline", "/adviser/cohort", "/join", "/"]) await expectLanding(page, p, /\/admin\/checks$/);
+  await publicPages(page, /\/admin\/checks$/);
   // Invite through the API the admin screen uses, as the admin.
   const orgs = await page.evaluate(async () => {
     const t = localStorage.getItem("pp.session");
@@ -86,4 +113,5 @@ test("admin invites a buyer; the buyer signs in with the emailed password and la
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/directory$/);
   for (const p of PORTALS) await expectLanding(page, p, /\/directory$/);
+  await publicPages(page, /\/directory$/);
 });

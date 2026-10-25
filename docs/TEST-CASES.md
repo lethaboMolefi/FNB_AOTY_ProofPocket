@@ -28,19 +28,19 @@ Test cases for the whole system on branch `dashboard-cleanup`: V2 (the dashboard
 
 ## Summary
 
-**510 test cases**: 169 from the earlier version of this document (IDs unchanged), 318 access-control cases (one per allowed role per feature, plus one per feature for the denied roles), and 23 phase B cases.
+**518 test cases**: 169 from the earlier version of this document (IDs unchanged), 318 access-control cases (one per allowed role per feature, plus one per feature for the denied roles), and 31 phase B cases.
 
 | Result (Claude Code) | Cases |
 |---|---|
-| Pass | 458 |
+| Pass | 466 |
 | Fail | 1 |
 | Blocked | 8 |
 | Not run | 43 |
 
 | Version | Cases |
 |---|---|
-| V1 – Unchanged | 470 |
-| V1 – Modified | 20 |
+| V1 – Unchanged | 477 |
+| V1 – Modified | 21 |
 | V2 – New | 20 |
 
 | Module | Cases | Pass | Fail | Blocked | Not run |
@@ -66,17 +66,17 @@ Test cases for the whole system on branch `dashboard-cleanup`: V2 (the dashboard
 | 19. Security and data | 8 | 7 | 0 | 1 | 0 |
 | 20. App (PWA) and offline | 3 | 2 | 0 | 1 | 0 |
 | 21. Access control: every feature × every role | 318 | 318 | 0 | 0 | 0 |
-| 22. Phase B: cases executed in the role-by-role audit | 23 | 22 | 1 | 0 | 0 |
+| 22. Phase B: cases executed in the role-by-role audit | 31 | 30 | 1 | 0 | 0 |
 
 | Role | Cases involving the role |
 |---|---|
 | Public | 157 |
-| Joining | 167 |
-| Founder | 237 |
-| Funder | 154 |
-| Adviser | 160 |
-| Buyer | 140 |
-| Admin | 175 |
+| Joining | 166 |
+| Founder | 239 |
+| Funder | 153 |
+| Adviser | 159 |
+| Buyer | 139 |
+| Admin | 176 |
 
 Cases with Role "All" or "All 7 roles" count for every role.
 
@@ -259,7 +259,7 @@ Cases with Role "All" or "All 7 roles" count for every role.
 | PRV-03 | Privacy (F-PRV-01..06) | Founder | Correction or deletion | Signed in as a founder | Ask to delete my data | Confirmation; request appears for admin; reply within the stated days | V1 – Unchanged | High | Pass | security.test.ts › a correction or deletion request reaches the admin's reports: passed 25 Oct 2026 |  |  |  |
 | PRV-04 | Privacy (F-PRV-01..06) | Founder | Leave an incubator | Signed in as a founder | Leave | Adviser no longer sees the records | V1 – Unchanged | High | Pass | payments.test.ts › sharing and incubator membership: passed 25 Oct 2026 |  |  |  |
 | PRV-05 | Privacy (F-PRV-01..06) | Founder | Ask an incubator | Signed in as a founder | Choose one, Send request | "You asked to join …" until accepted | V1 – Unchanged | High | Pass | payments.test.ts › sharing and incubator membership: passed 25 Oct 2026 |  |  |  |
-| PRV-06 | Privacy (F-PRV-01..06) | Public | Privacy notice is public | Signed in as a founder | Open `/privacy-notice` signed out | Shown. Automated: `security.spec.ts` | V1 – Unchanged | High | Pass | Automated: security.spec.ts passed 25 Oct 2026 |  |  |  |
+| PRV-06 | Privacy notice page (F-WEB-05, F-UI-07) | Public | Privacy notice is public | Signed in as a founder | Open `/privacy-notice` signed out | Shown. Automated: `security.spec.ts` | V1 – Unchanged | High | Pass | Automated: security.spec.ts passed 25 Oct 2026 |  |  |  |
 
 ## 13. Profile, posts and the directory
 
@@ -689,14 +689,22 @@ Cases with Role "All" or "All 7 roles" count for every role.
 | PB-11 | F-FUN-04..06, F-FUN-08, F-FUN-12, F-FUND-02, F-FUND-04 | Funder, Founder | A programme from set-up to withdrawal: requirements, invite, close/reopen, apply, status, withdraw, audit | Lesedi; a Verified founder (real document flow) | See test | Each step's message; closed refuses; out-of-range 400; reason needed; withdrawn once; audit row | V1 – Unchanged | High | Pass | roles-and-features.test.ts › runs a whole programme from set-up to withdrawal: passed 25 Oct 2026 |  |  |  |
 | PB-12 | F-ADV-10, F-ADM-13..16, F-MKT-05, F-PROC-02 | Adviser, Admin, Founder | Tender interest and introductions go to the right checker; other incubators can't decide | Admin tender; Verified founders with and without an incubator | Express interest; ask to meet; decide as each checker | Adviser decides own cohort only (404 for others); admin decides companies without an incubator; founder sees the result | V1 – Unchanged | High | Pass | roles-and-features.test.ts › adviser arranges tender interest from their own cohort only…: passed 25 Oct 2026 |  |  |  |
 | PB-13 | F-FR-02, F-FR-03, F-ADM-11, F-ADM-12 | Founder, Admin | A sender blocked by a founder reaches the admin, who confirms the scam | New founder | Check a message; report and block; admin confirms | In the watch list; bad status 400; confirmed_scam | V1 – Unchanged | High | Pass | roles-and-features.test.ts › a sender blocked by a founder reaches the admin, who confirms the scam: passed 25 Oct 2026 |  |  |  |
-| PB-14 | F-UI-01..11 | Public | Signed out: every portal → sign-in; public pages open | Signed out | Open each portal URL and public page | Redirects to /sign-in; public pages show a heading | V1 – Unchanged | High | Pass | roles.spec.ts › signed out: every portal sends you to sign-in; public pages open: passed 25 Oct 2026 |  |  |  |
-| PB-15 | F-UI-01..11 | Joining | Signed in without an account: every portal → Join; API refuses | Sign-up only | Open each portal URL; call /founder/home | Redirects to /join; 403 | V1 – Unchanged | High | Pass | roles.spec.ts › joining (signed in, no account): every portal sends you to Join: passed 25 Oct 2026 |  |  |  |
-| PB-16 | F-UI-08..11 | Founder | Founder kept to own portal | zanele@ | Open the other portals and /join | → /app/home | V1 – Unchanged | High | Pass | roles.spec.ts › founder: own portal only: passed 25 Oct 2026 |  |  |  |
-| PB-17 | F-UI-08..11 | Funder | Funder kept to own portal | lesedi@ / kopano@ | Open the other portals, /join, / | → /funder/pipeline | V1 – Unchanged | High | Pass | roles.spec.ts › funder: own portal only: passed 25 Oct 2026 |  |  |  |
-| PB-18 | F-UI-08..11 | Adviser | Adviser kept to own portal | n.mokoena@ / l.dube@ | Open the other portals, /join, / | → /adviser/cohort | V1 – Unchanged | High | Pass | roles.spec.ts › adviser: own portal only: passed 25 Oct 2026 |  |  |  |
-| PB-19 | F-ADM-04, F-MAIL-01, F-UI-12 | Admin → Buyer | Admin invites a buyer; buyer signs in with the emailed password and lands on the directory | Admin with Google Authenticator | Invite (through the API; no form for buyers, BUG-05); read the email; sign in | Email without an Authenticator instruction; buyer on /directory; portals → /directory | V1 – Modified | High | Pass | roles.spec.ts › admin invites a buyer; the buyer signs in with the emailed password and lands on the directory: passed 25 Oct 2026 |  |  |  |
-| PB-20 | All data screens | All signed-in | A failed request shows an error with Try again, which recovers | Service worker blocked | Make /founder/cashflow fail, open Cash flow, then Try again | Error message; Try again loads the page | V1 – Modified | Medium | Pass | errors.spec.ts › a failed request shows an error with Try again, which recovers (BUG-03): passed 25 Oct 2026 |  |  |  |
-| PB-21 | All pages | Founder, Funder, Adviser, Admin | Every page loads cleanly as its role | Each role signed in | Visit every page in the role's menu | Heading; no console errors; no failed calls; no sideways scrolling; finishes loading | V1 – Unchanged | High | Pass | dashboard.spec.ts (4 tests): passed 25 Oct 2026 |  |  |  |
+| PB-14 | F-UI-01..11, F-UI-13 | Public | Signed out: every portal → sign-in; public pages and the not-found page open | Signed out | Open each portal URL and public page | Redirects to /sign-in; public pages show a heading | V1 – Unchanged | High | Pass | roles.spec.ts › signed out: every portal sends you to sign-in; public pages open: passed 25 Oct 2026 |  |  |  |
+| PB-15 | F-UI-01..11, F-UI-13 | Joining | Signed in without an account: every portal and /verify → Join; public pages open; API refuses | Sign-up only | Open each portal URL, the public pages and /verify; call /founder/home | Redirects to /join (including /verify, BUG-08 fixed); public pages open; 403 | V1 – Modified | High | Pass | roles.spec.ts › joining (signed in, no account): every portal sends you to Join: passed 25 Oct 2026 |  |  |  |
+| PB-16 | F-UI-01..11, F-UI-13 | Founder | Founder kept to own portal; public pages open; /join and /verify go home | zanele@ | Open the other portals, /join, /verify, / and the public pages | → /app/home; directory, business page, invalid payment link, privacy notice, sign-in and not-found open | V1 – Unchanged | High | Pass | roles.spec.ts › founder: own portal only: passed 25 Oct 2026 |  |  |  |
+| PB-17 | F-UI-01..11, F-UI-13 | Funder | Funder kept to own portal; public pages open; /join and /verify go home | lesedi@ / kopano@ | Open the other portals, /join, /verify, / and the public pages | → /funder/pipeline; directory, business page, invalid payment link, privacy notice, sign-in and not-found open | V1 – Unchanged | High | Pass | roles.spec.ts › funder: own portal only: passed 25 Oct 2026 |  |  |  |
+| PB-18 | F-UI-01..11, F-UI-13 | Adviser | Adviser kept to own portal; public pages open; /join and /verify go home | n.mokoena@ / l.dube@ | Open the other portals, /join, /verify, / and the public pages | → /adviser/cohort; directory, business page, invalid payment link, privacy notice, sign-in and not-found open | V1 – Unchanged | High | Pass | roles.spec.ts › adviser: own portal only: passed 25 Oct 2026 |  |  |  |
+| PB-19 | F-ADM-04, F-MAIL-01, F-UI-01..13 | Admin, Buyer | Admin invites a buyer; buyer signs in with the emailed password and lands on the directory | Admin with Google Authenticator | Invite (through the API; no form for buyers, BUG-05); read the email; sign in | Email without an Authenticator instruction; buyer on /directory; portals → /directory | V1 – Modified | High | Pass | roles.spec.ts › admin invites a buyer; the buyer signs in with the emailed password and lands on the directory: passed 25 Oct 2026 |  |  |  |
+| PB-20 | F-UI-08 (all data screens) | Founder | A failed request shows an error with Try again, which recovers | Service worker blocked | Make /founder/cashflow fail, open Cash flow, then Try again | Error message; Try again loads the page | V1 – Modified | Medium | Pass | errors.spec.ts › a failed request shows an error with Try again, which recovers (BUG-03): passed 25 Oct 2026 |  |  |  |
+| PB-21 | F-UI-08, F-UI-09, F-UI-10, F-UI-11, F-WEB-01 | Founder, Funder, Adviser, Admin | Every page loads cleanly as its role | Each role signed in | Visit every page in the role's menu | Heading; no console errors; no failed calls; no sideways scrolling; finishes loading | V1 – Unchanged | High | Pass | dashboard.spec.ts (4 tests): passed 25 Oct 2026 |  |  |  |
 | PB-22 | F-HOME-01, F-AUTH-09 | Founder, Admin | Dashboard figures equal the database | Example data | Compare Home figures and admin counts with SQL | Equal | V1 – Unchanged | High | Pass | figures.test.ts (2 tests): passed 25 Oct 2026 |  |  |  |
 | PB-23 | All 128 endpoints | All 7 roles | The API serves exactly the endpoints in the inventory | None | Walk the Express route table; compare with access-matrix.ts | No unlisted and no missing endpoints | V1 – Unchanged | High | Pass | access-matrix.test.ts › the matrix lists every endpoint the API serves: passed 25 Oct 2026 |  |  |  |
+| PB-24 | F-JOB-01 | System (daily job) | Daily job: expire 7-day-old requests and out-of-date documents, check the audit chain, export yesterday, purge abandoned uploads | Test database with old rows | runJobs(owner, store, { rehash: false }) | Requests expired, documents expired, chain verified, export written, uploads purged | V1 – Unchanged | High | Pass | jobs.test.ts › expire old requests, expired documents, and catch a swapped file; › check the audit chain, export yesterday's entries and purge abandoned uploads: passed 25 Oct 2026 |  |  |  |
+| PB-25 | F-JOB-02 | System (weekly job) | Weekly job re-checks every stored document against its SHA-256 fingerprint | A stored document swapped for other bytes | runJobs(..., { rehash: true }) | The swapped file is caught | V1 – Unchanged | High | Pass | jobs.test.ts › expire old requests, expired documents, and catch a swapped file: passed 25 Oct 2026 |  |  |  |
+| PB-26 | F-MAIL-05 | Founder | Turning two-step sign-in on and off emails the founder | palesa@ (two-step off) | Set up and activate; sign in again with a code; turn off with the next code | "Two-step sign-in is on", then "Two-step sign-in was turned off" | V1 – Unchanged | High | Pass | auth.test.ts › a founder turns it on, later sign-ins need a code, and turning it off needs one too: passed 25 Oct 2026 |  |  |  |
+| PB-27 | F-MAIL-05 | Admin → staff | An admin reset emails the person | A funder with two-step on | Admin resets the authenticator | "Your ProofPocket authenticator was reset" | V1 – Unchanged | High | Pass | auth.test.ts › staff can't turn it off; admin can reset a lost phone: passed 25 Oct 2026 |  |  |  |
+| PB-28 | F-MAIL-02 | Admin → applicant | Approving or turning down an application emails the applicant (with the reason) | Pending applications | Approve one; turn one down with a reason | "Your ProofPocket application was approved"; "Your ProofPocket application" containing the reason | V1 – Unchanged | High | Pass | applications.test.ts › approval creates the organisation and the funder…; › turning one down needs a reason, which the applicant sees and is emailed: passed 25 Oct 2026 |  |  |  |
+| PB-29 | F-MAIL-03 | Checker → founder | The fourth approval sends "You're verified" | A registered founder with four documents | Approve all four | Verified, listed, email sent | V1 – Unchanged | High | Pass | join.test.ts › the fourth approval makes the company Verified and sends “You're verified”: passed 25 Oct 2026 |  |  |  |
+| PB-30 | F-MAIL-04 | Founder → advisers | Changing payment details tells the incubator's advisers | Founder in an incubator, two-step on | Change payment details with a valid code | Emails to the founder and each adviser | V1 – Unchanged | High | Pass | payments.test.ts › are refused without it, then saved with a valid code and the incubator's advisers are told: passed 25 Oct 2026 |  |  |  |
+| PB-31 | F-UI-13 | Public | An unknown address shows Page not found with a link home | None | Open /no-such-page | "Page not found" and a link to / | V1 – Unchanged | Low | Pass | roles.spec.ts › signed out: every portal sends you to sign-in; public pages open: passed 25 Oct 2026 |  |  |  |
 

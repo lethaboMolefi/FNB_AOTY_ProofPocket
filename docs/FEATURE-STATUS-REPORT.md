@@ -9,23 +9,23 @@ Branch `dashboard-cleanup`, 25 Oct 2026. Every status below comes from a test th
 - Web: a production build served by `vite preview`, tested in Chromium at phone (Pixel) and desktop sizes.
 - No production data was read or changed.
 
-**Runs** (all on 25 Oct 2026, after the fixes in section 3):
+**Runs** (all on 25 Oct 2026, final run after every fix in section 3):
 
 | Suite | Result |
 |---|---|
 | `pnpm test`: shared rules, web units, API (includes the access matrix: 896 role × endpoint checks) | 354 / 354 pass (55 + 9 + 290) |
 | `pnpm test:e2e`: browser, phone + desktop | 66 pass, 6 skipped (desktop-only by design), 0 fail |
-| `pnpm typecheck`, `pnpm lint` | pass; 0 lint errors (30 warnings: security-rule notes in seed/config and React-compiler notes on forms) |
+| `pnpm typecheck`, `pnpm lint` | pass; 0 lint errors (31 warnings: security-rule notes in seed/config and React-compiler notes on forms) |
 
 ## 1. Executive summary
 
-- **Features:** 128 API features, 11 page groups, 12 other features (jobs, emails, web-only), so **151 in total**.
+- **Features:** 128 API features, 12 page groups, 12 other features (jobs, emails, web-only), so **153 in total (with the buyer-portal row)**.
 - **Roles:** 7 (Public, Joining, Founder, Funder, Adviser, Buyer, Admin).
-- **Feature × role results:** 986 (896 API + 77 page + 12 other + 1 buyer-portal row).
+- **Feature × role results:** 993 (896 API + 84 page + 12 other + 1 buyer-portal row).
 
 | Status | Count |
 |---|---|
-| Working | 968 |
+| Working | 975 |
 | Working with issues | 2 |
 | Broken | 0 |
 | Incomplete | 15 |
@@ -47,7 +47,7 @@ Branch `dashboard-cleanup`, 25 Oct 2026. Every status below comes from a test th
 **Headlines**
 - **No access-control gaps.** Every endpoint refused every role it should, with 401 or 403, both in the API and by direct URL in the web app. No Security/permission issue was found.
 - **No Broken features.**
-- **3 bugs fixed** on the branch (BUG-01 to BUG-03).
+- **4 bugs fixed** on the branch (BUG-01, BUG-02, BUG-03, BUG-08).
 - **4 left open for your decision** (BUG-04 to BUG-07), because they change business rules or product scope, or because the feature is switched off.
 - **No Critical issues.** The one High issue (BUG-07) only matters if PayFast is switched on.
 
@@ -309,17 +309,18 @@ W = Working, WI = Working with issues, B = Broken, I = Incomplete, NT = Not test
 
 | Feature | Public | Joining | Founder | Funder | Adviser | Buyer | Admin | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| **F-UI-01** `/ (home redirect)` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-02** `/sign-in` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-03** `/join` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-04** `/verify` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-05** `/directory, /b/:slug` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-06** `/pay/:ref-token` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-07** `/privacy-notice` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-08** `Founder portal /app/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-09** `Funder portal /funder/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-10** `Adviser portal /adviser/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
-| **F-UI-11** `Admin portal /admin/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal by URL), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-01** `/ (home redirect)` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-02** `/sign-in` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-03** `/join` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-04** `/verify` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-05** `/directory, /b/:slug` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-06** `/pay/:ref-token` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-07** `/privacy-notice` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-08** `Founder portal /app/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-09** `Funder portal /funder/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-10** `Adviser portal /adviser/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-11** `Admin portal /admin/*` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
+| **F-UI-13** `* (not found)` | W | W | W | W | W | W | W | roles.spec.ts (every role × every portal and public page by URL, including /join, /verify and not-found), dashboard.spec.ts (every page as its role: heading, no console errors, no failed calls, no sideways scrolling), shell.spec.ts |
 
 Each page group behaves for every role as the inventory says: allowed roles see it, and the rest are redirected to their own home. Every page also passed the loading, empty and error checks (BUG-03 fixed).
 
@@ -333,7 +334,7 @@ Each page group behaves for every role as the inventory says: allowed roles see 
 | **F-MAIL-02** Application approved / not approved | applicant | Working | applications.test.ts › turning one down needs a reason, which the applicant sees and is emailed; approval email |
 | **F-MAIL-03** You're verified / Please upload again | founder | Working | join.test.ts › the fourth approval makes the company Verified and sends “You're verified”; roles-and-features.test.ts › adviser sends a document back |
 | **F-MAIL-04** Payment details changed (founder and advisers) | founder, adviser | Working | payments.test.ts › are refused without it, then saved with a valid code and the incubator's advisers are told |
-| **F-MAIL-05** Two-step sign-in on / off / reset | any user | Working | auth.test.ts › a founder turns it on…; staff can't turn it off; admin can reset a lost phone |
+| **F-MAIL-05** Two-step sign-in on / off / reset | any user | Working | auth.test.ts › a founder turns it on… (on and off emails asserted); › staff can't turn it off; admin can reset a lost phone |
 | **F-WEB-01** Notification bell (founder) | founder | Working | dashboard.spec.ts › founder: every page loads cleanly, and the bell shows real items |
 | **F-WEB-02** Offline entries saved on the phone and sent once | founder | Working | books.spec.ts › offline entries are saved on the phone and sync exactly once |
 | **F-WEB-03** Install as an app (PWA), app shell offline | everyone | Working | shell.spec.ts › the manifest makes ProofPocket installable; › the app shell opens offline. Installing on a real phone: Not tested |
@@ -348,6 +349,7 @@ Each page group behaves for every role as the inventory says: allowed roles see 
 | BUG-01 | Low | **Fixed** (`9d5b7cb`) | F-STK-03, F-STK-04 · Founder | As founder B, `PATCH /founder/stock/<founder A's item>` `{name:"Hijacked"}`; or any founder with an unknown ID; or `DELETE` the same | 404, nothing changed | 200 "Item updated" / "Item removed"; nothing changed (row-level security held). Probe output: `other founder PATCH -> 200 {"message":"Item updated"}; unknown id PATCH -> 200 …; row now {"name":"Mealie meal","archived_at":null}` | Done: update with `returning()`, and 404 when no row matched. Regression: `roles-and-features.test.ts › stock: edit and remove` |
 | BUG-02 | Low | **Fixed** (`84e6883`) | F-ADM-04, F-MAIL-01 · Admin → Buyer | Admin invites a person to a buyer organisation | Buyers aren't told to set up Google Authenticator (they don't use it) | Invite said "You'll set up Google Authenticator the first time", and the local password line said "you'll be asked to set up Google Authenticator" | Done: only funder, adviser and admin invites mention it. Regression: `roles.spec.ts` (buyer mail), `phase5.test.ts` (funder mail still mentions it) |
 | BUG-03 | Medium | **Fixed** (`a320f1b`) | 21 of 27 data screens · all signed-in roles | Block the service worker; make `/api/v1/founder/cashflow` return 500; open Cash flow | An error with a way to retry | "Loading…" for ever (screenshots: `docs/testing/evidence/bug-03-before-*.png`) | Done: the shared `Spinner` sees a failed active request and shows "Couldn't load this. Check your connection, then try again." with **Try again**. Regression: `e2e/errors.spec.ts` (phone and desktop) |
+| BUG-08 | Low | **Fixed** (`6d6b185`) | F-UI-04 · Joining | Sign up (no business yet), then open `/verify` | Sent to Join (there's no code for an account that doesn't exist) | "Enter your code" for Google Authenticator; any code would be refused (found by the phase E check) | Done: `/verify` sends `no_account` to `/join`. Regression: `roles.spec.ts › joining …` |
 | BUG-04 | Medium | **Open: needs your decision** | F-DOC-05 · Founder | As a Verified founder (`tumelo@`), `PUT /founder/cipc {cipcNumber:"2099/999999/07"}` | Refused once the CIPC certificate is checked, or the CIPC check goes back to pending | 200 "CIPC number saved. Upload the certificate next."; the company stays Verified with an unchecked number. Probe: `before 2021/554019/07; PUT -> 200 …; still verified=true` (the test value was put back) | Either (a) refuse with 409 when the `cipc` document is verified ("Ask your checker to change it"), or (b) accept it but set the `cipc` document back to pending, which removes Verified until it is re-checked. (b) changes the Verified status, so it's your call |
 | BUG-05 | Medium | **Open: needs your decision** | F-ADM-04 · Admin | Admin → Organisations → Buyers | An Invite form, as for funders and incubators | No people list or Invite form for buyer organisations. The API accepts buyer invites (`roles.spec.ts` invites one through it) | Show the people list and Invite form for buyers too (one condition in `Organisations.tsx`). It changes a shadcn screen, so I didn't do it without asking |
 | BUG-06 | Medium | **Open: needs your decision** | F-UI-12 · Buyer | Sign in as an invited buyer | Some buyer screens (e.g. see introductions, tenders they posted) | Lands on the public directory; no buyer screens or buyer-only endpoints exist. Founders' introduction requests go to advisers and the admin, never to the buyer | Product decision: either build a small buyer portal, or stop creating buyer *accounts* (keep buyers as organisations only) |
@@ -375,6 +377,7 @@ No `Math.random` values, lorem ipsum, or made-up figures are shown anywhere. `fi
 | BUG-01 | `9d5b7cb` | `apps/api/test/roles-and-features.test.ts › stock: edit and remove` |
 | BUG-02 | `84e6883` | `apps/web/e2e/roles.spec.ts › admin invites a buyer…`, `apps/api/test/phase5.test.ts › a newly invited funder…` |
 | BUG-03 | `a320f1b` | `apps/web/e2e/errors.spec.ts › a failed request shows an error with Try again, which recovers` |
+| BUG-08 | `6d6b185` | `apps/web/e2e/roles.spec.ts › joining (signed in, no account): every portal sends you to Join` |
 
 Fixed earlier on this branch (phases 2–5, see [`dashboard-test-report.md`](dashboard-test-report.md)):
 - the notification panel
@@ -392,7 +395,41 @@ Fixed earlier on this branch (phases 2–5, see [`dashboard-test-report.md`](das
 | Installing the app on a real Android phone or iPhone | Needs the devices | The manifest and offline app shell (browser tests) |
 | Firebase password-reset and email-verification emails | Production-only (Firebase) | The local equivalents; Gmail delivery was confirmed on 25 Oct (a sample email sent from `pegphina1@gmail.com`) |
 | This branch on the live site | Not deployed (the audit used local data only) | Everything ran against a production build locally |
+## 7. Coverage (phase E)
 
-## 7. Coverage
+The completeness check (inventory ↔ test cases ↔ code) was run on 25 Oct 2026, after the last fix.
 
-_Filled in by phase E (completeness check)._
+| Check | Result |
+|---|---|
+| Every API endpoint the app serves is in the inventory, and every inventory endpoint is served | **128 / 128**. `access-matrix.test.ts` walks Express's route table on every test run and fails on any difference |
+| Every web route in `router.tsx` is in the inventory | **14 / 14** route entries (incl. `*` not-found, added as F-UI-13 by this check). All 32 menu pages sit under the portal routes |
+| Every **Allowed** cell of the access matrix has a test case for that role | **261 / 261** (link-only endpoints count as allowed for every role) |
+| Every **Denied** cell has a test case for that role | **635 / 635** |
+| Every page group has a case for every role | **13 / 13** page groups, all 7 roles each (F-UI-12, the buyer portal, has the buyer only) |
+| Every job, email and web-only feature has a case | **12 / 12** |
+| Gaps left | **0** |
+
+**Gaps found by this check and filled before the numbers above:**
+- No inventory row for the not-found page: added F-UI-13, plus a check in `roles.spec.ts`.
+- No assertion for the "Two-step sign-in is on / turned off" emails: added to `auth.test.ts`.
+- No case linking the privacy-notice page (F-WEB-05) to PRV-06: fixed.
+- Signed-in roles visiting the public pages had no case. Added `publicPages()` to every role in `roles.spec.ts`, which **found BUG-08**, now fixed.
+
+**Test cases:** 518 in [`TEST-CASES.md`](TEST-CASES.md).
+
+| Claude Code result | Cases |
+|---|---|
+| Pass | 466 |
+| Fail | 1 (BUG-04) |
+| Blocked | 8 (need a Google account, real phones, or PayFast) |
+| Not run | 43 (manual cases no automated test checks exactly; they're for you) |
+
+**Executed:** 467 of the 518 cases. Behind them, the automated suites ran 354 unit and API tests (including 896 role × endpoint access checks) and 66 browser tests.
+
+**What could not be covered, and why:**
+- Choosing a Google account (needs a person).
+- PayFast payments (switched off; needs merchant details).
+- Installing on real phones.
+- Firebase-only production emails.
+
+See section 6. The 43 "Not run" cases are listed in `TEST-CASES.md` with empty Manual columns for you to complete.
