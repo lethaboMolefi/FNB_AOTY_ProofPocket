@@ -24,5 +24,5 @@ export async function createLogin(db: Db, config: Config, email: string, display
     if (row) await tx.update(localCredentials).set({ passwordHash: hash, failedAttempts: 0, lockedUntil: null }).where(eq(localCredentials.id, row.id));
     else await tx.insert(localCredentials).values({ email: email.toLowerCase(), passwordHash: hash });
   });
-  return `Your temporary password is ${password}. Sign in and you'll be asked to set up Google Authenticator.`;
+  return `Your temporary password is ${password}.`;
 }

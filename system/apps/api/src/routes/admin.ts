@@ -1,5 +1,5 @@
 // Admin portal (phase 5). The checker queue lives in routes/checks.ts; authenticator resets in routes/auth.ts.
-import { applicationDecisionSchema, featureDecisionSchema, handledSchema, inviteUserSchema, organisationSchema, reportDecisionSchema, tenderSchema, watchDecisionSchema } from "@proofpocket/shared";
+import { OTP_ROLES, type Role, applicationDecisionSchema, featureDecisionSchema, handledSchema, inviteUserSchema, organisationSchema, reportDecisionSchema, tenderSchema, watchDecisionSchema } from "@proofpocket/shared";
 import { Router, type Request } from "express";
 import { z } from "zod";
 import type { Deps } from "../app";
@@ -26,7 +26,7 @@ export function adminRoutes(deps: Deps) {
     const u = parse(inviteUserSchema, req.body);
     const { orgName, role } = await as(req, (tx) => inviteUser(tx, actorOf(req), u));
     const how = await createLogin(deps.db, deps.config, u.email, u.displayName);
-    await deps.mailer.send({ to: u.email, subject: `You're invited to ProofPocket (${orgName})`, text: `Hello ${u.displayName},\n\nYou've been added to ProofPocket as ${role === "adviser" ? "an adviser" : `a ${role}`} for ${orgName}.\n\n${how}\n\nSign in at ${deps.config.PUBLIC_WEB_URL}/sign-in. You'll set up Google Authenticator the first time.`, action: { label: "Sign in to ProofPocket", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
+    await deps.mailer.send({ to: u.email, subject: `You're invited to ProofPocket (${orgName})`, text: `Hello ${u.displayName},\n\nYou've been added to ProofPocket as ${role === "adviser" ? "an adviser" : `a ${role}`} for ${orgName}.\n\n${how}\n\nSign in at ${deps.config.PUBLIC_WEB_URL}/sign-in.${OTP_ROLES.includes(role as Role) ? " You'll set up Google Authenticator the first time." : ""}`, action: { label: "Sign in to ProofPocket", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { message: `Invitation sent to ${u.email}` };
   }));
 

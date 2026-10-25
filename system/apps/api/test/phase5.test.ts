@@ -85,6 +85,7 @@ describe("funder set-up and admin onboarding", () => {
     const email = `funder.${Date.now()}@proofpocket.example`;
     expect((await post(admin, "/admin/users", { orgId: org.body.id, email, displayName: "Test Funder" })).body.message).toBe(`Invitation sent to ${email}`);
     const password = /temporary password is (\S+)\./.exec(mailer.sent.at(-1)!.text)![1]!;
+    expect(mailer.sent.at(-1)!.text).toMatch(/You'll set up Google Authenticator the first time\./);
     const token = `Bearer ${(await request(app).post("/api/v1/auth/local/sign-in").send({ email, password })).body.token}`;
     // Google Authenticator first (required for funders), then set-up, then verification.
     const { secret } = (await post(token, "/auth/totp/setup")).body;
