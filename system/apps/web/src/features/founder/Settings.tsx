@@ -136,7 +136,7 @@ export default function Settings() {
     <>
       <FounderHead title="Business settings" sub="Two-step sign-in, opening balance, people and the year you started trading." />
       {/* Two columns on desktop: the form on the left, security and help on the right. */}
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>{q.data ? <BusinessForm key={JSON.stringify(q.data)} s={q.data} /> : <Spinner />}</div>
         <div className="space-y-4">
           <TwoFactorCard />

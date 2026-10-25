@@ -644,7 +644,7 @@ export default function Books() {
       <FounderHead title="Bookkeeping" sub={SUB} />
 
       {/* Two columns on desktop: add entries on the left, totals and history on the right. */}
-      <div className="grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[440px_minmax(0,1fr)]">
         <div className="space-y-4">
           <Statement lines={d.statementLines} onChange={refresh} />
           <EntryForm data={d} />
