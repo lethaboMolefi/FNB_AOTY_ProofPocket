@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { LogOut, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "../../lib/auth";
 import { list } from "../../lib/outbox";
 import { useOnline } from "../../lib/pwa";
-import { BrandMark, Pill } from "../ui";
+import { BrandMark } from "../ui";
 
 export function TopBar({ home, who }: { home: string; who?: ReactNode }) {
   const { status, signOut } = useAuth();
@@ -15,18 +19,56 @@ export function TopBar({ home, who }: { home: string; who?: ReactNode }) {
     await signOut();
   };
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-surface pt-[env(safe-area-inset-top,0px)]">
-      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5">
-        <Link to={home} className="flex items-center gap-2.5 text-ink no-underline" aria-label="ProofPocket home">
+    <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-sm pt-[env(safe-area-inset-top,0px)]">
+      <div className="mx-auto flex max-w-[1280px] items-center gap-3 px-4 h-14">
+
+        {/* Brand */}
+        <Link
+          to={home}
+          className="flex items-center gap-2.5 text-foreground no-underline shrink-0"
+          aria-label="ProofPocket home"
+        >
           <BrandMark />
-          <span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span>
+          <span className="font-display text-lg font-[750] tracking-tight hidden sm:block">
+            ProofPocket
+          </span>
         </Link>
-        {import.meta.env.DEV && <Pill tone="warn">Example data</Pill>}
-        {!online && <Pill tone="plain">Offline</Pill>}
-        <div className="ml-auto flex items-center gap-3 small">
-          {who}
-          {status === "signedIn" && <button className="btn sm" onClick={() => void out()}>Sign out</button>}
-        </div>
+
+        {/* Breadcrumb / business name (slot from shell) */}
+        {who && (
+          <>
+            <Separator orientation="vertical" className="h-5 hidden sm:block" />
+            {who}
+          </>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Status pills */}
+        {import.meta.env.DEV && (
+          <Badge variant="warning" className="text-[10px] hidden sm:flex">Example data</Badge>
+        )}
+        {!online && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Offline</span>
+          </span>
+        )}
+
+        {/* Sign out */}
+        {status === "signedIn" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground gap-1.5"
+            onClick={() => void out()}
+            aria-label="Sign out"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sign out</span>
+          </Button>
+        )}
       </div>
     </header>
   );

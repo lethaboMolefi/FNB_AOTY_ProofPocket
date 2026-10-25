@@ -8,6 +8,7 @@
 
 /* Tailwind theme (v4): utilities such as bg-surface or text-muted read the tokens below. */
 @theme inline {
+  /* ProofPocket design tokens */
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);

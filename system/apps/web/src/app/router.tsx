@@ -38,6 +38,7 @@ const Cohort = lazy(() => import("../features/adviser/Cohort"));
 const Attention = lazy(() => import("../features/adviser/Attention"));
 const Support = lazy(() => import("../features/adviser/Support"));
 const Organisations = lazy(() => import("../features/admin/Organisations"));
+const AdminApplications = lazy(() => import("../features/admin/Applications"));
 const rev = () => import("../features/admin/Reviews");
 const Reports = lazy(() => rev().then((m) => ({ default: m.Reports })));
 const Features = lazy(() => rev().then((m) => ({ default: m.Features })));
@@ -66,6 +67,7 @@ const BUILT: Record<string, ReactNode> = {
   "adviser/cohort": s(<Cohort />),
   "adviser/attention": s(<Attention />),
   "adviser/support": s(<Support />),
+  "admin/applications": s(<AdminApplications />),
   "admin/organisations": s(<Organisations />),
   "admin/reports": s(<Reports />),
   "admin/features": s(<Features />),

@@ -18,9 +18,10 @@ const SECTIONS: Record<string, CompanyTable> = {
   monthlyHistory: t.monthlyHistory, paymentDetails: t.paymentDetails, paymentRequests: t.paymentRequests, paymentProofs: t.paymentProofs,
   messages: t.messages, profile: t.profiles, posts: t.posts, applications: t.applications, tenderInterests: t.tenderInterests,
   introRequests: t.introRequests, incubatorMemberships: t.incubatorMemberships, activity: t.activity,
+  founderIdentity: t.founderIdentity, coFounders: t.companyCofounders,
 };
-/** Storage paths and encrypted values aren't the founder's data, and the encrypted account number stays encrypted. */
-const HIDDEN = new Set(["bucketPath", "accountNumberEnc", "isExample"]);
+/** Storage paths aren't the founder's data, and encrypted account and ID numbers are left out. */
+const HIDDEN = new Set(["bucketPath", "accountNumberEnc", "idNumberEnc", "isExample"]);
 const clean = (rows: Record<string, unknown>[]) => rows.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => !HIDDEN.has(k))));
 
 export async function exportMyData(tx: Tx, actor: Actor, c: CompanyRow) {

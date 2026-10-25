@@ -19,9 +19,10 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 CardHeader.displayName = "CardHeader";
 
-const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
+/** A real heading, so screen readers can jump between cards. h2 by default (cards sit under the page's h1). */
+const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement> & { as?: "h1" | "h2" | "h3" | "h4" }>(
+  ({ className, as: Tag = "h2", ...props }, ref) => (
+    <Tag
       ref={ref}
       className={cn("text-2xl font-semibold leading-none tracking-tight", className)}
       {...props}

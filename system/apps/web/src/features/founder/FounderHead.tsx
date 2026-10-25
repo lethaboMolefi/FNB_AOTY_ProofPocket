@@ -1,8 +1,29 @@
-import { LevelPill, PageHead } from "../../components/ui";
+// Page header for founder screens. Shows title, optional subtitle, and Starter/Verified badge.
+import { BadgeCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "../../components/PageHeader";
 import { useMe } from "../../lib/me";
+import type { ReactNode } from "react";
 
-/** Page head for founder screens: "{Business} · {town}, {province}", title, subtitle, Starter/Verified (v2 fHead). */
-export function FounderHead({ title, sub }: { title: string; sub?: string }) {
+interface FounderHeadProps {
+  title: string;
+  sub?: string;
+  action?: ReactNode;
+}
+
+export function FounderHead({ title, sub, action }: FounderHeadProps) {
   const c = useMe().data?.company;
-  return <PageHead label={c ? `${c.name} · ${c.town}, ${c.province}` : undefined} title={title} sub={sub} side={c && <LevelPill verified={c.verified} />} />;
+  const badge = c ? (
+    c.verified
+      ? (
+        <Badge variant="success" className="gap-1 text-xs">
+          <BadgeCheck className="h-3 w-3" />Verified
+        </Badge>
+      )
+      : (
+        <Badge variant="secondary" className="text-xs">Starter</Badge>
+      )
+  ) : undefined;
+
+  return <PageHeader label={c ? `${c.name} · ${c.town}, ${c.province}` : undefined} title={title} sub={sub} badge={badge} action={action} />;
 }

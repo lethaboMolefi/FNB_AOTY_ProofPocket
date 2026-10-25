@@ -89,7 +89,7 @@ export default function SignIn() {
     <AuthShell>
       <Card className="border-border shadow-lg">
         <CardHeader className="space-y-3 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight"><h1>Sign in</h1></CardTitle>
+          <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Sign in</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
             Your books, payments and proof, in one place.
           </CardDescription>

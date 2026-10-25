@@ -11,6 +11,7 @@ export * from "./rules/eligibility";
 export * from "./rules/payments";
 export * from "./rules/bookkeeping";
 export * from "./rules/cashflow";
+export * from "./rules/identity";
 export * from "./schemas/common";
 export * from "./schemas/auth";
 export * from "./schemas/join";

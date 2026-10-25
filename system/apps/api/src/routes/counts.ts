@@ -1,10 +1,10 @@
 // The red counts on each portal's navigation (v2/app.js renderRail counts).
 import { fraudOpen, JOIN_DOCS, lowStock, STARTER_FLAG } from "@proofpocket/shared";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { Router } from "express";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
-import { applications } from "../db/schema/index";
+import { applications, portalApplications } from "../db/schema/index";
 import { contextOf, requireUser } from "../middleware/auth";
 import { handle } from "../middleware/http";
 import { myCompany } from "../repositories/companies";
@@ -34,7 +34,10 @@ export function countRoutes(deps: Deps) {
       const [n] = await tx.select({ n: sql<number>`count(*)::int` }).from(applications).where(and(eq(applications.funderId, u.orgId), inArray(applications.status, ["submitted", "under_review"])));
       return { applications: n!.n };
     }
-    if (u.role === "admin") return { checks: (await reviewQueue(tx, "admin")).length };
+    if (u.role === "admin") {
+      const [{ n }] = await tx.select({ n: count() }).from(portalApplications).where(eq(portalApplications.status, "pending")) as [{ n: number }];
+      return { checks: (await reviewQueue(tx, "admin")).length, applications: n };
+    }
     return {};
   })));
   return r;

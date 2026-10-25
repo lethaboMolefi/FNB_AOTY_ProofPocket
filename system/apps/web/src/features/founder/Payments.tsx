@@ -1,9 +1,17 @@
 // Payments (v2/app.js vPayments). Clients pay the founder directly; ProofPocket records it and checks proofs.
-import { PAYMENT_REQUEST_DAYS, R, RAILS, RAIL_KEYS, shortDate, todayZA, type PaymentStatus, type ProofCheck, type Rail, type Tone } from "@proofpocket/shared";
+import { PAYMENT_REQUEST_DAYS, R, RAILS, RAIL_KEYS, shortDate, todayZA, type PaymentStatus, type ProofCheck, type Rail } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, ClipboardCopy, FileText, Link2, Loader2, MessageCircle, QrCode, XCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Notice, Pill, Spinner, useToast } from "../../components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { NativeSelect, TextField } from "@/components/ui/field";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { Spinner, useToast } from "../../components/ui";
 import { API_BASE, ApiError, api } from "../../lib/api";
 import { useMe } from "../../lib/me";
 import { enqueue } from "../../lib/outbox";
@@ -19,9 +27,10 @@ interface PayData {
 }
 
 const SUB = "Clients pay you directly with the methods they already use. They upload proof of payment, and you confirm once the money is in your account.";
-const STATUS: Record<PaymentStatus, [Tone, string]> = {
-  waiting: ["plain", "Waiting for client"], checking: ["warn", "Proof to check"], paid: ["good", "Paid · in books"], not_received: ["bad", "Not received"],
-  flagged: ["bad", "Flagged: possible fake proof"], expired: ["plain", "Expired"], cancelled: ["plain", "Cancelled"],
+type Variant = "secondary" | "warning" | "success" | "destructive" | "outline";
+const STATUS: Record<PaymentStatus, [Variant, string]> = {
+  waiting: ["secondary", "Waiting for client"], checking: ["warning", "Proof to check"], paid: ["success", "Paid · in books"], not_received: ["destructive", "Not received"],
+  flagged: ["destructive", "Flagged: possible fake proof"], expired: ["outline", "Expired"], cancelled: ["outline", "Cancelled"],
 };
 
 function useRefresh() {
@@ -46,23 +55,24 @@ function ProofBox({ r }: { r: Req }) {
     catch (e) { setErr((e as ApiError).message); }
   };
   return (
-    <div className={`popbox stack ${failed ? "warn" : ""}`}>
-      <div className="row between">
-        <b>{r.client} says they paid {R(p.amount)}</b>
-        {failed ? <Pill tone="warn">{failed} {failed === 1 ? "thing" : "things"} to check</Pill> : <Pill tone="good">Details match</Pill>}
+    <div className={cn("popbox space-y-3 rounded-lg border p-4", failed ? "border-warn/40 bg-warn-soft/40" : "border-line bg-surface")}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <b className="text-sm">{r.client} says they paid {R(p.amount)}</b>
+        {failed ? <Badge variant="warning">{failed} {failed === 1 ? "thing" : "things"} to check</Badge> : <Badge variant="success">Details match</Badge>}
       </div>
-      <span className="small muted">For {r.what || "payment"} · reference <span className="mono">{r.ref}</span> · {RAILS[p.method]} on {shortDate(p.paidOn)} · from {p.payer}</span>
-      <div>{p.checks.map((c) => (
-        <div key={c.code} className="ck" style={{ gridTemplateColumns: "22px minmax(0,1fr)" }}>
-          <span className={`mark ${c.ok ? "ok" : "no"}`} aria-hidden="true">{c.ok ? "✓" : "×"}</span><span className="small">{c.text}</span>
-        </div>
-      ))}</div>
-      <Notice tone="warn" icon="!"><span className="small">A proof of payment can be faked. Open your banking app and check the money is really in your account before you hand anything over.</span></Notice>
-      {err && <p className="err" role="alert">{err}</p>}
-      <div className="row">
-        {p.fileId && <button className="btn sm" onClick={() => void open()}>Open proof</button>}
-        <button className="btn sm primary" onClick={() => void act("confirm")}>The money is in my account</button>
-        <button className="btn sm danger" onClick={() => void act("reject")}>Not received</button>
+      <p className="text-xs text-muted-foreground">For {r.what || "payment"} · reference <span className="font-mono">{r.ref}</span> · {RAILS[p.method]} on {shortDate(p.paidOn)} · from {p.payer}</p>
+      <ul className="space-y-1.5">{p.checks.map((c) => (
+        <li key={c.code} className="flex items-start gap-2 text-sm">
+          {c.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-good" aria-label="Passed" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-bad" aria-label="Failed" />}
+          <span>{c.text}</span>
+        </li>
+      ))}</ul>
+      <Callout tone="warn">A proof of payment can be faked. Open your banking app and check the money is really in your account before you hand anything over.</Callout>
+      {err && <Callout tone="bad" role="alert">{err}</Callout>}
+      <div className="flex flex-wrap gap-2">
+        {p.fileId && <Button size="sm" variant="outline" onClick={() => void open()}><FileText className="h-4 w-4" />Open proof</Button>}
+        <Button size="sm" onClick={() => void act("confirm")}><CheckCircle2 className="h-4 w-4" />The money is in my account</Button>
+        <Button size="sm" variant="destructive" onClick={() => void act("reject")}>Not received</Button>
       </div>
     </div>
   );
@@ -74,34 +84,52 @@ function NewRequest({ business }: { business: string }) {
   const refresh = useRefresh();
   const [f, setF] = useState({ client: "", amount: "", what: "", rails: ["payshap", "eft", "cash"] as Rail[] });
   const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
   const [made, setMade] = useState<{ ref: string; link: string; client: string; amount: number; what: string } | null>(null);
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setErr("");
     if (!f.client.trim() || !Number(f.amount)) { setErr("Add the client's name and an amount"); return; }
     if (!f.rails.length) { setErr("Choose at least one way to pay"); return; }
+    setBusy(true);
     try {
       const r = await api<{ ref: string; link: string; message: string }>("/founder/payment-requests", { body: { client: f.client, amount: Number(f.amount), what: f.what, rails: f.rails } });
       toast(r.message); setMade({ ...r, client: f.client, amount: Number(f.amount), what: f.what });
       setF({ ...f, client: "", amount: "", what: "" }); void refresh();
     } catch (x) { setErr((x as ApiError).message); }
+    finally { setBusy(false); }
   };
+  const toggle = (k: Rail) => setF({ ...f, rails: f.rails.includes(k) ? f.rails.filter((x) => x !== k) : [...f.rails, k] });
   return (
-    <form className="panel stack" onSubmit={submit} noValidate>
-      <h2>Ask a client to pay</h2>
-      <div className="form-grid">
-        <label className="field"><span>Client</span><input type="text" value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} /></label>
-        <label className="field"><span>Amount (R)</span><input type="number" min={1} inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
-        <label className="field" style={{ gridColumn: "span 2" }}><span>For</span><input type="text" placeholder="e.g. Lash fill" value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} /></label>
-      </div>
-      <fieldset><legend className="small muted font-semibold mb-1">Ways the client can pay</legend>
-        <div className="row" style={{ gap: 6 }}>{RAIL_KEYS.map((k) => (
-          <label key={k} className="chip"><input type="checkbox" checked={f.rails.includes(k)} onChange={(e) => setF({ ...f, rails: e.target.checked ? [...f.rails, k] : f.rails.filter((x) => x !== k) })} /> {RAILS[k]}</label>
-        ))}</div>
-      </fieldset>
-      {err && <p className="err" role="alert">{err}</p>}
-      <div className="row between"><span className="hint">The link works for {PAYMENT_REQUEST_DAYS} days and shows only your saved payment details.</span><button className="btn primary" type="submit">Create payment request</button></div>
-      {made && <Share req={made} business={business} />}
-    </form>
+    <Card>
+      <form onSubmit={submit} noValidate>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Ask a client to pay</CardTitle>
+          <CardDescription>The link works for {PAYMENT_REQUEST_DAYS} days and shows only your saved payment details.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField label="Client" value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} placeholder="e.g. Thandi Mokoena" />
+            <TextField label="Amount (R)" type="number" min={1} inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+            <TextField label="For" className="sm:col-span-2" placeholder="e.g. Lash fill" value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} />
+          </div>
+          <fieldset>
+            <legend className="mb-1.5 text-sm font-medium">Ways the client can pay</legend>
+            <div className="flex flex-wrap gap-2">{RAIL_KEYS.map((k) => (
+              <button key={k} type="button" aria-pressed={f.rails.includes(k)} onClick={() => toggle(k)}
+                className={cn("min-h-9 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                  f.rails.includes(k) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-foreground")}>
+                {RAILS[k]}
+              </button>
+            ))}</div>
+          </fieldset>
+          {err && <Callout tone="bad" role="alert">{err}</Callout>}
+          <div className="flex justify-end">
+            <Button type="submit" disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Create payment request</Button>
+          </div>
+          {made && <Share req={made} business={business} />}
+        </CardContent>
+      </form>
+    </Card>
   );
 }
 
@@ -119,12 +147,12 @@ function Share({ req, business }: { req: { client: string; amount: number; what:
   };
   const copy = async () => { try { await navigator.clipboard.writeText(req.link); toast("Link copied"); } catch { toast(req.link); } };
   return (
-    <div className="stack" style={{ gap: 6 }}>
-      <span className="fp">{req.link}</span>
-      <div className="row" style={{ gap: 6 }}>
-        <a className="btn sm primary" href={`https://wa.me/?text=${encodeURIComponent(waText(business, req))}`} target="_blank" rel="noopener noreferrer">Send on WhatsApp</a>
-        <button type="button" className="btn sm" onClick={() => void showQr()}>{qr ? "Hide QR" : "Show QR"}</button>
-        <button type="button" className="btn sm" onClick={() => void copy()}>Copy link</button>
+    <div className="space-y-2 rounded-lg border border-good/30 bg-good-soft/50 p-3">
+      <span className="fp block break-all font-mono text-xs">{req.link}</span>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" asChild><a href={`https://wa.me/?text=${encodeURIComponent(waText(business, req))}`} target="_blank" rel="noopener noreferrer"><MessageCircle className="h-4 w-4" />Send on WhatsApp</a></Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => void showQr()}><QrCode className="h-4 w-4" />{qr ? "Hide QR" : "Show QR"}</Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => void copy()}><ClipboardCopy className="h-4 w-4" />Copy link</Button>
       </div>
       {qr && <div className="qrbox"><img src={qr} alt={`QR code for payment ${req.ref}`} width={180} height={180} /></div>}
     </div>
@@ -142,30 +170,54 @@ function Requests({ data, business }: { data: PayData; business: string }) {
     catch (e) { toast((e as ApiError).message); }
   };
   return (
-    <section className="panel">
-      <h2>Payment requests</h2>
-      {data.requests.length ? data.requests.map((r) => {
-        const live = r.status === "waiting" || r.status === "not_received";
-        return (
-          <div key={r.id} className="li">
-            <div className="li-main">
-              <span><b>{r.client}</b> · {r.what || "Payment"} · <span className="num">{R(r.amount)}</span></span>
-              <span className="hint"><span className="mono">{r.ref}</span> · {r.rails.map((x) => RAILS[x]).join(", ")} · {live ? `link works until ${shortDate(r.expiresOn)}` : shortDate(r.requestedOn)}</span>
-              {r.status === "not_received" && <span className="small text-bad">You said the money didn't arrive. The client can upload proof once more.</span>}
-              {open === r.id && <Share req={r} business={business} />}
-            </div>
-            <div className="li-side">
-              <Pill tone={STATUS[r.status][0]}>{STATUS[r.status][1]}</Pill>
-              <div className="row" style={{ gap: 6 }}>
-                {live && <button className="btn sm" onClick={() => setOpen(open === r.id ? null : r.id)}>{open === r.id ? "Hide link" : "Link & QR"}</button>}
-                {r.rails.includes("cash") && (live || r.status === "expired") && <button className="btn sm" onClick={() => void act(r, "cash")}>Paid me cash</button>}
-                {live && <button className="btn sm ghost" onClick={() => void act(r, "cancel")}>Cancel</button>}
-              </div>
-            </div>
-          </div>
-        );
-      }) : <p className="muted">No payment requests yet.</p>}
-    </section>
+    <Card>
+      <CardHeader className="pb-3"><CardTitle className="text-base">Payment requests</CardTitle></CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Client</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="hidden md:table-cell">Methods</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.requests.map((r) => {
+              const live = r.status === "waiting" || r.status === "not_received";
+              return [
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <div className="font-medium">{r.client}</div>
+                    <div className="text-xs text-muted-foreground"><span className="font-mono">{r.ref}</span> · {r.what || "Payment"} · {live ? `link works until ${shortDate(r.expiresOn)}` : shortDate(r.requestedOn)}</div>
+                    {r.status === "not_received" && <div className="mt-1 text-xs text-bad">You said the money didn't arrive. The client can upload proof once more.</div>}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums">{R(r.amount)}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex flex-wrap gap-1">{r.rails.map((x) => <Badge key={x} variant="outline" className="text-[10px]">{RAILS[x]}</Badge>)}</div>
+                  </TableCell>
+                  <TableCell><Badge variant={STATUS[r.status][0]}>{STATUS[r.status][1]}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      {live && <Button size="sm" variant="outline" onClick={() => setOpen(open === r.id ? null : r.id)}><Link2 className="h-4 w-4" />{open === r.id ? "Hide link" : "Link & QR"}</Button>}
+                      {r.rails.includes("cash") && (live || r.status === "expired") && <Button size="sm" variant="outline" onClick={() => void act(r, "cash")}>Paid me cash</Button>}
+                      {live && <Button size="sm" variant="ghost" onClick={() => void act(r, "cancel")}>Cancel</Button>}
+                    </div>
+                  </TableCell>
+                </TableRow>,
+                open === r.id && (
+                  <TableRow key={`${r.id}-share`} className="hover:bg-transparent">
+                    <TableCell colSpan={5}><Share req={r} business={business} /></TableCell>
+                  </TableRow>
+                ),
+              ];
+            })}
+            {!data.requests.length && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No payment requests yet.</TableCell></TableRow>}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -182,36 +234,46 @@ function Details({ data }: { data: PayData }) {
   });
   const personal = d && (d.inBusinessName === false || /personal/i.test(d.accountName));
   return (
-    <section className="panel stack">
-      <div className="row between"><h2>Your payment details</h2>{!edit && data.authenticatorOn && <button className="btn sm" onClick={() => setEdit(true)}>Change</button>}</div>
-      <p className="small muted">Shown to clients on your payment page. Changing them needs a code from Google Authenticator, and your adviser is told, so nobody can quietly redirect your payments.</p>
-      {d ? (
-        <div className="small stack" style={{ gap: 2 }}>
-          <span>{d.bank} · {d.accountName} · <span className="mono">{d.accountMasked}</span></span>
-          {d.shapId && <span>PayShap ShapID <span className="mono">{d.shapId}</span></span>}
+    <Card>
+      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 pb-3">
+        <div className="space-y-1.5">
+          <CardTitle className="text-base">Your payment details</CardTitle>
+          <CardDescription>Shown to clients on your payment page. Changing them needs a code from Google Authenticator, and your adviser is told, so nobody can quietly redirect your payments.</CardDescription>
         </div>
-      ) : <p className="muted small">No payment details yet. Clients can only pay cash or by card machine until you add them.</p>}
-      {personal && <Notice tone="warn" icon="!"><span className="small">This looks like a personal account. Funders and buyers expect payments into an account in the business's name. Keep business and personal money apart.</span></Notice>}
-      {!data.authenticatorOn && (
-        <Notice tone="info" icon="2" action={<Link className="btn sm primary ml-auto" to="/app/settings">Set up</Link>}>
-          <span className="small">To add or change payment details, first set up <b>Google Authenticator</b> in Business settings.</span>
-        </Notice>
-      )}
-      {edit && (
-        <form className="stack" noValidate onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-          <div className="form-grid">
-            <label className="field"><span>Bank</span><input type="text" value={f.bank} onChange={(e) => setF({ ...f, bank: e.target.value })} /></label>
-            <label className="field"><span>Account name</span><input type="text" value={f.accountName} onChange={(e) => setF({ ...f, accountName: e.target.value })} /></label>
-            <label className="field"><span>Account number</span><input type="text" inputMode="numeric" autoComplete="off" value={f.accountNumber} onChange={(e) => setF({ ...f, accountNumber: e.target.value })} /></label>
-            <label className="field"><span>PayShap ShapID (optional)</span><input type="text" value={f.shapId} onChange={(e) => setF({ ...f, shapId: e.target.value })} /></label>
+        {!edit && data.authenticatorOn && <Button size="sm" variant="outline" onClick={() => setEdit(true)}>Change</Button>}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {d ? (
+          <div className="rounded-lg border border-line bg-surface-2 p-3 text-sm">
+            <div><span className="font-medium">{d.bank}</span> · {d.accountName} · <span className="font-mono">{d.accountMasked}</span></div>
+            {d.shapId && <div className="mt-1 text-muted-foreground">PayShap ShapID <span className="font-mono text-foreground">{d.shapId}</span></div>}
           </div>
-          <label className="check"><input type="checkbox" checked={f.inBusinessName} onChange={(e) => setF({ ...f, inBusinessName: e.target.checked })} />This account is in the business's name</label>
-          <CodeInput value={f.code} onChange={(code) => setF({ ...f, code })} />
-          {save.error && <p className="err" role="alert">{(save.error as ApiError).message}</p>}
-          <div className="row"><button className="btn primary" type="submit" disabled={f.code.length !== 6 || save.isPending}>Save payment details</button><button className="btn ghost" type="button" onClick={() => setEdit(false)}>Cancel</button></div>
-        </form>
-      )}
-    </section>
+        ) : <p className="text-sm text-muted-foreground">No payment details yet. Clients can only pay cash or by card machine until you add them.</p>}
+        {personal && <Callout tone="warn">This looks like a personal account. Funders and buyers expect payments into an account in the business's name. Keep business and personal money apart.</Callout>}
+        {!data.authenticatorOn && (
+          <Callout tone="info" action={<Button size="sm" asChild><Link to="/app/settings">Set up</Link></Button>}>
+            To add or change payment details, first set up <b>Google Authenticator</b> in Business settings.
+          </Callout>
+        )}
+        {edit && (
+          <form className="space-y-3" noValidate onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField label="Bank" value={f.bank} onChange={(e) => setF({ ...f, bank: e.target.value })} />
+              <TextField label="Account name" value={f.accountName} onChange={(e) => setF({ ...f, accountName: e.target.value })} />
+              <TextField label="Account number" inputMode="numeric" autoComplete="off" value={f.accountNumber} onChange={(e) => setF({ ...f, accountNumber: e.target.value })} />
+              <TextField label="PayShap ShapID (optional)" value={f.shapId} onChange={(e) => setF({ ...f, shapId: e.target.value })} />
+            </div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={f.inBusinessName} onChange={(e) => setF({ ...f, inBusinessName: e.target.checked })} />This account is in the business's name</label>
+            <CodeInput value={f.code} onChange={(code) => setF({ ...f, code })} />
+            {save.error && <Callout tone="bad" role="alert">{(save.error as ApiError).message}</Callout>}
+            <div className="flex gap-2">
+              <Button type="submit" disabled={f.code.length !== 6 || save.isPending}>{save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}Save payment details</Button>
+              <Button type="button" variant="ghost" onClick={() => setEdit(false)}>Cancel</Button>
+            </div>
+          </form>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -252,45 +314,60 @@ function MoneyOut({ data }: { data: PayData }) {
   };
 
   return (
-    <div className="grid-2">
-      <div className="stack">
-        <form className="panel stack" onSubmit={paySupplier} noValidate>
-          <h2>Record a supplier payment</h2>
-          <p className="small muted">Pay in your own banking app first, then record it here. ProofPocket never moves money.</p>
-          <div className="form-grid">
-            <label className="field"><span>Supplier</span><select value={sp.supplierId} onChange={(e) => setSp({ ...sp, supplierId: e.target.value })}>
-              {data.suppliers.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.bank}{s.pending ? " · ON HOLD" : ""}</option>)}
-            </select></label>
-            <label className="field"><span>Amount (R)</span><input type="number" min={1} value={sp.amount} onChange={(e) => setSp({ ...sp, amount: e.target.value })} /></label>
-            <label className="field"><span>For</span><input type="text" value={sp.what} onChange={(e) => setSp({ ...sp, what: e.target.value })} /></label>
-          </div>
-          {err.sp && <p className="err" role="alert">{err.sp}</p>}
-          <button className="btn primary self-start" type="submit" disabled={!data.suppliers.length}>Record payment</button>
-        </form>
-        <form className="panel stack" onSubmit={addSupplier} noValidate>
-          <h3>Add a supplier</h3>
-          <div className="form-grid">
-            <label className="field"><span>Supplier</span><input type="text" value={ns.name} onChange={(e) => setNs({ ...ns, name: e.target.value })} /></label>
-            <label className="field"><span>Bank</span><input type="text" value={ns.bank} onChange={(e) => setNs({ ...ns, bank: e.target.value })} /></label>
-            <label className="field"><span>Account number (or last 4 digits)</span><input type="text" inputMode="numeric" value={ns.accountNumber} onChange={(e) => setNs({ ...ns, accountNumber: e.target.value })} /></label>
-          </div>
-          <p className="hint">Only the last four digits are kept.</p>
-          {err.ns && <p className="err" role="alert">{err.ns}</p>}
-          <button className="btn self-start" type="submit">Save supplier</button>
-        </form>
+    <div className="grid gap-6 desktop:grid-cols-2">
+      <div className="space-y-6">
+        <Card>
+          <form onSubmit={paySupplier} noValidate>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Record a supplier payment</CardTitle>
+              <CardDescription>Pay in your own banking app first, then record it here. ProofPocket never moves money.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <NativeSelect label="Supplier" value={sp.supplierId} onChange={(e) => setSp({ ...sp, supplierId: e.target.value })}>
+                {data.suppliers.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.bank}{s.pending ? " · ON HOLD" : ""}</option>)}
+              </NativeSelect>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField label="Amount (R)" type="number" min={1} value={sp.amount} onChange={(e) => setSp({ ...sp, amount: e.target.value })} />
+                <TextField label="For" value={sp.what} onChange={(e) => setSp({ ...sp, what: e.target.value })} />
+              </div>
+              {err.sp && <Callout tone="bad" role="alert">{err.sp}</Callout>}
+              <Button type="submit" disabled={!data.suppliers.length}>Record payment</Button>
+            </CardContent>
+          </form>
+        </Card>
+        <Card>
+          <form onSubmit={addSupplier} noValidate>
+            <CardHeader className="pb-3"><CardTitle as="h3" className="text-base">Add a supplier</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField label="Supplier" value={ns.name} onChange={(e) => setNs({ ...ns, name: e.target.value })} />
+                <TextField label="Bank" value={ns.bank} onChange={(e) => setNs({ ...ns, bank: e.target.value })} />
+                <TextField label="Account number (or last 4 digits)" className="sm:col-span-2" inputMode="numeric" hint="Only the last four digits are kept." value={ns.accountNumber} onChange={(e) => setNs({ ...ns, accountNumber: e.target.value })} />
+              </div>
+              {err.ns && <Callout tone="bad" role="alert">{err.ns}</Callout>}
+              <Button type="submit" variant="outline">Save supplier</Button>
+            </CardContent>
+          </form>
+        </Card>
       </div>
-      <form className="panel stack" onSubmit={payCash} noValidate>
-        <h2>Record a cash payment out</h2>
-        <p className="small muted">For collectors, casual workers and anyone you pay in cash. Works offline.</p>
-        <div className="form-grid">
-          <label className="field"><span>Paid to</span><input type="text" value={cash.name} onChange={(e) => setCash({ ...cash, name: e.target.value })} /></label>
-          <label className="field"><span>Amount (R)</span><input type="number" min={1} value={cash.amount} onChange={(e) => setCash({ ...cash, amount: e.target.value })} /></label>
-          <label className="field"><span>For</span><input type="text" placeholder="e.g. PET bottles, 17 kg" value={cash.what} onChange={(e) => setCash({ ...cash, what: e.target.value })} /></label>
-        </div>
-        <label className="check"><input type="checkbox" checked={cash.noPhone} onChange={(e) => setCash({ ...cash, noPhone: e.target.checked })} />Payee has no phone, give a slip number</label>
-        {err.cash && <p className="err" role="alert">{err.cash}</p>}
-        <button className="btn primary self-start" type="submit">Record cash payment</button>
-      </form>
+      <Card className="self-start">
+        <form onSubmit={payCash} noValidate>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Record a cash payment out</CardTitle>
+            <CardDescription>For collectors, casual workers and anyone you pay in cash. Works offline.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField label="Paid to" value={cash.name} onChange={(e) => setCash({ ...cash, name: e.target.value })} />
+              <TextField label="Amount (R)" type="number" min={1} value={cash.amount} onChange={(e) => setCash({ ...cash, amount: e.target.value })} />
+              <TextField label="For" className="sm:col-span-2" placeholder="e.g. PET bottles, 17 kg" value={cash.what} onChange={(e) => setCash({ ...cash, what: e.target.value })} />
+            </div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={cash.noPhone} onChange={(e) => setCash({ ...cash, noPhone: e.target.checked })} />Payee has no phone, give a slip number</label>
+            {err.cash && <Callout tone="bad" role="alert">{err.cash}</Callout>}
+            <Button type="submit">Record cash payment</Button>
+          </CardContent>
+        </form>
+      </Card>
     </div>
   );
 }
@@ -298,20 +375,20 @@ function MoneyOut({ data }: { data: PayData }) {
 export default function Payments() {
   const me = useMe().data;
   const q = useQuery({ queryKey: ["founder", "payments"], queryFn: () => api<PayData>("/founder/payments") });
-  if (!q.data) return <><FounderHead title="Payments" sub={SUB} />{q.isError ? <p className="err">Couldn't load payments. Check your connection.</p> : <Spinner />}</>;
+  if (!q.data) return <><FounderHead title="Payments" sub={SUB} />{q.isError ? <Callout tone="bad">Couldn't load payments. Check your connection.</Callout> : <Spinner />}</>;
   const d = q.data, business = me?.company?.name ?? "";
   const toCheck = d.requests.filter((r) => r.proof);
   return (
     <>
       <FounderHead title="Payments" sub={SUB} />
-      <Notice tone="info" icon="i"><span className="small"><b>ProofPocket never holds your money.</b> Clients pay you straight into your account, by card machine or in cash. ProofPocket records each payment and helps you spot fake proofs of payment.</span></Notice>
+      <Callout tone="info"><b>ProofPocket never holds your money.</b> Clients pay you straight into your account, by card machine or in cash. ProofPocket records each payment and helps you spot fake proofs of payment.</Callout>
       {toCheck.length > 0 && (
-        <section className="panel stack">
-          <h2>Proof of payment to check</h2>
-          {toCheck.map((r) => <ProofBox key={r.id} r={r} />)}
-        </section>
+        <Card>
+          <CardHeader className="pb-3"><CardTitle className="text-base">Proof of payment to check</CardTitle></CardHeader>
+          <CardContent className="space-y-3">{toCheck.map((r) => <ProofBox key={r.id} r={r} />)}</CardContent>
+        </Card>
       )}
-      <div className="grid-2">
+      <div className="grid gap-6 desktop:grid-cols-2">
         <NewRequest business={business} />
         <Details key={JSON.stringify(d.details)} data={d} />
       </div>

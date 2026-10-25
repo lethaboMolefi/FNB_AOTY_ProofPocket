@@ -1,4 +1,4 @@
-import { joinCompleteSchema, joinDetailsSchema } from "@proofpocket/shared";
+import { joinCompleteSchema, joinDetailsSchema, portalApplicationSchema } from "@proofpocket/shared";
 import { and, asc, eq } from "drizzle-orm";
 import { Router } from "express";
 import type { Deps } from "../app";
@@ -6,8 +6,9 @@ import { withContext } from "../db/client";
 import { organisations } from "../db/schema/index";
 import { AppError, unauthenticated } from "../lib/errors";
 import { actorOf, contextOf, requireUser } from "../middleware/auth";
-import { handle, parse } from "../middleware/http";
+import { handle, limits, parse } from "../middleware/http";
 import { myCompany } from "../repositories/companies";
+import { myApplication, submitApplication } from "../services/applications";
 import { completeJoin, saveDetails } from "../services/join";
 
 export function joinRoutes(deps: Deps) {
@@ -29,7 +30,7 @@ export function joinRoutes(deps: Deps) {
     if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
     const d = parse(joinDetailsSchema, req.body);
     const { company } = await withContext(deps.db, contextOf(req), (tx) =>
-      saveDetails(tx, { firebaseUid: a.token.uid, email: a.token.email!, existingUserId: a.user?.id ?? null }, d));
+      saveDetails(tx, { firebaseUid: a.token.uid, email: a.token.email!, existingUserId: a.user?.id ?? null }, d, deps.config.ACCOUNT_NUMBER_KEY));
     return { companyId: company.id };
   }));
 
@@ -40,6 +41,25 @@ export function joinRoutes(deps: Deps) {
       const c = await myCompany(tx, req.auth!.user!.id, { joined: false });
       return completeJoin(tx, actorOf(req), c, req.auth!.token.emailVerified);
     });
+  }));
+
+  // Funders and support organisations apply for a portal. Grants nothing until an admin approves it.
+  r.post("/join/applications", limits.auth(), handle(async (req) => {
+    const a = req.auth;
+    if (!a) throw unauthenticated();
+    if (a.user) throw new AppError(409, "already_joined", "This account already has a ProofPocket portal.");
+    if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
+    if (!a.token.emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: open the link we emailed you, then sign in again.");
+    const input = parse(portalApplicationSchema, req.body);
+    return withContext(deps.db, contextOf(req), (tx) => submitApplication(tx, deps.config, { firebaseUid: a.token.uid, email: a.token.email! }, input));
+  }));
+
+  /** The signed-in applicant's own application (null if they haven't sent one). */
+  r.get("/join/application", handle(async (req) => {
+    const a = req.auth;
+    if (!a) throw unauthenticated();
+    if (a.user) return { application: null };
+    return withContext(deps.db, contextOf(req), (tx) => myApplication(tx, a.token.uid));
   }));
 
   return r;

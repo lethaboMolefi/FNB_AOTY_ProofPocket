@@ -1,9 +1,18 @@
-// Home (v2/app.js vHome).
+// Home dashboard — rebuilt with shadcn, skeleton loading, proper empty states.
 import { R, plural, type Flag, type JourneyStep, type ReadinessItem, type Tone } from "@proofpocket/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { BarChart, Stat, type Point } from "../../components/charts";
-import { Notice, Pill, Spinner } from "../../components/ui";
+import {
+  AlertCircle, AlertTriangle, ArrowRight, BarChart3,
+  CheckCircle2, ChevronRight, Mail, TrendingDown, TrendingUp, Wallet,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import { BarChart, type Point } from "../../components/charts";
 import { api } from "../../lib/api";
 import { FounderHead } from "./FounderHead";
 
@@ -19,76 +28,327 @@ interface HomeData {
 }
 
 const AREA: Record<string, string> = { township: "Township", urban: "Urban", rural: "Rural" };
-const VIEW: Record<JourneyStep["view"], string> = { start: "start", books: "books", payments: "payments", cashflow: "cashflow", markets: "markets" };
 
+const VIEW: Record<JourneyStep["view"], string> = {
+  start: "start", books: "books", payments: "payments", cashflow: "cashflow", markets: "markets",
+};
+
+function scoreTone(score: number): Tone {
+  if (score >= 70) return "good";
+  if (score >= 40) return "warn";
+  return "bad";
+}
+
+const TONE_TEXT: Record<Tone, string> = {
+  good: "text-good", warn: "text-warn", bad: "text-destructive", info: "text-primary", plain: "text-muted-foreground",
+};
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+function Skeleton({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded-md bg-surface-2", className)} />;
+}
+
+function HomeSkeleton() {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-72" />
+      </div>
+      {/* Metrics */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="pt-4 pb-4">
+              <Skeleton className="h-3 w-28 mb-3" />
+              <Skeleton className="h-8 w-24 mb-2" />
+              <Skeleton className="h-3 w-20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      {/* Chart row */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
+          <CardContent className="pt-4 space-y-3">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardContent className="pt-4">
+            <Skeleton className="h-44 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── Metric card ─────────────────────────────────────────────────────────────
+function MetricCard({
+  label, value, sub, icon: Icon, valueClass,
+}: {
+  label: string; value: string; sub?: string; icon: React.ElementType; valueClass?: string;
+}) {
+  return (
+    <Card className="hover:shadow-sm transition-shadow">
+      <CardContent className="pt-4 pb-4">
+        <div className="flex items-start justify-between mb-2">
+          <p className="text-xs font-medium text-muted-foreground leading-tight">{label}</p>
+          <Icon className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+        </div>
+        <p className={cn("text-2xl font-bold tabular-nums tracking-tight", valueClass ?? "text-foreground")}>{value}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function Home() {
   const q = useQuery({ queryKey: ["founder", "home"], queryFn: () => api<HomeData>("/founder/home") });
-  if (!q.data) return <><FounderHead title="Home" />{q.isError ? <p className="err">Couldn't load your Home screen. Check your connection.</p> : <Spinner />}</>;
-  const d = q.data, c = d.company, t = d.tiles;
+
+  if (!q.data) {
+    if (q.isError) {
+      return (
+        <div className="flex items-center justify-center py-20">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            Couldn't load your dashboard. Check your connection.
+          </div>
+        </div>
+      );
+    }
+    return <HomeSkeleton />;
+  }
+
+  const d = q.data;
+  const c = d.company;
+  const t = d.tiles;
+  const tone = scoreTone(t.score);
+
   return (
-    <>
-      <FounderHead title="Home" sub={`${c.typeLabel} · ${AREA[c.area]} · ${c.employees} ${plural(c.employees, "person", "people")} · trading since ${c.foundedYear}`} />
+    <div className="space-y-6">
+
+      {/* ── Page header ── */}
+      <FounderHead
+        title="Home"
+        sub={`${c.typeLabel} · ${AREA[c.area] ?? c.area} · ${c.employees} ${plural(c.employees, "person", "people")} · trading since ${c.foundedYear}`}
+        action={<Button size="sm" variant="outline" asChild><Link to="/app/books">Add entry <ArrowRight className="h-3.5 w-3.5" /></Link></Button>}
+      />
+
+      {/* ── Notices ── */}
       {d.notices.starter && (
-        <Notice tone="info" icon="i" action={<Link className="btn sm primary ml-auto" to="/app/start">Continue</Link>}>
-          <b>You're on a Starter account.</b> <span className="small">You can keep books, take payments and build your profile now. Finish the registration steps to get verified, so funders and buyers can find you.</span>
-        </Notice>
+        <Callout tone="info" action={<Button size="sm" asChild className="shrink-0"><Link to="/app/start">Continue</Link></Button>}>
+          <b>You're on a Starter account.</b> You can keep books, take payments and build your profile now. Finish the registration steps to get verified, so funders and buyers can find you.
+        </Callout>
       )}
       {d.notices.proofsToCheck > 0 && (
-        <Notice tone="warn" icon="R" action={<Link className="btn sm ml-auto" to="/app/payments">Check</Link>}>
-          <b>{d.notices.proofsToCheck} {d.notices.proofsToCheck > 1 ? "clients say they have" : "client says they have"} paid.</b> <span className="small">Check your banking app, then confirm so it goes into your books.</span>
-        </Notice>
+        <Callout tone="warn" action={<Button size="sm" variant="outline" asChild className="shrink-0"><Link to="/app/payments">Check</Link></Button>}>
+          <b>{d.notices.proofsToCheck} {d.notices.proofsToCheck > 1 ? "clients say they have" : "client says they have"} paid.</b> Check your banking app, then confirm so it goes into your books.
+        </Callout>
       )}
       {d.notices.fraudOpen > 0 && (
-        <Notice tone="bad" icon="!" action={<Link className="btn sm ml-auto" to="/app/protection">Review</Link>}>
-          <b>{d.notices.fraudOpen} possible {plural(d.notices.fraudOpen, "scam")} need your attention.</b> <span className="small">Check before you pay anyone.</span>
-        </Notice>
+        <Callout tone="bad" action={<Button size="sm" variant="destructive" asChild className="shrink-0"><Link to="/app/protection">Review</Link></Button>}>
+          <b>{d.notices.fraudOpen} possible {plural(d.notices.fraudOpen, "scam")} need your attention.</b> Check before you pay anyone.
+        </Callout>
       )}
-      <nav className="journey" aria-label="Your journey">
-        {d.journey.map((s, i) => (
-          <Link key={s.title} to={`/app/${VIEW[s.view]}`} className={`jstep ${s.done ? "ok" : ""}`}>
-            <span className="jn" aria-hidden="true">{s.done ? "✓" : i + 1}</span>
-            <span className="jt"><b>{s.title}</b><span className="hint">{s.detail}</span></span>
-          </Link>
-        ))}
-      </nav>
-      <div className="grid-4">
-        <Stat label="Money in this month" value={R(t.moneyIn)} tone="in" />
-        <Stat label="Money out this month" value={R(t.moneyOut)} />
-        <Stat label="Cash on hand" value={R(t.cash)} sub="Bank and cash together" />
-        <Stat label="Funding readiness" value={<>{t.score}<span className="small muted"> / 100</span></>} sub={<Pill tone={t.tone}>{t.label}</Pill>} />
-      </div>
-      <div className="grid-3">
-        <section className="panel span-2">
-          <div className="panel-head"><h2>Six months at a glance</h2><Link className="btn sm" to="/app/cashflow">Cash flow</Link></div>
-          <BarChart series={d.series} />
-        </section>
-        <section className="panel">
-          <h2>Next steps</h2>
-          {d.nextSteps.length ? d.nextSteps.map((i) => (
-            <div key={i.key} className="li">
-              <div className="li-main"><span>{i.label}</span><span className="hint">{i.hint} · worth {i.pts} points</span></div>
-              <div className="li-side"><Link className="btn sm" to={i.group === "Documents" ? "/app/start" : "/app/books"}>Fix</Link></div>
+
+      {/* ── Key metrics ── */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Money in this month"
+          value={R(t.moneyIn)}
+          sub="Revenue in books"
+          icon={TrendingUp}
+          valueClass="text-good"
+        />
+        <MetricCard
+          label="Money out this month"
+          value={R(t.moneyOut)}
+          sub="Expenses in books"
+          icon={TrendingDown}
+        />
+        <MetricCard
+          label="Cash on hand"
+          value={R(t.cash)}
+          sub="Bank + cash"
+          icon={Wallet}
+        />
+        {/* Score card — slightly richer */}
+        <Card className="hover:shadow-sm transition-shadow">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs font-medium text-muted-foreground">Funding readiness</p>
+              <BarChart3 className={cn("h-4 w-4 shrink-0", TONE_TEXT[tone])} />
             </div>
-          )) : <p className="muted">Everything funders check is in place.</p>}
-        </section>
+            <div className="flex items-baseline gap-1 mb-1.5">
+              <span className={cn("text-2xl font-bold tabular-nums", TONE_TEXT[tone])}>{t.score}</span>
+              <span className="text-sm text-muted-foreground">/100</span>
+            </div>
+            <Progress value={t.score} className="h-1.5 mb-1" />
+            <p className={cn("text-xs font-medium", TONE_TEXT[tone])}>{t.label}</p>
+          </CardContent>
+        </Card>
       </div>
-      <div className="grid-2">
-        <section className="panel">
-          <h2>Things to watch</h2>
-          {d.flags.length ? d.flags.map((f) => (
-            <div key={f.code} className="li"><span>{f.text}</span><Pill tone={f.level}>{f.level === "bad" ? "Act now" : "Check"}</Pill></div>
-          )) : <p className="muted">Nothing needs attention.</p>}
-        </section>
-        <section className="panel">
-          <h2>Messages</h2>
-          {d.messages.length ? d.messages.map((m) => (
-            <div key={m.id} className="li"><div className="li-main">
-              <span><b>{m.sender}</b> {m.verified ? <Pill tone="good">Verified</Pill> : <Pill tone="bad">Not verified</Pill>}</span>
-              <span className="small">{m.body}</span>
-            </div></div>
-          )) : <p className="muted">No messages.</p>}
-        </section>
+
+      {/* ── Journey + chart ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+
+        {/* Journey */}
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Your journey</CardTitle>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-0">
+            <nav aria-label="Your journey">
+            {d.journey.map((s, i) => (
+              <Link
+                key={s.title}
+                to={`/app/${VIEW[s.view]}`}
+                className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-surface-2 group"
+              >
+                <div className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                  s.done ? "bg-good/15 text-good" : "bg-primary/10 text-primary",
+                )}>
+                  {s.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span>{i + 1}</span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn("text-sm font-medium leading-snug", s.done ? "text-muted-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
+                    {s.title}
+                  </p>
+                  {!s.done && (
+                    <p className="text-xs text-muted-foreground truncate">{s.detail}</p>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/30 shrink-0 group-hover:text-muted-foreground transition-colors" />
+              </Link>
+            ))}
+            </nav>
+          </CardContent>
+        </Card>
+
+        {/* Chart */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base">Six months at a glance</CardTitle>
+            <Button size="sm" variant="ghost" asChild className="text-muted-foreground gap-1.5">
+              <Link to="/app/cashflow">
+                Cash flow <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="pb-3">
+            {d.series.some((p) => p.moneyIn > 0 || p.moneyOut > 0) ? (
+              <BarChart series={d.series} />
+            ) : (
+              <div className="flex items-center justify-center h-36 text-sm text-muted-foreground flex-col gap-2">
+                <BarChart3 className="h-8 w-8 opacity-20" />
+                Add bookkeeping entries to see your chart.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </>
+
+      {/* ── Next steps / flags / messages ── */}
+      <div className="grid gap-4 lg:grid-cols-3">
+
+        {/* Next steps */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Next steps</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-3 pb-3">
+            {d.nextSteps.length ? (
+              <div className="space-y-2">
+                {d.nextSteps.map((item) => (
+                  <div key={item.key} className="flex items-start gap-3 rounded-lg border border-border/60 bg-surface-2 p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{item.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.hint}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <Badge variant="secondary" className="text-[10px]">+{item.pts} pts</Badge>
+                      <Button size="sm" variant="outline" className="h-6 text-xs px-2" asChild>
+                        <Link to={item.group === "Documents" ? "/app/start" : "/app/books"}>Fix</Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-good shrink-0" />
+                Everything funders check is in place.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Things to watch */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Things to watch</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-3 pb-3">
+            {d.flags.length ? (
+              <div className="space-y-2">
+                {d.flags.map((f) => (
+                  <div key={f.code} className={cn(
+                    "flex items-start gap-2.5 rounded-lg border p-3",
+                    f.level === "bad" ? "border-destructive/30 bg-destructive/5" : "border-warn/30 bg-warn-soft/50",
+                  )}>
+                    <AlertTriangle className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", f.level === "bad" ? "text-destructive" : "text-warn")} />
+                    <p className="text-sm flex-1">{f.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-good shrink-0" />
+                Nothing needs attention.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Messages */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base">Messages</CardTitle>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground gap-1" asChild>
+              <Link to="/app/protection">
+                <Mail className="h-3.5 w-3.5" /> All
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="pt-0 px-3 pb-3">
+            {d.messages.length ? (
+              <div className="divide-y divide-border/50">
+                {d.messages.map((m) => (
+                  <div key={m.id} className="py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-sm font-medium truncate">{m.sender}</span>
+                      {m.verified
+                        ? <Badge variant="success" className="text-[10px] shrink-0">Verified</Badge>
+                        : <Badge variant="outline" className="text-[10px] shrink-0 text-muted-foreground">Unverified</Badge>}
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{m.body}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 py-6 text-sm text-muted-foreground">
+                <Mail className="h-6 w-6 opacity-20" />
+                No messages yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

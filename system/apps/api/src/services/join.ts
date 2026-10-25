@@ -3,8 +3,9 @@ import { joinDocsFor, PRIVACY_NOTICE_VERSION, slug, todayZA, type JoinDetails } 
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
-import { companies, incubatorMemberships, organisations, profiles, users } from "../db/schema/index";
+import { companies, companyCofounders, founderIdentity, incubatorMemberships, organisations, profiles, users } from "../db/schema/index";
 import { addActivity, audit, type Actor } from "../lib/audit";
+import { encryptField } from "../lib/crypto";
 import { AppError } from "../lib/errors";
 import type { CompanyRow } from "../repositories/companies";
 import { checkerText, docStatesOf } from "./documents";
@@ -41,7 +42,7 @@ async function insertCompany(tx: Tx, values: typeof companies.$inferInsert) {
  * Step 1. Creates the founder's account and an unfinished company (or updates it if they come back).
  * Called in the 'joining' database context; switches to the new founder for the company rows.
  */
-export async function saveDetails(tx: Tx, who: { firebaseUid: string; email: string; existingUserId: string | null }, d: JoinDetails) {
+export async function saveDetails(tx: Tx, who: { firebaseUid: string; email: string; existingUserId: string | null }, d: JoinDetails, key: string) {
   const incubator = await verifiedIncubator(tx, d.incubatorId);
   let userId = who.existingUserId;
   if (!userId) {
@@ -67,6 +68,15 @@ export async function saveDetails(tx: Tx, who: { firebaseUid: string; email: str
     await tx.insert(profiles).values({ companyId: c.id });
   }
   if (incubator) await tx.insert(incubatorMemberships).values({ companyId: c.id, incubatorId: incubator.id, status: "active", decidedAt: new Date() });
+  // ID numbers are encrypted here and never logged; only the owner and the admin can read these rows.
+  const identity = { idNumberEnc: encryptField(d.idNumber, key), phone: d.phone };
+  await tx.insert(founderIdentity).values({ companyId: c.id, ...identity }).onConflictDoUpdate({ target: founderIdentity.companyId, set: { ...identity, updatedAt: new Date() } });
+  await tx.delete(companyCofounders).where(eq(companyCofounders.companyId, c.id));
+  if (d.coFounders?.length) {
+    await tx.insert(companyCofounders).values(d.coFounders.map((p) => ({
+      companyId: c.id, fullName: p.fullName, idNumberEnc: encryptField(p.idNumber, key), role: p.role, email: p.email, phone: p.phone, shareholding: p.shareholding ?? null,
+    })));
+  }
   return { userId, company: c };
 }
 
