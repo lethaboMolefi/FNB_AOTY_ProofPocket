@@ -28,6 +28,8 @@ const schema = z.object({
   GCS_BUCKET: z.string().optional(),
   /** postgres = rate-limit counts shared by every API instance; memory = per process (unit tests). */
   RATE_LIMIT_STORE: z.enum(["postgres", "memory"]).default("postgres"),
+  /** Tests only: raises the general, upload and payment-page rate limits (see middleware/http.ts). */
+  TEST_RATE_LIMIT: z.string().optional(),
   /** Cloud SQL server CA (PEM, base64). When set, database connections verify the server certificate (verify-ca). */
   DATABASE_CA_CERT_B64: z.string().optional(),
   /** Where people open ProofPocket; used in payment links and emails. */
@@ -46,6 +48,7 @@ const schema = z.object({
   if (c.AUTH_MODE === "dev" && c.NODE_ENV !== "test") ctx.addIssue({ code: "custom", path: ["AUTH_MODE"], message: "dev tokens are for automated tests only; use AUTH_MODE=local" });
   if (c.NODE_ENV === "production" && c.MAIL_MODE !== "smtp") ctx.addIssue({ code: "custom", path: ["MAIL_MODE"], message: "production must send real email" });
   if (c.AUTH_MODE === "firebase" && !c.FIREBASE_PROJECT_ID) ctx.addIssue({ code: "custom", path: ["FIREBASE_PROJECT_ID"], message: "required with AUTH_MODE=firebase" });
+  if (c.NODE_ENV === "production" && c.TEST_RATE_LIMIT) ctx.addIssue({ code: "custom", path: ["TEST_RATE_LIMIT"], message: "TEST_RATE_LIMIT is for automated tests only" });
   if (c.NODE_ENV === "production" && c.RATE_LIMIT_STORE !== "postgres") ctx.addIssue({ code: "custom", path: ["RATE_LIMIT_STORE"], message: "production must share rate limits across instances" });
   if (c.NODE_ENV === "production" && c.STORAGE_MODE !== "gcs") ctx.addIssue({ code: "custom", path: ["STORAGE_MODE"], message: "production must store files in Cloud Storage" });
   if (c.STORAGE_MODE === "gcs" && !c.GCS_BUCKET) ctx.addIssue({ code: "custom", path: ["GCS_BUCKET"], message: "required with STORAGE_MODE=gcs" });

@@ -22,6 +22,7 @@ test-results/
 
 # Local example-account passwords and test mail
 .seed-credentials.json
+.access-matrix-results.json
 .local-mail/
 .e2e-mail/
 .e2e-uploads/
