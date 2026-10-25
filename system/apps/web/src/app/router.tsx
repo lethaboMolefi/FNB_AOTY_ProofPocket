@@ -39,6 +39,10 @@ const Attention = lazy(() => import("../features/adviser/Attention"));
 const Support = lazy(() => import("../features/adviser/Support"));
 const Organisations = lazy(() => import("../features/admin/Organisations"));
 const AdminApplications = lazy(() => import("../features/admin/Applications"));
+const AdminOverview = lazy(() => import("../features/admin/Overview"));
+const AdminActivity = lazy(() => import("../features/admin/Activity"));
+const AdminPeople = lazy(() => import("../features/admin/People"));
+const AdminHealth = lazy(() => import("../features/admin/Health"));
 const rev = () => import("../features/admin/Reviews");
 const Reports = lazy(() => rev().then((m) => ({ default: m.Reports })));
 const Features = lazy(() => rev().then((m) => ({ default: m.Features })));
@@ -67,6 +71,10 @@ const BUILT: Record<string, ReactNode> = {
   "adviser/cohort": s(<Cohort />),
   "adviser/attention": s(<Attention />),
   "adviser/support": s(<Support />),
+  "admin/overview": s(<AdminOverview />),
+  "admin/activity": s(<AdminActivity />),
+  "admin/people": s(<AdminPeople />),
+  "admin/health": s(<AdminHealth />),
   "admin/applications": s(<AdminApplications />),
   "admin/organisations": s(<Organisations />),
   "admin/reports": s(<Reports />),
@@ -111,7 +119,7 @@ export const routes: RouteObject[] = [
   {
     path: "/admin",
     element: <RequireRole roles={["admin"]}>{s(<PortalShell base="/admin" title="ProofPocket admin" pages={ADMIN_NAV} />)}</RequireRole>,
-    children: [{ index: true, element: <Navigate to="checks" replace /> }, ...pages("admin", ADMIN_NAV)],
+    children: [{ index: true, element: <Navigate to="overview" replace /> }, ...pages("admin", ADMIN_NAV)],
   },
   { path: "*", element: <NotFound /> },
 ];

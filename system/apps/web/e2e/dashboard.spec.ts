@@ -70,5 +70,27 @@ test("admin: every page loads cleanly", async ({ page, isMobile }) => {
   await signInWithAuthenticator(page, "admin@proofpocket.example");
   await visitAll(page, "/admin", ADMIN_NAV.map((p) => p.path));
   await page.goto("/app/home");
-  await expect(page).toHaveURL(/\/admin\/checks$/);
+  await expect(page).toHaveURL(/\/admin\/overview$/);
+});
+
+test("admin: opening a business is recorded in Activity", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Admin desktop flow.");
+  await signInWithAuthenticator(page, "admin@proofpocket.example");
+  await expect(page).toHaveURL(/\/admin\/overview$/);
+  await expect(page.getByText("Verified businesses")).toBeVisible();
+  await page.goto("/admin/people");
+  const businesses = page.getByRole("heading", { name: "Businesses" }).locator("xpath=ancestor::div[contains(@class, 'rounded-lg')][1]");
+  await businesses.getByLabel("Level").selectOption("verified");
+  await businesses.getByRole("button", { name: "Search" }).click();
+  const row = businesses.getByRole("row").filter({ has: page.getByRole("button", { name: "Open" }) }).first();
+  const name = (await row.locator("td").first().locator("span").first().textContent())!;
+  await row.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name })).toBeVisible();
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.goto("/admin/activity");
+  await page.getByLabel("Action").selectOption("admin.");
+  await page.getByLabel("Company").fill(name);
+  await page.getByRole("button", { name: "Filter" }).click();
+  await expect(page.getByText("admin.company_viewed").first()).toBeVisible();
+  await expect(page.getByText(/Audit log intact/)).toBeVisible();
 });

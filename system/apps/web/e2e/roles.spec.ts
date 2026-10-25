@@ -88,8 +88,8 @@ test("admin invites a buyer; the buyer signs in with the emailed password and la
   await expect(firstBuyer).toBeVisible();
   // Buyers have no invite form in the admin screen today (people are invited for funders and incubators only).
   await expect(firstBuyer.getByRole("button", { name: "Invite" })).toHaveCount(0);
-  for (const p of ["/app/home", "/funder/pipeline", "/adviser/cohort", "/join", "/"]) await expectLanding(page, p, /\/admin\/checks$/);
-  await publicPages(page, /\/admin\/checks$/);
+  for (const p of ["/app/home", "/funder/pipeline", "/adviser/cohort", "/join", "/"]) await expectLanding(page, p, /\/admin\/overview$/);
+  await publicPages(page, /\/admin\/overview$/);
   // Invite through the API the admin screen uses, as the admin.
   const orgs = await page.evaluate(async () => {
     const t = localStorage.getItem("pp.session");

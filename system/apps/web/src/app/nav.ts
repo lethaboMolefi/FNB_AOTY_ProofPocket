@@ -73,6 +73,10 @@ export const ADVISER_NAV: NavPage[] = [
 ];
 
 export const ADMIN_NAV: NavPage[] = [
+  { path: "overview", label: "Overview", title: "Overview", sub: "How ProofPocket is doing today: who's joining, what's waiting, and money recorded across all businesses.", phase: 5 },
+  { path: "activity", label: "Activity", title: "Activity", sub: "Everything people and the system did, newest first. The log can't be edited, and its chain is checked.", phase: 5 },
+  { path: "people", label: "People & companies", title: "People & companies", sub: "Every account and every business, with two-step status and when they were last seen.", phase: 5 },
+  { path: "health", label: "Security & health", title: "Security & health", sub: "Lockouts, two-step gaps, rate limits, background jobs, email failures and the system's own checks.", phase: 5 },
   { path: "checks", label: "Checker queue", title: "Checker queue", sub: "Documents from companies without an incubator. Approve them or send them back with a reason.", phase: 2 },
   { path: "applications", label: "Applications", title: "Applications", sub: "Funders and support organisations asking for a portal. Approve or turn down with a reason.", phase: 5 },
   { path: "organisations", label: "Organisations", title: "Organisations", sub: "Verify funders, incubators and buyers, and invite their people.", phase: 5 },

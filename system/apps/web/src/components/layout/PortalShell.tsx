@@ -1,6 +1,6 @@
 // Funder, adviser and admin layout: desktop-first left rail that becomes a scrolling strip on phones.
 import {
-  ClipboardCheck, FileCheck, Flag, Gavel, Inbox, LayoutGrid, LifeBuoy, ListChecks, type LucideIcon, Megaphone, ShieldAlert, SlidersHorizontal, Users, Building2, Workflow,
+  Activity, ClipboardCheck, FileCheck, HeartPulse, LayoutDashboard, Flag, Gavel, Inbox, LayoutGrid, LifeBuoy, ListChecks, type LucideIcon, Megaphone, ShieldAlert, SlidersHorizontal, Users, Building2, Workflow,
 } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { TopBar } from "./TopBar";
 const PATH_ICON: Record<string, LucideIcon> = {
   pipeline: Workflow, applications: Inbox, programmes: ListChecks, setup: SlidersHorizontal,
   cohort: LayoutGrid, checks: FileCheck, attention: ShieldAlert, support: LifeBuoy,
+  overview: LayoutDashboard, activity: Activity, people: Users, health: HeartPulse,
   organisations: Building2, reports: Flag, features: Megaphone, flagged: ClipboardCheck, tenders: Gavel,
 };
 

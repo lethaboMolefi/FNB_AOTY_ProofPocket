@@ -44,6 +44,8 @@ test("join → upload → approve → Verified", async ({ page }, info) => {
 
   // The ProofPocket checker (admin, with Google Authenticator) approves all four.
   await signInWithAuthenticator(page, "admin@proofpocket.example");
+  await expect(page).toHaveURL(/\/admin\/overview$/);
+  await page.getByRole("link", { name: "Open" }).first().click();
   await expect(page).toHaveURL(/\/admin\/checks$/);
   for (let i = 0; i < 4; i++) {
     const row = page.getByRole("listitem").filter({ hasText: business }).first();
