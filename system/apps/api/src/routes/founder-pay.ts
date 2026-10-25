@@ -57,8 +57,8 @@ export function founderPayRoutes(deps: Deps) {
       return { res, notify: await saveDetails(tx, actorOf(req), deps.config, c, d), company: c.name };
     });
     if (result.res !== "ok") throw codeError(result.res);
-    await deps.mailer.send({ to: user.email, subject: "Your payment details changed", text: `The bank details ${result.company} shows clients on ProofPocket payment pages were changed. If this wasn't you, sign in and change them back, then contact your adviser.` });
-    for (const to of result.notify) await deps.mailer.send({ to, subject: `${result.company} changed their payment details`, text: `${result.company} changed the bank details clients see on their ProofPocket payment pages. Check with the founder that they made this change.` });
+    await deps.mailer.send({ to: user.email, subject: "Your payment details changed", text: `The bank details ${result.company} shows clients on ProofPocket payment pages were changed. If this wasn't you, sign in and change them back, then contact your adviser.`, action: { label: "Check your payment details", url: `${deps.config.PUBLIC_WEB_URL}/app/payments` } });
+    for (const to of result.notify) await deps.mailer.send({ to, subject: `${result.company} changed their payment details`, text: `${result.company} changed the bank details clients see on their ProofPocket payment pages. Check with the founder that they made this change.`, action: { label: "Open the adviser portal", url: `${deps.config.PUBLIC_WEB_URL}/adviser` } });
     return { message: "Payment details saved" };
   }));
 

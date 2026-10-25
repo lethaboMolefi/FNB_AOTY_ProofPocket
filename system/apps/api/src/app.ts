@@ -12,20 +12,20 @@ import { authenticate, type TokenVerifier } from "./middleware/auth";
 import { errorHandler, limits, notFoundHandler, useRateLimitStore } from "./middleware/http";
 import { PostgresRateLimitStore } from "./lib/rate-limit-store";
 import { buildOpenApi } from "./openapi";
+import { adminRoutes } from "./routes/admin";
+import { adviserRoutes } from "./routes/adviser";
 import { authRoutes } from "./routes/auth";
 import { checkRoutes } from "./routes/checks";
+import { countRoutes } from "./routes/counts";
 import { fileRoutes } from "./routes/files";
 import { founderBookRoutes } from "./routes/founder-books";
-import { founderPayRoutes } from "./routes/founder-pay";
-import { payRoutes } from "./routes/pay";
-import { founderMarketRoutes } from "./routes/founder-markets";
-import { funderRoutes } from "./routes/funder";
-import { adviserRoutes } from "./routes/adviser";
-import { adminRoutes } from "./routes/admin";
-import { publicRoutes } from "./routes/public";
-import { countRoutes } from "./routes/counts";
 import { founderDocRoutes } from "./routes/founder-docs";
+import { founderMarketsRoutes } from "./routes/founder-markets";
+import { founderPayRoutes } from "./routes/founder-pay";
+import { funderRoutes } from "./routes/funder";
 import { joinRoutes } from "./routes/join";
+import { payRoutes } from "./routes/pay";
+import { publicRoutes } from "./routes/public";
 
 export interface Deps {
   config: Config;
@@ -50,6 +50,8 @@ export function createApp(deps: Deps) {
   app.use(helmet());
   app.use(cors({ origin: deps.config.WEB_ORIGIN.split(",").map((s) => s.trim()), maxAge: 600 }));
   app.use(express.json({ limit: "100kb" }));
+  // PayFast ITN webhooks arrive as application/x-www-form-urlencoded.
+  app.use(express.urlencoded({ extended: false, limit: "50kb" }));
 
   const v1 = Router();
   v1.use(limits.general());
@@ -62,9 +64,9 @@ export function createApp(deps: Deps) {
   v1.use(fileRoutes(deps));
   v1.use(founderDocRoutes(deps));
   v1.use(founderBookRoutes(deps));
+  v1.use(founderMarketsRoutes(deps));
   v1.use(founderPayRoutes(deps));
   v1.use(payRoutes(deps));
-  v1.use(founderMarketRoutes(deps));
   v1.use(funderRoutes(deps));
   v1.use(adviserRoutes(deps));
   v1.use(adminRoutes(deps));

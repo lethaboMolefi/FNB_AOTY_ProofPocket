@@ -1,162 +1,241 @@
-// Profile & marketing (v2/app.js vMarkets). Posts are shared from the founder's own accounts (share links only).
+// Profile & Marketing — public profile, posts, QR link.
 import { shortDate } from "@proofpocket/shared";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
-import { Notice, Pill, Spinner, useToast } from "../../components/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import {
+  BadgeCheck, ClipboardCopy, ExternalLink, Loader2, MessageCircle, Plus, Trash2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { FounderHead } from "./FounderHead";
 
-interface Data {
-  verified: boolean; url: string; name: string; hasIncubator: boolean;
-  profile: { tagline: string; services: string; whatsapp: string; instagram: string; hours: string };
-  posts: { id: string; text: string; date: string; shared: string[]; feature: "none" | "requested" | "featured" | "rejected"; reviewNote: string | null }[];
-  buyers: { id: string; name: string; kind: string | null; wants: string | null; goodFit: boolean; requested: string | null }[];
+interface Profile {
+  tagline: string; services: string; whatsapp: string; instagram: string; hours: string;
 }
-const SUB = "Your public page, a verified QR code, and posts you share from your own WhatsApp and social media.";
+interface Post {
+  id: string; text: string; postedOn: string; sharedTo: string[]; feature: string; featuredUntil: string | null;
+}
+interface MarketsData {
+  profile: Profile;
+  company: { name: string; slug: string; verified: boolean; publicLink: string | null; qrData: string | null };
+  posts: Post[];
+}
 
-function ProfileForm({ d }: { d: Data }) {
+function ProfileForm({ profile, onSaved }: { profile: Profile; onSaved: () => void }) {
   const toast = useToast();
   const qc = useQueryClient();
-  const [p, setP] = useState(d.profile);
-  const [err, setErr] = useState("");
-  const save = async (e: FormEvent) => {
-    e.preventDefault(); setErr("");
-    try { toast((await api<{ message: string }>("/founder/profile", { method: "PUT", body: p })).message); void qc.invalidateQueries({ queryKey: ["founder", "markets"] }); }
-    catch (x) { setErr((x as ApiError).message); }
-  };
-  return (
-    <form className="panel stack" onSubmit={save} noValidate>
-      <h2>Your public profile</h2>
-      <label className="field"><span>One line about your business</span><input type="text" maxLength={90} value={p.tagline} onChange={(e) => setP({ ...p, tagline: e.target.value })} /></label>
-      <label className="field"><span>Services and prices (one per line)</span><textarea value={p.services} onChange={(e) => setP({ ...p, services: e.target.value })} /></label>
-      <div className="form-grid">
-        <label className="field"><span>WhatsApp number</span><input type="tel" value={p.whatsapp} onChange={(e) => setP({ ...p, whatsapp: e.target.value })} /></label>
-        <label className="field"><span>Instagram</span><input type="text" value={p.instagram} onChange={(e) => setP({ ...p, instagram: e.target.value })} /></label>
-        <label className="field"><span>Hours</span><input type="text" value={p.hours} onChange={(e) => setP({ ...p, hours: e.target.value })} /></label>
-      </div>
-      {err && <p className="err" role="alert">{err}</p>}
-      <div className="row between"><span className="hint mono">{d.url.replace(/^https?:\/\//, "")}</span><button className="btn primary" type="submit">Save profile</button></div>
-    </form>
-  );
-}
+  const [f, setF] = useState<Profile>({ ...profile });
 
-function QrPanel({ d }: { d: Data }) {
-  const toast = useToast();
-  const [qr, setQr] = useState<string | null>(null);
-  useEffect(() => {
-    let live = true;
-    void import("qrcode").then((QR) => QR.toDataURL(d.url, { margin: 1, width: 220, color: { dark: "#181C27", light: "#FFFFFF" } })).then((u) => { if (live) setQr(u); });
-    return () => { live = false; };
-  }, [d.url]);
-  const copy = async () => { try { await navigator.clipboard.writeText(d.url); toast("Profile link copied"); } catch { toast(d.url); } };
+  const save = useMutation({
+    mutationFn: () => api<{ message: string }>("/founder/markets/profile", { method: "PUT", body: f }),
+    onSuccess: (r) => { toast(r.message); void qc.invalidateQueries({ queryKey: ["founder", "markets"] }); onSaved(); },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Try again."),
+  });
+
   return (
-    <section className="panel stack">
-      <h2>Verified QR code</h2>
-      <p className="small muted">Print it at your stall or add it to your posts. Scanning it opens your profile and shows whether you're verified.</p>
-      <div className="row" style={{ gap: 16, alignItems: "center" }}>
-        <div className="qrbox">{qr ? <img src={qr} alt={`QR code for ${d.name}'s profile`} width={150} height={150} /> : <span className="hint">Loading…</span>}</div>
-        <div className="stack" style={{ gap: 6 }}>
-          {d.verified ? <Pill tone="good">Verified on ProofPocket</Pill> : <Pill tone="warn">Starter: not verified yet</Pill>}
-          <span className="small">{d.name}</span>
-          <button className="btn sm" onClick={() => void copy()}>Copy profile link</button>
-          <a className="btn sm ghost" href={d.url} target="_blank" rel="noopener noreferrer">Open your page</a>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Your profile</CardTitle>
+        <CardDescription>What clients and funders see on your public page.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="m-tagline">Tagline</Label>
+            <span className="text-xs text-muted-foreground">{f.tagline.length}/90</span>
+          </div>
+          <Input
+            id="m-tagline" maxLength={90}
+            placeholder="e.g. Township nails and lashes, Soweto"
+            value={f.tagline}
+            onChange={(e) => setF({ ...f, tagline: e.target.value })}
+            className="mt-1.5"
+          />
         </div>
-      </div>
-    </section>
+        <div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="m-services">What you offer</Label>
+            <span className="text-xs text-muted-foreground">{f.services.length}/500</span>
+          </div>
+          <textarea
+            id="m-services" maxLength={500} rows={3}
+            placeholder="Describe your services or products…"
+            value={f.services}
+            onChange={(e) => setF({ ...f, services: e.target.value })}
+            className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label htmlFor="m-wa">WhatsApp number</Label>
+            <Input id="m-wa" placeholder="+27 71 234 5678"
+              value={f.whatsapp} onChange={(e) => setF({ ...f, whatsapp: e.target.value })} className="mt-1.5" />
+          </div>
+          <div>
+            <Label htmlFor="m-ig">Instagram handle</Label>
+            <Input id="m-ig" placeholder="@nala_nails"
+              value={f.instagram} onChange={(e) => setF({ ...f, instagram: e.target.value })} className="mt-1.5" />
+          </div>
+          <div>
+            <Label htmlFor="m-hours">Trading hours</Label>
+            <Input id="m-hours" placeholder="Mon–Sat 8am–6pm"
+              value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} className="mt-1.5" />
+          </div>
+        </div>
+        <div className="flex justify-end pt-1">
+          <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            {save.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Save profile
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-const shareText = (d: Data, text: string) => `${text}\n\n${d.name} · ${d.verified ? "Verified on ProofPocket" : "On ProofPocket"}: ${d.url}`;
-
-function Posts({ d }: { d: Data }) {
+function NewPostForm() {
   const toast = useToast();
   const qc = useQueryClient();
   const [text, setText] = useState("");
-  const [err, setErr] = useState("");
-  const create = async (requestFeature: boolean) => {
-    setErr("");
-    if (!text.trim()) { setErr("Write something first"); return; }
-    try { toast((await api<{ message: string }>("/founder/posts", { body: { text, requestFeature } })).message); setText(""); void qc.invalidateQueries({ queryKey: ["founder", "markets"] }); }
-    catch (x) { setErr((x as ApiError).message); }
-  };
-  const shared = (id: string, net: string) => { void api(`/founder/posts/${id}/shared`, { body: { net } }).then(() => qc.invalidateQueries({ queryKey: ["founder", "markets"] })); };
-  return (
-    <>
-      <form className="panel stack" onSubmit={(e) => { e.preventDefault(); void create(false); }} noValidate>
-        <h2>Create a post</h2>
-        <label className="field"><span>What do you want to tell customers?</span><textarea maxLength={400} placeholder="e.g. Gel overlays this Saturday, R250. Book on WhatsApp." value={text} onChange={(e) => setText(e.target.value)} /></label>
-        {err && <p className="err" role="alert">{err}</p>}
-        <div className="row between">
-          <span className="hint">Posts go out from your own accounts with your profile link.{d.verified ? " Verified businesses can ask for a weekly feature." : ""}</span>
-          <div className="row" style={{ gap: 6 }}>
-            <button className="btn primary" type="submit">Save post</button>
-            {d.verified && <button className="btn" type="button" onClick={() => void create(true)}>Save and request a feature</button>}
-          </div>
-        </div>
-      </form>
-      <section className="panel">
-        <h2>Your posts</h2>
-        {d.posts.length ? d.posts.map((p) => {
-          const enc = encodeURIComponent(shareText(d, p.text));
-          return (
-            <div key={p.id} className="li">
-              <div className="li-main"><span>{p.text}</span><span className="hint">{shortDate(p.date)}{p.shared.length ? ` · shared to ${p.shared.join(", ")}` : ""}</span>
-                {p.feature === "rejected" && p.reviewNote && <span className="hint">Feature not approved: {p.reviewNote}</span>}</div>
-              <div className="li-side">
-                <div className="row" style={{ gap: 6 }}>
-                  <a className="btn sm" href={`https://wa.me/?text=${enc}`} target="_blank" rel="noopener noreferrer" onClick={() => shared(p.id, "WhatsApp")}>WhatsApp</a>
-                  <a className="btn sm" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(d.url)}`} target="_blank" rel="noopener noreferrer" onClick={() => shared(p.id, "Facebook")}>Facebook</a>
-                  <a className="btn sm" href={`https://twitter.com/intent/tweet?text=${enc}`} target="_blank" rel="noopener noreferrer" onClick={() => shared(p.id, "X")}>X</a>
-                </div>
-                {p.feature === "featured" ? <Pill tone="good">Featured this week</Pill> : p.feature === "requested" ? <Pill tone="warn">Feature requested</Pill> : p.feature === "rejected" ? <Pill tone="plain">Not featured</Pill> : null}
-              </div>
-            </div>
-          );
-        }) : <p className="muted">No posts yet.</p>}
-      </section>
-    </>
-  );
-}
 
-function Buyers({ d }: { d: Data }) {
-  const toast = useToast();
-  const qc = useQueryClient();
-  const intro = async (id: string) => {
-    try { toast((await api<{ message: string }>(`/founder/intros/${id}`, { body: {} })).message); void qc.invalidateQueries({ queryKey: ["founder", "markets"] }); }
-    catch (x) { toast((x as ApiError).message); }
-  };
+  const create = useMutation({
+    mutationFn: () => api<{ message: string }>("/founder/markets/posts", { body: { text: text.trim() } }),
+    onSuccess: (r) => { toast(r.message); setText(""); void qc.invalidateQueries({ queryKey: ["founder", "markets"] }); },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Try again."),
+  });
+
   return (
-    <section className="panel">
-      <h2>Buyers looking for suppliers</h2>
-      <div className="grid-2">{d.buyers.map((b) => (
-        <div key={b.id} className="panel stack" style={{ background: "var(--surface-2)" }}>
-          <div className="panel-head" style={{ margin: 0 }}><h3>{b.name}</h3>{b.goodFit ? <Pill tone="info">Good fit</Pill> : <Pill tone="plain">{b.kind ?? "Buyer"}</Pill>}</div>
-          <p className="small">{b.wants}</p>
-          <div className="row between">
-            <span className="hint">{d.hasIncubator ? "Your adviser arranges the introduction" : "ProofPocket arranges the introduction"}</span>
-            {b.requested ? <Pill tone={b.requested === "declined" ? "plain" : "good"}>{b.requested === "arranged" ? "Being arranged" : b.requested === "declined" ? "Not taken further" : "Requested"}</Pill>
-              : d.verified ? <button className={`btn sm ${b.goodFit ? "primary" : ""}`} onClick={() => void intro(b.id)}>Request introduction</button> : <Pill tone="plain">Verified only</Pill>}
-          </div>
-        </div>
-      ))}</div>
-    </section>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor="post-text">What's new?</Label>
+        <span className="text-xs text-muted-foreground">{text.length}/400</span>
+      </div>
+      <textarea
+        id="post-text" maxLength={400} rows={3}
+        placeholder="Share an update, offer or news about your business…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+      />
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending || !text.trim()}>
+          {create.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          Post update
+        </Button>
+      </div>
+    </div>
   );
 }
 
 export default function Markets() {
-  const q = useQuery({ queryKey: ["founder", "markets"], queryFn: () => api<Data>("/founder/markets") });
-  if (!q.data) return <><FounderHead title="Profile & marketing" sub={SUB} /><Spinner /></>;
+  const qc = useQueryClient();
+  const toast = useToast();
+  const q = useQuery({ queryKey: ["founder", "markets"], queryFn: () => api<MarketsData>("/founder/markets") });
+
+  const deletePost = useMutation({
+    mutationFn: (id: string) => api<{ message: string }>(`/founder/markets/posts/${id}`, { method: "DELETE" }),
+    onSuccess: (r) => { toast(r.message); void qc.invalidateQueries({ queryKey: ["founder", "markets"] }); },
+  });
+
+  if (!q.data) return <><FounderHead title="Profile & marketing" /><Spinner /></>;
   const d = q.data;
+  const c = d.company;
+
   return (
     <>
-      <FounderHead title="Profile & marketing" sub={SUB} />
-      {!d.verified && <Notice tone="warn" icon="!" action={<Link className="btn sm ml-auto" to="/app/start">Get verified</Link>}>
-        <b>Your profile isn't in the public directory yet</b> <span className="small">Finish the four verification steps to get the Verified badge and be listed. You can still share posts from your own accounts now.</span>
-      </Notice>}
-      <div className="grid-2"><ProfileForm key={JSON.stringify(d.profile)} d={d} /><QrPanel d={d} /></div>
-      <Posts d={d} />
-      <Buyers d={d} />
+      <FounderHead
+        title="Profile & marketing"
+        sub="Your public page, verified QR code, and posts you share to WhatsApp and social media."
+      />
+
+      {/* Public link card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Your public page</CardTitle>
+              <CardDescription className="mt-0.5">Clients and funders can find and pay you here.</CardDescription>
+            </div>
+            {c.verified
+              ? <Badge variant="success" className="shrink-0"><BadgeCheck className="h-3.5 w-3.5 mr-1" />Verified</Badge>
+              : <Badge variant="secondary" className="shrink-0">Starter</Badge>
+            }
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {c.publicLink ? (
+            <div className="flex gap-2">
+              <Input readOnly value={c.publicLink} className="font-mono text-xs" />
+              <Button size="sm" variant="outline"
+                onClick={() => { void navigator.clipboard.writeText(c.publicLink!); toast("Link copied."); }}>
+                <ClipboardCopy className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <a href={c.publicLink} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Your public link is set up once your account is active.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <ProfileForm profile={d.profile} onSaved={() => {}} />
+
+      {/* Posts */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Updates & posts</CardTitle>
+          <CardDescription>Share what's happening with your business. Copy the text and paste it into WhatsApp or Instagram.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <NewPostForm />
+
+          {d.posts.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                {d.posts.map((post) => {
+                  const waText = encodeURIComponent(`${post.text}${c.publicLink ? `\n\n${c.publicLink}` : ""}`);
+                  const waLink = `https://wa.me/?text=${waText}`;
+                  return (
+                    <div key={post.id} className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm text-foreground flex-1">{post.text}</p>
+                        <Button
+                          size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => deletePost.mutate(post.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">{shortDate(post.postedOn)}</span>
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5 text-green-700 border-green-200 hover:bg-green-50" asChild>
+                          <a href={waLink} target="_blank" rel="noreferrer">
+                            <MessageCircle className="h-3.5 w-3.5" />
+                            Share on WhatsApp
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

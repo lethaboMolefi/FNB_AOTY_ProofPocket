@@ -40,3 +40,28 @@ export function maskBank(bank: string, accountNumber: string): string {
   const last4 = accountNumber.replace(/\D/g, "").slice(-4);
   return `${bank.trim()} ••${last4}`;
 }
+
+/**
+ * Behavioural velocity check (your teammate's "Fake Cash" feedback).
+ * Returns a flag string if the recent entries look unnatural, or null if fine.
+ *
+ * Thresholds (tuned to a busy founder's realistic pace):
+ *  - >5 entries in 10 minutes  → warn (could be a very busy day, flag but don't block)
+ *  - >15 entries in 1 hour     → warn
+ *
+ * @param recentEntries - timestamps (ISO string or Date) of the founder's last entries, newest first.
+ *   Caller should pass at most the last 20 entries.
+ * @param now - the timestamp of the entry being added (defaults to current time).
+ */
+export function velocityFlag(recentEntries: (string | Date)[], now?: Date): string | null {
+  const t = now?.getTime() ?? Date.now();
+  const times = recentEntries.map((e) => (typeof e === "string" ? new Date(e).getTime() : e.getTime()));
+
+  const in10min = times.filter((ts) => t - ts <= 10 * 60 * 1000).length;
+  if (in10min > 5) return "Rapid cash entry: more than 5 entries in 10 minutes. ProofPocket flagged this automatically.";
+
+  const in1hr = times.filter((ts) => t - ts <= 60 * 60 * 1000).length;
+  if (in1hr > 15) return "Unusual activity: more than 15 entries in one hour. ProofPocket flagged this automatically.";
+
+  return null;
+}

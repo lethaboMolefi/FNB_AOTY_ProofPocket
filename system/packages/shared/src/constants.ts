@@ -90,15 +90,18 @@ export const PAY_METHODS = {
   eft: "Bank EFT",
   payshap: "PayShap",
   wallet: "Mobile wallet",
+  payfast: "Card / EFT (PayFast)",
 } as const;
 export type PayMethod = keyof typeof PAY_METHODS;
 export const PAY_METHOD_KEYS = Object.keys(PAY_METHODS) as PayMethod[];
 
 /** Ways a client can pay a payment request. */
-export const RAILS = { payshap: "PayShap", eft: "Bank EFT", cash: "Cash", card_machine: "Card machine" } as const;
+export const RAILS = { payshap: "PayShap", eft: "Bank EFT", cash: "Cash", card_machine: "Card machine", payfast: "Card / EFT (PayFast)" } as const;
 export type Rail = keyof typeof RAILS;
 export const RAIL_KEYS = Object.keys(RAILS) as Rail[];
 export const DIGITAL_RAILS: Rail[] = ["payshap", "eft"];
+/** Rails where ProofPocket can auto-confirm once the gateway notifies (no manual proof needed). */
+export const GATEWAY_RAILS: Rail[] = ["payfast"];
 
 export const PROVINCES = [
   "Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo",
@@ -136,3 +139,32 @@ export const PRIVACY_NOTICE_VERSION = "2026-10-25";
 export const DATA_REQUEST_DAYS = 30;
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const CIPC_PATTERN = /^\d{4}\/\d{6}\/\d{2}$/;
+
+// ─── Named constants for strings used across API services ────────────────────
+/** Default income category when auto-recording a proof-of-payment or cash confirmation. */
+export const DEFAULT_INCOME_CATEGORY = "Services";
+/** Default category for stock restock and supplier payment entries. */
+export const DEFAULT_STOCK_CATEGORY = "Stock and materials";
+/** Default payment method for EFT-sourced entries (supplier payments, restocks). */
+export const DEFAULT_EFT_METHOD = "eft" as const;
+/** Reason recorded when a funder approves without providing an explicit reason. */
+export const DEFAULT_APPROVAL_REASON = "Approved at the current offer.";
+/** Reason recorded when a founder withdraws their own application. */
+export const WITHDRAWN_BY_FOUNDER_REASON = "Withdrawn by the founder.";
+/** How many days a featured directory post stays featured. */
+export const FEATURE_DAYS = 7;
+/** Business stage labels (also matches the companies.stage column default). */
+export const COMPANY_STAGES = ["Early", "Growth"] as const;
+export type CompanyStage = (typeof COMPANY_STAGES)[number];
+/** Duplicate payment window: money out of the same amount within this many days triggers a confirmation. */
+export const DUPLICATE_PAYMENT_DAYS = 7;
+/** Score at or above this is "Funding ready". */
+export const SCORE_READY = 70;
+/** Score at or above this (but below SCORE_READY) is "Getting there". */
+export const SCORE_PROGRESSING = 45;
+/** Auth lockout: max wrong password attempts before locking the account. */
+export const AUTH_MAX_FAILS = 5;
+/** Auth lockout duration in minutes. */
+export const AUTH_LOCK_MINUTES = 15;
+/** How many seconds before an OTP code expires (30s = TOTP standard). */
+export const TOTP_STEP_SECONDS = 30;

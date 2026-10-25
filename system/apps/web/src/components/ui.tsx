@@ -1,5 +1,6 @@
 import type { Tone } from "@proofpocket/shared";
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 export const Pill = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`pill ${tone}`}>{children}</span>;
 
@@ -51,9 +52,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** The ProofPocket mark from v2/index.html. */
-export const BrandMark = () => (
-  <span className="grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent" aria-hidden="true">
+/** The ProofPocket mark from v2/index.html. Accepts className to override the container style. */
+export const BrandMark = ({ className }: { className?: string }) => (
+  <span className={cn("grid h-[30px] w-[30px] place-items-center rounded-lg bg-accent", className)} aria-hidden="true">
     <svg width="18" height="18" viewBox="0 0 18 18"><path d="M2 14 L7 9 L10 12 L16 4" fill="none" stroke="var(--accent-ink)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="16" cy="4" r="1.8" fill="var(--accent-ink)" /></svg>
   </span>
 );

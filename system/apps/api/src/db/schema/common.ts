@@ -19,9 +19,9 @@ export const docType = pgEnum("doc_type", ["cipc", "id", "bank", "addr", "tax", 
 /** Per upload. A company's "missing" state is derived: no upload, or the latest was sent back (rejected). */
 export const docStatus = pgEnum("doc_status", ["pending", "verified", "rejected", "expired"]);
 export const direction = pgEnum("direction", ["in", "out"]);
-export const payMethod = pgEnum("pay_method", ["cash", "card_machine", "eft", "payshap", "wallet"]);
-export const rail = pgEnum("rail", ["payshap", "eft", "cash", "card_machine"]);
-export const entrySource = pgEnum("entry_source", ["manual", "statement", "proof", "cash_request", "restock", "supplier_payment", "cash_payout", "seed"]);
+export const payMethod = pgEnum("pay_method", ["cash", "card_machine", "eft", "payshap", "wallet", "payfast"]);
+export const rail = pgEnum("rail", ["payshap", "eft", "cash", "card_machine", "payfast"]);
+export const entrySource = pgEnum("entry_source", ["manual", "statement", "proof", "cash_request", "restock", "supplier_payment", "cash_payout", "seed", "payfast_itn"]);
 export const statementLineStatus = pgEnum("statement_line_status", ["unsorted", "added", "personal", "skipped", "already_in_books"]);
 export const paymentStatus = pgEnum("payment_status", ["waiting", "checking", "paid", "not_received", "flagged", "expired", "cancelled"]);
 export const proofStatus = pgEnum("proof_status", ["submitted", "confirmed", "rejected"]);

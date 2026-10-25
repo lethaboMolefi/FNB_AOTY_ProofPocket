@@ -1,17 +1,30 @@
-// Stock (v2/app.js vStock). Use 1 and Restock work offline through the outbox.
+// Stock (v2/app.js vStock) — rebuilt with shadcn. Use 1 and Restock work offline via outbox.
 import { R, restockQuantity } from "@proofpocket/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { Stat } from "../../components/charts";
-import { Pill, Spinner, useToast } from "../../components/ui";
+import { AlertCircle, Package, RefreshCw, Minus, Plus, Trash2, WifiOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { enqueue } from "../../lib/outbox";
 import { useOutbox } from "../../lib/use-outbox";
 import { FounderHead } from "./FounderHead";
 
-interface Item { id: string; name: string; unit: string; qty: number; reorderAt: number; cost: number; low: boolean }
+interface Item {
+  id: string; name: string; unit: string; qty: number;
+  reorderAt: number; cost: number; low: boolean;
+}
 interface StockData { on: boolean; typeLabel: string; items: Item[]; value: number; low: number }
-const SUB = "Know what you have before a client asks. Sales and purchases in Bookkeeping can update these numbers too.";
+
+const SUB = "Know what you have before a client asks. Sales and purchases in Bookkeeping update these numbers too.";
 
 export default function Stock() {
   const qc = useQueryClient();
@@ -19,30 +32,69 @@ export default function Stock() {
   const waiting = useOutbox("stock");
   const q = useQuery({ queryKey: ["founder", "stock"], queryFn: () => api<StockData>("/founder/stock") });
   const [n, setN] = useState({ name: "", unit: "", qty: "", reorderAt: "", cost: "" });
+  const [addErr, setAddErr] = useState("");
+
   if (!q.data) return <><FounderHead title="Stock" sub={SUB} /><Spinner /></>;
   const d = q.data;
-  if (!d.on) return <><FounderHead title="Stock" /><p className="muted">Stock tracking is off for {d.typeLabel} businesses.</p></>;
 
-  // Show changes saved on this phone straight away.
-  const pendingDelta = (it: Item) => waiting.filter((w) => w.path.includes(it.id)).reduce((a, w) => a + (w.path.endsWith("/use") ? -1 : restockQuantity(it.qty, it.reorderAt)), 0);
+  if (!d.on) {
+    return (
+      <>
+        <FounderHead title="Stock" />
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Stock tracking is off for {d.typeLabel} businesses.</p>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
+
+  const pendingDelta = (it: Item) =>
+    waiting
+      .filter((w) => w.path.includes(it.id))
+      .reduce((a, w) => a + (w.path.endsWith("/use") ? -1 : restockQuantity(it.qty, it.reorderAt)), 0);
+
   const act = async (it: Item, kind: "use" | "restock") => {
     const id = crypto.randomUUID();
-    const r = await enqueue({ id, path: `/founder/stock/${it.id}/${kind}`, body: { clientUuid: id }, kind: "stock", label: `${kind === "use" ? "Used 1" : "Restocked"} ${it.name}` });
+    const r = await enqueue({
+      id, path: `/founder/stock/${it.id}/${kind}`,
+      body: { clientUuid: id }, kind: "stock",
+      label: `${kind === "use" ? "Used 1" : "Restocked"} ${it.name}`,
+    });
     if (r.state === "failed") { toast(r.error?.message ?? "Try again."); return; }
-    const left = kind === "use" ? Math.max(0, it.qty - 1) : it.qty + restockQuantity(it.qty, it.reorderAt);
-    toast(r.state === "saved" ? "Saved on this phone, will sync"
-      : kind === "use" ? `${it.name}: ${left} ${it.unit} left` : `Restocked ${it.name}; ${R(restockQuantity(it.qty, it.reorderAt) * it.cost)} added to your books`);
+    const left = kind === "use"
+      ? Math.max(0, it.qty - 1)
+      : it.qty + restockQuantity(it.qty, it.reorderAt);
+    toast(
+      r.state === "saved" ? "Saved on this phone, will sync"
+        : kind === "use" ? `${it.name}: ${left} ${it.unit} left`
+        : `Restocked ${it.name} — ${R(restockQuantity(it.qty, it.reorderAt) * it.cost)} added to your books`,
+    );
     void qc.invalidateQueries({ queryKey: ["founder"] });
   };
+
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    if (!n.name.trim()) { toast("Name the item"); return; }
+    setAddErr("");
+    if (!n.name.trim()) { setAddErr("Give the item a name."); return; }
     try {
-      await api("/founder/stock", { body: { name: n.name, unit: n.unit || "units", qty: Number(n.qty) || 0, reorderAt: Number(n.reorderAt) || 0, cost: Number(n.cost) || 0 } });
-      toast("Item added"); setN({ name: "", unit: "", qty: "", reorderAt: "", cost: "" });
+      await api("/founder/stock", {
+        body: {
+          name: n.name.trim(), unit: n.unit.trim() || "units",
+          qty: Number(n.qty) || 0,
+          reorderAt: Number(n.reorderAt) || 0,
+          cost: Number(n.cost) || 0,
+        },
+      });
+      toast("Item added");
+      setN({ name: "", unit: "", qty: "", reorderAt: "", cost: "" });
       void qc.invalidateQueries({ queryKey: ["founder"] });
-    } catch (x) { toast(x instanceof ApiError ? x.message : "Try again."); }
+    } catch (x) {
+      setAddErr(x instanceof ApiError ? x.message : "Try again.");
+    }
   };
+
   const archive = async (it: Item) => {
     if (!window.confirm(`Remove ${it.name} from your stock list?`)) return;
     await api(`/founder/stock/${it.id}`, { method: "DELETE" });
@@ -52,45 +104,171 @@ export default function Stock() {
   return (
     <>
       <FounderHead title="Stock" sub={SUB} />
-      <div className="grid-3">
-        <Stat label="Items" value={d.items.length} />
-        <Stat label="Stock value (at cost)" value={R(d.value)} />
-        <Stat label="Running low" value={d.low} tone={d.low ? "bad" : undefined} />
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Items</p>
+            <p className="text-2xl font-bold tabular-nums mt-1">{d.items.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Stock value</p>
+            <p className="text-2xl font-bold tabular-nums mt-1">{R(d.value)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Running low</p>
+            <p className={`text-2xl font-bold tabular-nums mt-1 ${d.low > 0 ? "text-destructive" : ""}`}>{d.low}</p>
+          </CardContent>
+        </Card>
       </div>
-      <div className="table-wrap">
-        <table>
-          <thead><tr><th>Item</th><th className="r">In stock</th><th className="r">Reorder at</th><th className="r">Cost each</th><th>Status</th><th>Update</th></tr></thead>
-          <tbody>
-            {d.items.map((it) => {
-              const qty = Math.max(0, it.qty + pendingDelta(it));
-              return (
-                <tr key={it.id}>
-                  <td><b>{it.name}</b>{pendingDelta(it) !== 0 && <div><Pill tone="warn">Waiting to sync</Pill></div>}</td>
-                  <td className="r num">{qty} {it.unit}</td><td className="r num">{it.reorderAt}</td><td className="r num">{R(it.cost)}</td>
-                  <td>{qty <= it.reorderAt ? <Pill tone="bad">Reorder</Pill> : <Pill tone="good">OK</Pill>}</td>
-                  <td><div className="row" style={{ gap: 6, flexWrap: "nowrap" }}>
-                    <button className="btn sm" aria-label={`Use one ${it.name}`} onClick={() => void act(it, "use")}>Use 1</button>
-                    <button className="btn sm" onClick={() => void act(it, "restock")}>Restock</button>
-                    <button className="btn sm ghost" aria-label={`Remove ${it.name}`} onClick={() => void archive(it)}>×</button>
-                  </div></td>
-                </tr>
-              );
-            })}
-            {!d.items.length && <tr><td colSpan={6} className="muted">No items yet.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-      <form className="panel stack" onSubmit={add} noValidate>
-        <h2>Add an item</h2>
-        <div className="form-grid">
-          <label className="field"><span>Item</span><input type="text" placeholder="e.g. Lash glue" value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} /></label>
-          <label className="field"><span>Unit</span><input type="text" placeholder="e.g. tubes" value={n.unit} onChange={(e) => setN({ ...n, unit: e.target.value })} /></label>
-          <label className="field"><span>In stock</span><input type="number" min={0} step="0.1" value={n.qty} onChange={(e) => setN({ ...n, qty: e.target.value })} /></label>
-          <label className="field"><span>Reorder at</span><input type="number" min={0} step="0.1" value={n.reorderAt} onChange={(e) => setN({ ...n, reorderAt: e.target.value })} /></label>
-          <label className="field"><span>Cost each (R)</span><input type="number" min={0} value={n.cost} onChange={(e) => setN({ ...n, cost: e.target.value })} /></label>
-        </div>
-        <div className="row between"><span className="hint">Restock records the cost as an expense in your books.</span><button className="btn primary" type="submit">Add item</button></div>
-      </form>
+
+      {/* Stock table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Your items</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Item</TableHead>
+                <TableHead className="text-right">In stock</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Reorder at</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Cost each</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Update</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {d.items.map((it) => {
+                const qty = Math.max(0, it.qty + pendingDelta(it));
+                const syncing = pendingDelta(it) !== 0;
+                return (
+                  <TableRow key={it.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{it.name}</p>
+                        {syncing && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <WifiOff className="h-3 w-3 text-warn" />
+                            <span className="text-[11px] text-warn">Waiting to sync</span>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-medium">
+                      {qty} <span className="text-muted-foreground font-normal">{it.unit}</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                      {it.reorderAt}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                      {R(it.cost)}
+                    </TableCell>
+                    <TableCell>
+                      {qty <= it.reorderAt
+                        ? <Badge variant="destructive">Reorder</Badge>
+                        : <Badge variant="success">OK</Badge>
+                      }
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm" variant="outline"
+                          aria-label={`Use one ${it.name}`}
+                          onClick={() => void act(it, "use")}
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Use 1</span>
+                        </Button>
+                        <Button
+                          size="sm" variant="outline"
+                          onClick={() => void act(it, "restock")}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Restock</span>
+                        </Button>
+                        <Button
+                          size="sm" variant="ghost"
+                          aria-label={`Remove ${it.name}`}
+                          onClick={() => void archive(it)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {!d.items.length && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    No items yet. Add your first item below.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Add item form */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Add an item</CardTitle>
+          <CardDescription>Restock records the cost as an expense in your books.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={add} noValidate>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="col-span-2 sm:col-span-1 lg:col-span-1">
+                <Label htmlFor="s-name">Item name</Label>
+                <Input id="s-name" placeholder="e.g. Lash glue" value={n.name}
+                  onChange={(e) => setN({ ...n, name: e.target.value })} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="s-unit">Unit</Label>
+                <Input id="s-unit" placeholder="e.g. tubes" value={n.unit}
+                  onChange={(e) => setN({ ...n, unit: e.target.value })} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="s-qty">In stock</Label>
+                <Input id="s-qty" type="number" min={0} step="0.1" placeholder="0" value={n.qty}
+                  onChange={(e) => setN({ ...n, qty: e.target.value })} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="s-reorder">Reorder at</Label>
+                <Input id="s-reorder" type="number" min={0} step="0.1" placeholder="0" value={n.reorderAt}
+                  onChange={(e) => setN({ ...n, reorderAt: e.target.value })} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="s-cost">Cost each (R)</Label>
+                <Input id="s-cost" type="number" min={0} placeholder="0" value={n.cost}
+                  onChange={(e) => setN({ ...n, cost: e.target.value })} className="mt-1.5" />
+              </div>
+            </div>
+
+            {addErr && (
+              <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive mt-3" role="alert">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />{addErr}
+              </div>
+            )}
+
+            <div className="flex justify-end mt-4">
+              <Button type="submit">
+                <Plus className="h-4 w-4" />
+                Add item
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </>
   );
 }

@@ -1,5 +1,6 @@
-import { PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
+import { emailSchema, PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
 import { Router } from "express";
+import { z } from "zod";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
 import { AppError, forbidden, notFound } from "../lib/errors";
@@ -8,6 +9,7 @@ import { actorOf, contextOf, otpSatisfied, requireUser, twoFactorRequired } from
 import { handle, limits, parse } from "../middleware/http";
 import { findMe } from "../repositories/users";
 import { signInLocal, signUpLocal } from "../services/local-auth";
+import { sendEmailOtp, verifyEmailOtp } from "../services/email-otp";
 import { adminReset, checkCode, codeError, markSignInVerified, startSetup, turnOff } from "../services/two-factor";
 
 export function authRoutes(deps: Deps) {
@@ -22,6 +24,23 @@ export function authRoutes(deps: Deps) {
     r.post("/auth/local/sign-up", limits.auth(), handle(async (req) => {
       const { email, password } = parse(signUpSchema, req.body);
       return signUpLocal(deps.db, deps.config, email, password);
+    }));
+
+    // Email OTP for sign-up email confirmation (local dev mode only).
+    r.post("/auth/email-otp/send", limits.auth(), handle(async (req) => {
+      const { email } = parse(z.object({ email: emailSchema }), req.body);
+      return sendEmailOtp(deps.mailer, email);
+    }));
+    r.post("/auth/email-otp/verify", limits.auth(), handle(async (req) => {
+      const { email, code } = parse(z.object({ email: emailSchema, code: totpCodeSchema.shape.code }), req.body);
+      const result = verifyEmailOtp(email, code);
+      if (!result.ok) {
+        const msg = result.reason === "expired" ? "That code has expired. Request a new one."
+          : result.reason === "too_many" ? "Too many wrong codes. Request a new one."
+          : "That code isn't right. Check it and try again.";
+        throw new AppError(400, "otp_wrong", msg);
+      }
+      return { ok: true };
     }));
   }
 
@@ -78,14 +97,14 @@ export function authRoutes(deps: Deps) {
       return res;
     });
     if (result !== "ok") throw codeError(result);
-    await deps.mailer.send({ to: user.email, subject: "Two-step sign-in was turned off", text: "Google Authenticator was removed from your ProofPocket account. If this wasn't you, sign in, set it up again and change your password." });
+    await deps.mailer.send({ to: user.email, subject: "Two-step sign-in was turned off", text: "Google Authenticator was removed from your ProofPocket account. If this wasn't you, sign in, set it up again and change your password.", action: { label: "Sign in", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { ok: true };
   }));
 
   /** Lost phone: the admin removes the authenticator after confirming who the person is. */
   r.post("/admin/users/:id/reset-authenticator", requireUser(["admin"]), handle(async (req) => {
     const u = await withContext(deps.db, contextOf(req), (tx) => adminReset(tx, actorOf(req), String(req.params.id)));
-    await deps.mailer.send({ to: u.email, subject: "Your ProofPocket authenticator was reset", text: "A ProofPocket admin removed Google Authenticator from your account at your request. Set it up again the next time you sign in. If you didn't ask for this, contact ProofPocket straight away." });
+    await deps.mailer.send({ to: u.email, subject: "Your ProofPocket authenticator was reset", text: "A ProofPocket admin removed Google Authenticator from your account at your request. Set it up again the next time you sign in. If you didn't ask for this, contact ProofPocket straight away.", action: { label: "Sign in", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { ok: true, message: `Authenticator reset for ${u.name}` };
   }));
 

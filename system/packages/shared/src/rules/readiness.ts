@@ -1,5 +1,5 @@
 // Funding readiness score: v2/app.js readiness(), scoreClass(), scoreLabel(). Authoritative on the server.
-import { DOCS, OWNER_SALARY, READINESS_DOCS, type DocState, type DocType, type Tone } from "../constants";
+import { DOCS, OWNER_SALARY, READINESS_DOCS, SCORE_PROGRESSING, SCORE_READY, type DocState, type DocType, type Tone } from "../constants";
 import { plural } from "../format";
 import type { CompanySnapshot } from "../types";
 import { lastEntryDays, liveEntries, recordMonths } from "./ledger";
@@ -43,8 +43,8 @@ export function readiness(s: Pick<CompanySnapshot, "docs" | "entries" | "history
   return { score: items.reduce((a, i) => a + (i.ok ? i.pts : 0), 0), items };
 }
 
-export const scoreTone = (score: number): Tone => (score >= 70 ? "good" : score >= 45 ? "warn" : "bad");
-export const scoreLabel = (score: number) => (score >= 70 ? "Funding ready" : score >= 45 ? "Getting there" : "Early");
+export const scoreTone = (score: number): Tone => (score >= SCORE_READY ? "good" : score >= SCORE_PROGRESSING ? "warn" : "bad");
+export const scoreLabel = (score: number) => (score >= SCORE_READY ? "Funding ready" : score >= SCORE_PROGRESSING ? "Getting there" : "Early");
 
 /** Home "Next steps": the four unmet items worth the most points. */
 export const nextSteps = (items: ReadinessItem[]) => items.filter((i) => !i.ok).sort((a, b) => b.pts - a.pts).slice(0, 4);

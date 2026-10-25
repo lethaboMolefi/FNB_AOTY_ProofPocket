@@ -37,7 +37,8 @@ export async function newFounder(app: import("express").Express, label: string, 
   const opts = await request(app).get("/api/v1/join/options");
   const incubatorId = incubator ? opts.body.incubators.find((i: { name: string }) => i.name === incubator)?.id ?? null : null;
   const joined = await request(app).post("/api/v1/join").set("Authorization", token).send({
-    founderName: "Test Founder", businessName: `Test ${label} ${Math.random().toString(36).slice(2, 6)}`, businessType: "food", sector: "Catering",
+    founderName: "Test Founder", idNumber: "9001015009087", phone: "0821234567",
+    businessName: `Test ${label} ${Math.random().toString(36).slice(2, 6)}`, businessType: "food", sector: "Catering",
     town: "Soweto", province: "Gauteng", area: "township", incubatorId, registered: false,
   });
   if (joined.status !== 200) throw new Error(`join failed: ${JSON.stringify(joined.body)}`);

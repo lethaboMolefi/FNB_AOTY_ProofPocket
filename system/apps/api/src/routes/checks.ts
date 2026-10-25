@@ -14,8 +14,8 @@ export function checkRoutes(deps: Deps) {
   async function notify(companyId: string, res: ReviewResult, req: Parameters<typeof contextOf>[0]) {
     const owner = await withContext(deps.db, contextOf(req), (tx) => ownerOf(tx, companyId));
     if (!owner) return;
-    if (res.verifiedNow) await deps.mailer.send({ to: owner.email, subject: "You're verified on ProofPocket", text: `${res.companyName} is now Verified. Funders, buyers and customers can find you in the ProofPocket directory.\n\n${deps.config.PUBLIC_WEB_URL}` });
-    else if (res.rejected) await deps.mailer.send({ to: owner.email, subject: `Please upload your ${res.docName} again`, text: `Your ${res.docName} was sent back: ${res.reason}\n\nUpload a new one under Registration steps: ${deps.config.PUBLIC_WEB_URL}/app/start` });
+    if (res.verifiedNow) await deps.mailer.send({ to: owner.email, subject: "You're verified on ProofPocket", text: `${res.companyName} is now Verified. Funders, buyers and customers can find you in the ProofPocket directory.\n\n${deps.config.PUBLIC_WEB_URL}`, action: { label: "Open ProofPocket", url: deps.config.PUBLIC_WEB_URL } });
+    else if (res.rejected) await deps.mailer.send({ to: owner.email, subject: `Please upload your ${res.docName} again`, text: `Your ${res.docName} was sent back: ${res.reason}\n\nUpload a new one under Registration steps: ${deps.config.PUBLIC_WEB_URL}/app/start`, action: { label: "Upload it again", url: `${deps.config.PUBLIC_WEB_URL}/app/start` } });
   }
 
   for (const scope of ["adviser", "admin"] as const) {

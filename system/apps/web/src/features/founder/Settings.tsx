@@ -1,46 +1,174 @@
-// Business settings (inventory 12.9): two-step sign-in, opening balance with a date, people, year founded.
+// Business settings — rebuilt with shadcn.
 import { todayZA } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Spinner, useToast } from "../../components/ui";
+import { Info, Loader2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { TwoFactorCard } from "../auth/TwoFactor";
 import { FounderHead } from "./FounderHead";
+import { useToast } from "../../components/ui";
 
-interface SettingsData { openingBalance: number; openingBalanceDate: string; employees: number; foundedYear: number; stage: "Early" | "Growth" }
+interface SettingsData {
+  openingBalance: number;
+  openingBalanceDate: string;
+  employees: number;
+  foundedYear: number;
+  stage: "Early" | "Growth";
+}
 
 function BusinessForm({ s }: { s: SettingsData }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const [f, setF] = useState({ ...s, openingBalance: String(s.openingBalance), employees: String(s.employees), foundedYear: String(s.foundedYear) });
-  const save = useMutation({
-    mutationFn: () => api<{ message: string }>("/founder/settings", { method: "PUT", body: { openingBalance: Number(f.openingBalance) || 0, openingBalanceDate: f.openingBalanceDate, employees: Number(f.employees) || 1, foundedYear: Number(f.foundedYear), stage: f.stage } }),
-    onSuccess: async (r) => { toast(r.message); await qc.invalidateQueries({ queryKey: ["founder"] }); await qc.invalidateQueries({ queryKey: ["me"] }); },
+  const [f, setF] = useState({
+    ...s,
+    openingBalance: String(s.openingBalance),
+    employees: String(s.employees),
+    foundedYear: String(s.foundedYear),
   });
+
+  const save = useMutation({
+    mutationFn: () => api<{ message: string }>("/founder/settings", {
+      method: "PUT",
+      body: {
+        openingBalance: Number(f.openingBalance) || 0,
+        openingBalanceDate: f.openingBalanceDate,
+        employees: Number(f.employees) || 1,
+        foundedYear: Number(f.foundedYear),
+        stage: f.stage,
+      },
+    }),
+    onSuccess: async (r) => {
+      toast(r.message);
+      await qc.invalidateQueries({ queryKey: ["founder"] });
+      await qc.invalidateQueries({ queryKey: ["me"] });
+    },
+  });
+
   return (
-    <form className="panel stack" noValidate onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-      <h2>Your business</h2>
-      <p className="small muted">Cash on hand starts from your opening balance on its date, plus every entry since.</p>
-      <div className="form-grid">
-        <label className="field"><span>Opening balance (R)</span><input type="number" step="0.01" value={f.openingBalance} onChange={(e) => setF({ ...f, openingBalance: e.target.value })} /></label>
-        <label className="field"><span>On this date</span><input type="date" max={todayZA()} value={f.openingBalanceDate} onChange={(e) => setF({ ...f, openingBalanceDate: e.target.value })} /></label>
-        <label className="field"><span>People working in the business</span><input type="number" min={1} value={f.employees} onChange={(e) => setF({ ...f, employees: e.target.value })} /></label>
-        <label className="field"><span>Trading since (year)</span><input type="number" min={1950} max={Number(todayZA().slice(0, 4))} value={f.foundedYear} onChange={(e) => setF({ ...f, foundedYear: e.target.value })} /></label>
-        <label className="field"><span>Stage</span><select value={f.stage} onChange={(e) => setF({ ...f, stage: e.target.value as SettingsData["stage"] })}><option>Early</option><option>Growth</option></select></label>
-      </div>
-      {save.error && <p className="err" role="alert">{(save.error as ApiError).message}</p>}
-      <button className="btn primary self-start" type="submit" disabled={save.isPending}>Save</button>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Your business</CardTitle>
+        <CardDescription>
+          Cash on hand starts from your opening balance on its date, plus every entry since.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form noValidate onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="opening-balance">Opening balance (R)</Label>
+              <Input
+                id="opening-balance"
+                type="number"
+                step="0.01"
+                value={f.openingBalance}
+                onChange={(e) => setF({ ...f, openingBalance: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="opening-date">On this date</Label>
+              <Input
+                id="opening-date"
+                type="date"
+                max={todayZA()}
+                value={f.openingBalanceDate}
+                onChange={(e) => setF({ ...f, openingBalanceDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="employees">People working in the business</Label>
+              <Input
+                id="employees"
+                type="number"
+                min={1}
+                value={f.employees}
+                onChange={(e) => setF({ ...f, employees: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="founded-year">Trading since (year)</Label>
+              <Input
+                id="founded-year"
+                type="number"
+                min={1950}
+                max={Number(todayZA().slice(0, 4))}
+                value={f.foundedYear}
+                onChange={(e) => setF({ ...f, foundedYear: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Business stage</Label>
+              <Select value={f.stage} onValueChange={(v) => setF({ ...f, stage: v as SettingsData["stage"] })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Early">Early</SelectItem>
+                  <SelectItem value="Growth">Growth</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {save.error && (
+            <p className="text-sm text-destructive" role="alert">{(save.error as ApiError).message}</p>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <Button type="submit" disabled={save.isPending}>
+              {save.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />Saving…</> : "Save changes"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function Settings() {
   const q = useQuery({ queryKey: ["founder", "settings"], queryFn: () => api<SettingsData>("/founder/settings") });
+
   return (
     <>
       <FounderHead title="Business settings" sub="Two-step sign-in, opening balance, people and the year you started trading." />
-      <TwoFactorCard />
-      {q.data ? <BusinessForm key={JSON.stringify(q.data)} s={q.data} /> : <Spinner />}
+
+      {/* ── Two-column on desktop: form left, security + info right ── */}
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] lg:grid-cols-[minmax(0,1fr)_360px]">
+
+        {/* Left: business details form */}
+        <div>
+          {q.data ? <BusinessForm key={JSON.stringify(q.data)} s={q.data} /> : <Spinner />}
+        </div>
+
+        {/* Right: 2FA card + help info */}
+        <div className="space-y-4">
+          <TwoFactorCard />
+
+          <Card className="border-border/60 bg-muted/30">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                <CardTitle className="text-sm">Your data is private</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground pb-4">
+              <p>Funders and advisers only see what you choose to share. Your books, payments and documents are yours.</p>
+              <Separator />
+              <div className="flex items-start gap-2 pt-1">
+                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/60" />
+                <p className="text-xs leading-relaxed">
+                  ProofPocket never holds or moves money. Clients pay you directly with PayShap, EFT, a card machine, or cash.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </>
   );
 }

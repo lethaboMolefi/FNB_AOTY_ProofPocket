@@ -2,7 +2,8 @@
 import { R, RAILS, shortDate, todayZA, type PaymentStatus, type Rail } from "@proofpocket/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import { Info } from "lucide-react";
 import { FilePick } from "../../components/FilePick";
 import { TopBar } from "../../components/layout/TopBar";
 import { LevelPill, Notice, Spinner, useToast } from "../../components/ui";
@@ -12,7 +13,24 @@ interface Page {
   business: { name: string; verified: boolean; slug: string; whatsapp: string };
   ref: string; client: string; amount: number; what: string; requestedOn: string; expiresOn: string; status: PaymentStatus; attempts: number;
   rails: { key: Rail; label: string }[]; canSendProof: boolean;
-  ways: { payshap?: { shapId: string }; eft?: { bank: string; accountName: string; accountNumber: string }; cash?: true; card_machine?: true };
+  ways: { payshap?: { shapId: string }; eft?: { bank: string; accountName: string; accountNumber: string }; cash?: true; card_machine?: true; payfast?: true };
+}
+
+/** PayFast card / EFT — shown when the rail is enabled. Currently shows a pending notice while credentials are being processed. */
+function PayFastSection() {
+  return (
+    <div className="way">
+      <b>Card or EFT (PayFast)</b>
+      <div className="flex items-start gap-2 rounded border border-border bg-muted/40 p-3 mt-1">
+        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="small text-muted-foreground">
+          Card and instant EFT payments via PayFast are coming soon.
+          Our PayFast merchant application is being processed — once approved, clients will be able to pay by card and the books will update automatically.
+          In the meantime, use PayShap, EFT or cash.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function CopyRow({ label, value }: { label: string; value: string }) {
@@ -64,6 +82,8 @@ function ProofForm({ page, path, headers, onSent }: { page: Page; path: string; 
 
 export default function PayPage() {
   const { ref: param = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const payfastResult = searchParams.get("payfast"); // "success" | "cancelled" | null
   const toast = useToast();
   const qc = useQueryClient();
   const m = /^(PP-\d{4,6})-([A-Za-z0-9_-]{8,64})$/.exec(param);
@@ -78,6 +98,16 @@ export default function PayPage() {
     <>
       <TopBar home="/directory" />
       <main id="main" className="mx-auto flex max-w-[640px] flex-col gap-4 px-4 pb-12 pt-5">
+        {payfastResult === "success" && (
+          <Notice tone="good" icon="✓">
+            <span className="small"><b>Payment submitted to PayFast.</b> The business will be notified automatically once your payment is confirmed.</span>
+          </Notice>
+        )}
+        {payfastResult === "cancelled" && (
+          <Notice tone="warn" icon="!">
+            <span className="small"><b>Payment cancelled.</b> You can try again below.</span>
+          </Notice>
+        )}
         {!m || q.isError ? (
           <Notice tone="bad" icon="!"><span className="small"><b>This payment link isn't valid.</b> Check that you copied the whole link, or ask the business to send it again.</span></Notice>
         ) : !q.data ? <Spinner /> : (() => {
@@ -99,6 +129,8 @@ export default function PayPage() {
             {!closed && (
               <section className="panel stack">
                 <h2>How to pay</h2>
+                {/* PayFast card/EFT — shown when the rail is included on this request */}
+                {p.ways.payfast && <PayFastSection />}
                 {p.ways.payshap && <div className="way"><b>PayShap</b><CopyRow label="ShapID" value={p.ways.payshap.shapId} /><CopyRow label="Reference" value={p.ref} /></div>}
                 {p.ways.eft && <div className="way"><b>Bank EFT</b>
                   <CopyRow label="Bank" value={p.ways.eft.bank} /><CopyRow label="Account name" value={p.ways.eft.accountName} />
