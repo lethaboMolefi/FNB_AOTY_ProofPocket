@@ -46,10 +46,10 @@ test("join → upload → approve → Verified", async ({ page }, info) => {
   await signInWithAuthenticator(page, "admin@proofpocket.example");
   await expect(page).toHaveURL(/\/admin\/checks$/);
   for (let i = 0; i < 4; i++) {
-    const row = page.locator(".li", { hasText: business }).first();
+    const row = page.getByRole("listitem").filter({ hasText: business }).first();
     await row.getByRole("button", { name: "Approve" }).click();
     await expect(page.getByText(i < 3 ? "Approved" : `${business} is now Verified`, { exact: true })).toBeVisible();
-    if (i < 3) await expect(page.locator(".li", { hasText: business })).toHaveCount(3 - i);
+    if (i < 3) await expect(page.getByRole("listitem").filter({ hasText: business })).toHaveCount(3 - i);
   }
   await page.getByRole("button", { name: "Sign out" }).click();
 

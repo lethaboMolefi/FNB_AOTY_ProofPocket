@@ -1,9 +1,16 @@
 // Set your requirements (v2/app.js funderSetup), also used for "Add a programme".
 import { DOCS, FUNDER_KINDS, FUNDER_REQUIRABLE_DOCS, type DocType } from "@proofpocket/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { Save } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHead, useToast } from "../../components/ui";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { NativeSelect, TextField } from "@/components/ui/field";
+import { PageHeader } from "../../components/PageHeader";
+import { ToggleChips } from "../../components/ToggleChips";
+import { useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { meKey, useMe } from "../../lib/me";
 
@@ -20,25 +27,30 @@ export function ProgrammeForm({ onDone, onCancel }: { onDone: () => void; onCanc
     catch (x) { setErr((x as ApiError).message); }
   };
   const num = (k: keyof typeof f, label: string, extra: object = {}) => (
-    <label className="field"><span>{label}</span><input type="number" min={0} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} {...extra} /></label>
+    <TextField label={label} type="number" min={0} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} {...extra} />
   );
   return (
-    <form className="panel stack" onSubmit={submit} noValidate>
-      <div className="form-grid">
-        <label className="field"><span>Programme name</span><input type="text" placeholder="e.g. Township Starter Grant" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-        <label className="field"><span>Type</span><select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{FUNDER_KINDS.map((k) => <option key={k}>{k}</option>)}</select></label>
-        {num("minAmount", "Smallest amount (R)")}{num("maxAmount", "Largest amount (R)")}{num("budget", "Total budget (R)")}
-        {num("minMonths", "Months of records needed", { max: 36 })}{num("minScore", "Minimum readiness score", { max: 100 })}
-      </div>
-      <fieldset><legend className="label mb-1.5">Documents applicants must have checked</legend>
-        <div className="row" style={{ gap: 6 }}>{FUNDER_REQUIRABLE_DOCS.map((k) => (
-          <label key={k} className="chip"><input type="checkbox" checked={req.includes(k)} onChange={(e) => setReq(e.target.checked ? [...req, k] : req.filter((x) => x !== k))} /> {DOCS[k].name}</label>
-        ))}</div>
-      </fieldset>
-      {err && <p className="err" role="alert">{err}</p>}
-      <div className="row between"><span className="hint">You can change requirements later. Founders see every change.</span>
-        <div className="row" style={{ gap: 6 }}>{onCancel && <button className="btn" type="button" onClick={onCancel}>Cancel</button>}<button className="btn primary" type="submit">Save and open pipeline</button></div></div>
-    </form>
+    <Card>
+      <form onSubmit={submit} noValidate>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <TextField label="Programme name" placeholder="e.g. Township Starter Grant" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+            <NativeSelect label="Type" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{FUNDER_KINDS.map((k) => <option key={k}>{k}</option>)}</NativeSelect>
+            {num("minAmount", "Smallest amount (R)")}{num("maxAmount", "Largest amount (R)")}{num("budget", "Total budget (R)")}
+            {num("minMonths", "Months of records needed", { max: 36 })}{num("minScore", "Minimum readiness score", { max: 100 })}
+          </div>
+          <ToggleChips legend="Documents applicants must have checked" options={FUNDER_REQUIRABLE_DOCS.map((k) => ({ value: k, label: DOCS[k].name }))} value={req} onChange={setReq} />
+          {err && <Callout tone="bad" role="alert">{err}</Callout>}
+        </CardContent>
+        <CardFooter className="flex flex-wrap justify-between gap-3">
+          <CardDescription>You can change requirements later. Founders see every change.</CardDescription>
+          <div className="flex gap-2">
+            {onCancel && <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>}
+            <Button type="submit"><Save className="h-4 w-4" />Save and open pipeline</Button>
+          </div>
+        </CardFooter>
+      </form>
+    </Card>
   );
 }
 
@@ -48,7 +60,7 @@ export default function Setup() {
   const nav = useNavigate();
   return (
     <>
-      <PageHead label={me?.org?.name} title="Set your requirements" sub="Before you see companies, tell founders what you need. They see these requirements on their Funding page before they apply, so fewer incomplete applications reach you." />
+      <PageHeader label={me?.org?.name} title="Set your requirements" sub="Before you see companies, tell founders what you need. They see these requirements on their Funding page before they apply, so fewer incomplete applications reach you." />
       <ProgrammeForm onDone={async () => { await qc.invalidateQueries({ queryKey: meKey }); nav("/funder/pipeline", { replace: true }); }} />
     </>
   );

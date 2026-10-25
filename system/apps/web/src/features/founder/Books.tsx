@@ -118,17 +118,17 @@ function Statement({ lines, onChange }: { lines: Line[]; onChange: () => void })
           <div className="rounded-lg border border-border bg-surface-2 p-4 space-y-3">
             <p className="text-sm font-medium">Which columns are which?</p>
             <div className="overflow-x-auto rounded border border-border">
-              <table className="text-xs w-full">
-                <tbody>
+              <Table className="text-xs">
+                <TableBody>
                   {mapping.preview.map((row, i) => (
-                    <tr key={i} className="border-b border-border last:border-0">
+                    <TableRow key={i}>
                       {row.map((cell, j) => (
-                        <td key={j} className="px-2 py-1 text-muted-foreground">{cell}</td>
+                        <TableCell key={j} className="px-2 py-1 text-muted-foreground">{cell}</TableCell>
                       ))}
-                    </tr>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {(["date", "description", "amount", "moneyIn", "moneyOut"] as const).map((k) => {
@@ -267,21 +267,17 @@ function EntryForm({ data }: { data: BooksData }) {
         <div className="flex items-center justify-between gap-3">
           <CardTitle className="text-base">Add an entry</CardTitle>
           {/* Money in / out toggle */}
-          <div className="flex rounded-lg border border-border overflow-hidden text-sm">
-            <button
-              type="button"
-              className={`px-4 py-1.5 font-medium transition-colors ${dir === "in" ? "bg-good text-white" : "hover:bg-surface-2 text-muted-foreground"}`}
-              onClick={() => { setDir("in"); setWarn(""); }}
-            >
-              <ArrowDown className="inline h-3.5 w-3.5 mr-1" />Money in
-            </button>
-            <button
-              type="button"
-              className={`px-4 py-1.5 font-medium transition-colors border-l border-border ${dir === "out" ? "bg-destructive text-white" : "hover:bg-surface-2 text-muted-foreground"}`}
-              onClick={() => { setDir("out"); setWarn(""); }}
-            >
-              <ArrowUp className="inline h-3.5 w-3.5 mr-1" />Money out
-            </button>
+          <div className="flex gap-1 rounded-lg border border-border p-0.5" role="group" aria-label="Money in or out">
+            <Button type="button" size="sm" variant={dir === "in" ? "default" : "ghost"} aria-pressed={dir === "in"}
+              className={dir === "in" ? "bg-good text-white hover:bg-good/90" : "text-muted-foreground"}
+              onClick={() => { setDir("in"); setWarn(""); }}>
+              <ArrowDown className="h-3.5 w-3.5" />Money in
+            </Button>
+            <Button type="button" size="sm" variant={dir === "out" ? "destructive" : "ghost"} aria-pressed={dir === "out"}
+              className={dir === "out" ? "" : "text-muted-foreground"}
+              onClick={() => { setDir("out"); setWarn(""); }}>
+              <ArrowUp className="h-3.5 w-3.5" />Money out
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -367,8 +363,8 @@ function EntryForm({ data }: { data: BooksData }) {
                 receipt ? (
                   <span className="text-sm text-muted-foreground">
                     {receipt.name}
-                    <button type="button" className="ml-2 text-xs text-destructive hover:underline"
-                      onClick={() => setReceipt(null)}>Remove</button>
+                    <Button type="button" variant="link" size="sm" className="ml-1 h-auto px-1 text-xs text-destructive"
+                      onClick={() => setReceipt(null)}>Remove</Button>
                   </span>
                 ) : (
                   <FilePick label="Add receipt" purpose="receipt" accept="image/*,.pdf"
@@ -550,15 +546,16 @@ function EarlierMonths({ history }: { history: BooksData["history"] }) {
 
   return (
     <Card>
-      <button
+      <Button
         type="button"
-        className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-surface-2 transition-colors rounded-lg"
+        variant="ghost"
+        className="flex h-auto w-full items-center justify-between rounded-lg px-6 py-4 text-left font-normal"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
         <span className="text-sm font-medium">Earlier months, before you used ProofPocket</span>
         <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
-      </button>
+      </Button>
       {open && (
         <CardContent className="pt-0 space-y-4">
           <p className="text-sm text-muted-foreground">

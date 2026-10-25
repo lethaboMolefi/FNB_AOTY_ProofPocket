@@ -117,12 +117,11 @@ function NewRequest({ business, payfastOn }: { business: string; payfastOn: bool
             <div className="flex flex-wrap gap-2">{RAIL_KEYS.map((k) => {
               const off = k === "payfast" && !payfastOn;
               return (
-                <button key={k} type="button" aria-pressed={f.rails.includes(k)} disabled={off} onClick={() => toggle(k)}
+                <Button key={k} type="button" size="sm" variant={f.rails.includes(k) ? "default" : "outline"} aria-pressed={f.rails.includes(k)} disabled={off} onClick={() => toggle(k)}
                   aria-describedby={off ? "payfast-off" : undefined}
-                  className={cn("min-h-9 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                    f.rails.includes(k) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-foreground")}>
+                  className={cn("rounded-full", !f.rails.includes(k) && "text-muted-foreground")}>
                   {RAILS[k]}
-                </button>
+                </Button>
               );
             })}</div>
             {!payfastOn && <p id="payfast-off" className="mt-1.5 text-xs text-muted-foreground">Card and instant EFT through PayFast will be available once ProofPocket's PayFast account is approved.</p>}

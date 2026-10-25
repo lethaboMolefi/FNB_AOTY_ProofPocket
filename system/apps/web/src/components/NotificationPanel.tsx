@@ -54,12 +54,14 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
   return (
     <>
       {/* ── Bell button ── */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="icon"
         aria-label={count > 0 ? `${count} notification${count !== 1 ? "s" : ""}` : "Notifications"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative h-11 w-11 text-muted-foreground"
       >
         <Bell className="h-4 w-4" />
         {count > 0 && (
@@ -67,7 +69,7 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
             {count > 9 ? "9+" : count}
           </span>
         )}
-      </button>
+      </Button>
 
       {/* In <body>: the top bar's blur would otherwise trap these fixed layers inside the 56 px header. */}
       {open && createPortal(<>
@@ -99,22 +101,13 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
               </div>
               <div className="flex items-center gap-2">
                 {visible.some((n) => !n.persistent) && count > 1 && (
-                  <button
-                    type="button"
-                    onClick={dismissAll}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={dismissAll} className="text-xs text-muted-foreground">
                     Clear all
-                  </button>
+                  </Button>
                 )}
-                <button
-                  type="button"
-                  aria-label="Close notifications"
-                  onClick={() => setOpen(false)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-2 hover:text-foreground transition-colors"
-                >
+                <Button type="button" variant="ghost" size="icon" aria-label="Close notifications" onClick={() => setOpen(false)} className="text-muted-foreground">
                   <X className="h-4 w-4" />
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -172,14 +165,16 @@ export function NotificationPanel({ notifications }: NotificationPanelProps) {
                             )}
                           </div>
                           {!n.persistent && (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               aria-label={`Dismiss: ${n.title}`}
                               onClick={() => dismiss(n.id)}
-                              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:bg-surface-2 hover:text-foreground transition-all"
+                              className="h-9 w-9 shrink-0 text-muted-foreground sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
                             >
                               <X className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>

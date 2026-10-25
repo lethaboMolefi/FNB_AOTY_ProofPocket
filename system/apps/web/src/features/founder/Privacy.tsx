@@ -9,6 +9,7 @@ import { Callout } from "@/components/ui/callout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeSelect } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Spinner, useToast } from "../../components/ui";
@@ -36,19 +37,18 @@ function SharingCard({ current, onSave }: { current: Sharing; onSave: (s: Sharin
         <CardDescription>Your adviser always sees your records in order to help. This controls funders only.</CardDescription>
       </CardHeader>
       <CardContent>
-        <fieldset className="space-y-3">
-          <legend className="sr-only">What verified funders can see</legend>
+        <RadioGroup value={picked} onValueChange={(v) => setPicked(v as Sharing)} aria-label="What verified funders can see" className="space-y-3">
           {OPTIONS.map(([v, title, desc]) => (
-            <label key={v} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+            <label key={v} htmlFor={`sharing-${v}`} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
               picked === v ? "border-primary bg-primary/5" : "border-border hover:border-foreground/30")}>
-              <input type="radio" name="sharing" value={v} checked={picked === v} onChange={() => setPicked(v)} className="mt-1 h-4 w-4 accent-[var(--accent)]" />
+              <RadioGroupItem id={`sharing-${v}`} value={v} className="mt-0.5" />
               <span className="flex-1">
                 <span className="flex items-center gap-2 text-sm font-semibold">{title}{current === v && <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">current</span>}</span>
                 <span className="mt-0.5 block text-sm text-muted-foreground">{desc}</span>
               </span>
             </label>
           ))}
-        </fieldset>
+        </RadioGroup>
         <div className="flex justify-end pt-4">
           <Button onClick={() => void save()} disabled={busy || picked === current}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}Save</Button>
         </div>

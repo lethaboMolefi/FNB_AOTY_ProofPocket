@@ -77,7 +77,7 @@ test("admin reviews a feature request; the directory shows it", async ({ page, i
   test.skip(isMobile, "Admin desktop flow.");
   await signInWithAuthenticator(page, "admin@proofpocket.example");
   await page.goto("/admin/features");
-  const item = page.locator(".li", { hasText: "Co-op price alerts by SMS desktop" });
+  const item = page.getByRole("listitem").filter({ hasText: "Co-op price alerts by SMS desktop" });
   await item.getByRole("button", { name: "Feature" }).click();
   await expect(page.getByText("Featured for 7 days")).toBeVisible();
   await page.goto("/admin/organisations");
