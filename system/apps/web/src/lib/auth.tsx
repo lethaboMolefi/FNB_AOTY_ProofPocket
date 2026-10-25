@@ -13,6 +13,7 @@ interface AuthApi {
   email: string | null;
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
+  signInWithGoogle(): Promise<void>;
   /** Firebase only: emails a password reset link. */
   resetPassword(email: string): Promise<void>;
   signOut(): Promise<void>;
@@ -79,6 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async resetPassword(e) {
       if (AUTH_MODE !== "firebase") throw new ApiError(400, "not_available", "Password reset emails work once ProofPocket is connected to Firebase.");
       await (await firebase()).resetPassword(e);
+    },
+    async signInWithGoogle() {
+      if (AUTH_MODE !== "firebase") throw new ApiError(400, "not_available", "Google sign-in works once ProofPocket is connected to Firebase.");
+      await (await firebase()).signInWithGoogle();
     },
     async signOut() {
       reset();

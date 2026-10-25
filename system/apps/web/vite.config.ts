@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import path from "node:path";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -59,6 +60,11 @@ export default defineConfig({
     port: 4173,
     headers: hostingHeaders(),
     proxy: { "/api": api },
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+    },
   },
   build: { target: "es2020", sourcemap: true },
 });

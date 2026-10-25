@@ -1,7 +1,10 @@
 /* Ported from v2/styles.css. White is the primary colour; colour marks actions and state only.
-   Light theme only for now; every colour is a token so dark mode can be added later. */
+   Light theme only for now; every colour is a token so dark mode can be added later.
+   shadcn/ui CSS variables are layered on top for shadcn components. */
 @import "tailwindcss";
 @import "./fonts.css";
+@plugin "tailwindcss-animate";
+@custom-variant dark (&:is(.dark *));
 
 /* Tailwind theme (v4): utilities such as bg-surface or text-muted read the tokens below. */
 @theme inline {
@@ -20,11 +23,43 @@
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
+  /* shadcn/ui tokens (oklch values, used directly) */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-shadcn-accent: var(--shadcn-accent);
+  --color-shadcn-accent-foreground: var(--shadcn-accent-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --radius-card: 10px;
+  --radius-lg: var(--radius);
+  --radius-md: var(--radius);
+  --radius-sm: calc(var(--radius) - 4px);
   --breakpoint-desktop: 820px;
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
 }
 
 :root {
@@ -49,12 +84,55 @@
   --r: 10px;
   --tabbar-h: 60px;
   color-scheme: light;
+
+  /* shadcn/ui design tokens — oklch colour space (matches ui.shadcn.com).
+     --primary uses ProofPocket's brand purple; the rest follow the shadcn default palette. */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.458 0.179 285);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --shadcn-accent: oklch(0.97 0 0);
+  --shadcn-accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.458 0.179 285);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --shadcn-accent: oklch(0.269 0 0);
+  --shadcn-accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
 }
 
 @layer base {
   html, body { min-height: 100%; }
   body {
-    @apply bg-bg text-ink font-body;
+    @apply bg-background text-foreground font-body;
     margin: 0; font-size: 15px; line-height: 1.5;
     -webkit-tap-highlight-color: transparent;
   }
