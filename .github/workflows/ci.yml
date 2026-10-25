@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 4 * * 1" # weekly: catches new advisories in unchanged dependencies
 
 permissions:
   contents: read
@@ -86,3 +88,77 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Dynamic scan (DAST): ZAP's passive baseline against the production web build and the API, run the same way
+  # as the end-to-end tests. Header, cookie and disclosure rules marked FAIL in .zap/rules.tsv break the build.
+  zap:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: proofpocket_owner
+          POSTGRES_PASSWORD: owner_dev_password
+          POSTGRES_DB: proofpocket
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U proofpocket_owner -d proofpocket"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: system/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: system/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: PGPASSWORD=owner_dev_password psql -h localhost -p 5433 -U proofpocket_owner -d proofpocket -f apps/api/db-init/01-roles.sql
+      - name: Start the API and the production web build
+        run: |
+          key() { node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"; }
+          sed -e "s|^ACCOUNT_NUMBER_KEY=.*|ACCOUNT_NUMBER_KEY=$(key)|" -e "s|^OTP_SECRET=.*|OTP_SECRET=$(key)|" apps/api/.env.example > apps/api/.env
+          cp apps/web/.env.example apps/web/.env
+          pnpm db:reset
+          (cd apps/api && nohup pnpm exec tsx --env-file=.env src/server.ts > "$RUNNER_TEMP/api.log" 2>&1 &)
+          (cd apps/web && pnpm exec vite build && nohup pnpm exec vite preview --port 4173 --strictPort > "$RUNNER_TEMP/web.log" 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://localhost:4173/ >/dev/null && curl -sf http://localhost:8787/api/v1/health >/dev/null && exit 0; sleep 2; done
+          cat "$RUNNER_TEMP/api.log" "$RUNNER_TEMP/web.log"; exit 1
+      - name: ZAP baseline (web)
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: http://localhost:4173
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -I
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-web
+      - name: ZAP baseline (API)
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: http://localhost:8787/api/v1/openapi.json
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -I
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-api
+
+  # Software bill of materials (CycloneDX) for every build, kept for 90 days.
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: system/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - run: pnpm sbom --sbom-format cyclonedx --lockfile-only --out "$RUNNER_TEMP/proofpocket.cdx.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: ${{ runner.temp }}/proofpocket.cdx.json
+          retention-days: 90

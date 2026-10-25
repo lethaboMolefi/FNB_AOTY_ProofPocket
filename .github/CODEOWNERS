@@ -1,0 +1,9 @@
+# Every change needs a review from a code owner once branch protection requires it (docs/security/not-implemented.md).
+*                                   @lethaboMolefi
+# Security-critical paths: authorisation, RLS, crypto, money rules and deployment.
+/system/apps/api/drizzle/           @lethaboMolefi
+/system/apps/api/src/middleware/    @lethaboMolefi
+/system/apps/api/src/lib/           @lethaboMolefi
+/system/packages/shared/src/rules/  @lethaboMolefi
+/infra/                             @lethaboMolefi
+/.github/                           @lethaboMolefi

@@ -1,0 +1,19 @@
+# Dependency updates as pull requests. They go through the same CI (tests, audit, Semgrep, ZAP) and review.
+# cooldown matches pnpm's 24-hour minimum release age (pnpm-workspace.yaml).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /system
+    schedule: { interval: weekly, day: monday }
+    versioning-strategy: increase
+    cooldown: { default-days: 1 }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 1 }
+  - package-ecosystem: docker
+    directory: /system
+    schedule: { interval: weekly, day: monday }

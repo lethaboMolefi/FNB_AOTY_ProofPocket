@@ -1,9 +1,21 @@
+import { readFileSync } from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 const api = process.env.API_PROXY ?? "http://localhost:8787";
+
+/**
+ * Firebase Hosting's security headers (firebase.json), so `vite preview` (end-to-end tests, the CI ZAP scan)
+ * runs under the same CSP as the hosted site. Over plain-http localhost, HSTS and the https upgrade are left out.
+ */
+function hostingHeaders(): Record<string, string> {
+  const fb = JSON.parse(readFileSync(new URL("../../firebase.json", import.meta.url), "utf8")) as { hosting: { headers: { source: string; headers: { key: string; value: string }[] }[] }[] };
+  const all = fb.hosting[0]!.headers.find((h) => h.source === "**")!.headers;
+  return Object.fromEntries(all.filter((h) => h.key !== "Strict-Transport-Security")
+    .map((h) => [h.key, h.key === "Content-Security-Policy" ? h.value.replace(/;\s*upgrade-insecure-requests/, "") : h.value]));
+}
 
 export default defineConfig({
   plugins: [
@@ -45,6 +57,7 @@ export default defineConfig({
   },
   preview: {
     port: 4173,
+    headers: hostingHeaders(),
     proxy: { "/api": api },
   },
   build: { target: "es2020", sourcemap: true },
