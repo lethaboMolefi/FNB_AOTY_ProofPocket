@@ -20,6 +20,8 @@ export default function VerifyPin() {
 
   if (status === "signedOut") return <Navigate to="/sign-in" replace />;
   if (me.isPending) return <Spinner />;
+  // Signed in but no account yet: there's no code to enter; finish joining first.
+  if (me.error instanceof ApiError && me.error.code === "no_account") return <Navigate to="/join" replace />;
   if (me.data && !me.data.needsOtp) return <Navigate to="/" replace />;
   const settingUp = me.data && !me.data.twoFactor.enabled;
 
