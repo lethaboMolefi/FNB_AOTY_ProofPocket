@@ -2,6 +2,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ApiError, api, setTokenGetter, setUnauthorizedHandler } from "./api";
+import { googleSignInMessage } from "./google-sign-in";
 import { setOutboxOwner } from "./outbox";
 
 export const AUTH_MODE: "local" | "firebase" = import.meta.env.VITE_AUTH_MODE === "firebase" ? "firebase" : "local";
@@ -13,7 +14,8 @@ interface AuthApi {
   email: string | null;
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
-  signInWithGoogle(): Promise<void>;
+  /** Firebase only. false when the person closed the Google window; a plain-language ApiError for anything else. */
+  signInWithGoogle(): Promise<boolean>;
   /** Firebase only: emails a password reset link. */
   resetPassword(email: string): Promise<void>;
   signOut(): Promise<void>;
@@ -83,7 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signInWithGoogle() {
       if (AUTH_MODE !== "firebase") throw new ApiError(400, "not_available", "Google sign-in works once ProofPocket is connected to Firebase.");
-      await (await firebase()).signInWithGoogle();
+      reset();
+      try {
+        await (await firebase()).signInWithGoogle();
+        return true;
+      } catch (e) {
+        const message = googleSignInMessage((e as { code?: string }).code);
+        if (message === null) return false;
+        throw new ApiError(400, "google_sign_in", message);
+      }
     },
     async signOut() {
       reset();

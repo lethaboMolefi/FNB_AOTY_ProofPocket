@@ -77,8 +77,7 @@ export default function SignIn() {
   const googleSignIn = async () => {
     setGoogleErr(""); setGoogleLoading(true);
     try {
-      await auth.signInWithGoogle();
-      nav("/", { replace: true });
+      if (await auth.signInWithGoogle()) nav("/", { replace: true });
     } catch (e) {
       setGoogleErr(e instanceof ApiError ? e.message : "Google sign-in didn't work. Try again.");
     } finally {
