@@ -15,6 +15,7 @@ const pub = () => import("../features/public/Directory");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
 const BusinessProfile = lazy(() => pub().then((m) => ({ default: m.BusinessProfile })));
 const PayPage = lazy(() => import("../features/public/PayPage"));
+const PrivacyNotice = lazy(() => import("../features/public/PrivacyNotice"));
 const Join = lazy(() => import("../features/join/Join"));
 const Start = lazy(() => import("../features/founder/Start"));
 const Checks = lazy(() => import("../features/checks/Checks"));
@@ -85,6 +86,7 @@ export const routes: RouteObject[] = [
   { path: "/directory", element: s(<Directory />) },
   { path: "/b/:slug", element: s(<BusinessProfile />) },
   { path: "/pay/:ref", element: s(<PayPage />) },
+  { path: "/privacy-notice", element: s(<PrivacyNotice />) },
   {
     path: "/app",
     element: <RequireRole roles={["founder"]}>{s(<FounderShell />)}</RequireRole>,

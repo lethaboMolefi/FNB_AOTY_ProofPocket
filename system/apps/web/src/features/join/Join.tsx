@@ -195,7 +195,7 @@ function Confirm({ data, onBack, onJoined }: { data: DocumentsResponse; onBack: 
         <div>{need.map((k) => <div key={k} className="li"><span className="small">{DOCS[k].name}</span><Pill tone="good">Attached</Pill></div>)}</div>
       </div>
       <label className="check items-start"><input type="checkbox" className="mt-1" checked={agree} onChange={(e) => { setAgree(e.target.checked); setErr(""); }} />
-        <span>These documents belong to me and this business. I agree that my chosen incubator can see my records, and that verified funders see only what I allow under Privacy &amp; sharing.</span>
+        <span>These documents belong to me and this business. I agree that my chosen incubator can see my records, and that verified funders see only what I allow under Privacy &amp; sharing. I've read the <a href="/privacy-notice" target="_blank" rel="noopener">privacy notice</a>.</span>
       </label>
       {(err || join.error) && <p className="err" role="alert">{err || (join.error as ApiError).message}</p>}
       <div className="row between">

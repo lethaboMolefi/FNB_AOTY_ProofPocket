@@ -1,12 +1,19 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../lib/auth";
+import { list } from "../../lib/outbox";
 import { useOnline } from "../../lib/pwa";
 import { BrandMark, Pill } from "../ui";
 
 export function TopBar({ home, who }: { home: string; who?: ReactNode }) {
   const { status, signOut } = useAuth();
   const online = useOnline();
+  // Offline items stay on this phone, kept for this account only, until it signs in again and they're sent.
+  const out = async () => {
+    const n = (await list()).length;
+    if (n && !window.confirm(`${n} ${n === 1 ? "entry hasn't" : "entries haven't"} been sent yet. They stay on this phone and send when you sign in again. Sign out anyway?`)) return;
+    await signOut();
+  };
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-surface pt-[env(safe-area-inset-top,0px)]">
       <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5">
@@ -18,7 +25,7 @@ export function TopBar({ home, who }: { home: string; who?: ReactNode }) {
         {!online && <Pill tone="plain">Offline</Pill>}
         <div className="ml-auto flex items-center gap-3 small">
           {who}
-          {status === "signedIn" && <button className="btn sm" onClick={() => void signOut()}>Sign out</button>}
+          {status === "signedIn" && <button className="btn sm" onClick={() => void out()}>Sign out</button>}
         </div>
       </div>
     </header>

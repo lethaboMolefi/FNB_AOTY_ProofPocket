@@ -6,6 +6,7 @@ import { router } from "./app/router";
 import { ToastProvider } from "./components/ui";
 import { AuthProvider } from "./lib/auth";
 import { setOnSent, startOutbox } from "./lib/outbox";
+import { DemoBanner } from "./components/layout/DemoBanner";
 import { UpdatePrompt } from "./lib/pwa";
 import "./styles/index.css";
 
@@ -25,6 +26,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ToastProvider>
+          <DemoBanner />
           <UpdatePrompt />
           <RouterProvider router={router} />
         </ToastProvider>

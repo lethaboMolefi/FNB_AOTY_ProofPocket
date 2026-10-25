@@ -26,7 +26,7 @@ export function Reports() {
       <PageHead label="ProofPocket admin" title="Reports" sub="Businesses and payment requests reported by the public and founders. ProofPocket promises a review within two working days." />
       <section className="panel">{q.data.reports.length ? q.data.reports.map((r) => (
         <div key={r.id} className="li">
-          <div className="li-main"><span><b>{r.company ?? "Unknown"}</b> · {r.target === "payment_request" ? "payment request" : r.target}</span>
+          <div className="li-main"><span><b>{r.company ?? "Unknown"}</b> · {r.target === "payment_request" ? "payment request" : r.target === "data_request" ? "data request (reply within 30 days)" : r.target}</span>
             <span className="small">{r.reason || "No reason given"}</span><span className="hint">{day(r.date)}{r.note ? ` · ${r.note}` : ""}</span></div>
           <div className="li-side">{r.status === "open" ? <div className="row" style={{ gap: 6 }}>
             <button className="btn sm primary" onClick={() => { const note = window.prompt("What did you do?") ?? ""; void call(`/admin/reports/${r.id}`, { status: "resolved", note }); }}>Resolve</button>
