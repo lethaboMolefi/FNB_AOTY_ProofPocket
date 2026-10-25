@@ -171,6 +171,12 @@ To try the installable app and offline mode, run the production build: `pnpm --f
 - **Data:** bank account numbers and authenticator secrets are encrypted with AES-256-GCM. ID numbers, account numbers, codes and passwords are never logged. `audit_log` is append-only.
 - **Web:** Helmet security headers, strict CORS, rate limits on sign-in, uploads and the payment page, and no inline scripts.
 - **Supply chain:** exact dependency versions, `pnpm audit`, ESLint security rules, Semgrep and gitleaks in CI.
+- **Tamper evidence:** `audit_log` is hash-chained; the daily job checks the chain and exports entries and the latest hash to storage.
+- **Infrastructure:** the database connection verifies the Cloud SQL server certificate; rate limits are shared across instances (Postgres); bucket versioning is on.
+- **Testing:** a security regression suite (`apps/api/test/security.test.ts`, `e2e/security.spec.ts`), OWASP ZAP in CI and weekly against the hosted site, and an SBOM on every build.
+- **POPIA:** privacy notice at `/privacy-notice` with a recorded consent version; founders download their data and ask for correction or deletion.
+
+Full documentation: [docs/security/](docs/security/README.md). What still needs the owner or the team: [docs/security/not-implemented.md](docs/security/not-implemented.md). How the whole system works: [docs/system-workflow.md](docs/system-workflow.md).
 
 ## Troubleshooting
 
