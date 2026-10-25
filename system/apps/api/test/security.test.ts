@@ -260,6 +260,14 @@ describe("privacy (POPIA access, correction and deletion)", () => {
     const reports = await request(app).get("/api/v1/admin/reports").set("Authorization", await staffToken(app, ADMIN));
     expect(reports.body.reports.find((x: { reason: string }) => x.reason === "Delete my data: Closing the business")).toMatchObject({ target: "data_request", status: "open" });
   });
+  it("asks founders to agree again when the notice changes", async () => {
+    const f = await newFounder(app, "reconsent");
+    expect((await request(app).get("/api/v1/me").set("Authorization", f.token)).body.company.privacyNoticeCurrent).toBe(true);
+    await owner.query("update companies c set consent_version = '2000-01-01' from users u where u.id = c.owner_id and u.email = $1", [f.email]);
+    expect((await request(app).get("/api/v1/me").set("Authorization", f.token)).body.company.privacyNoticeCurrent).toBe(false);
+    expect((await request(app).post("/api/v1/founder/privacy/consent").set("Authorization", f.token).send({})).status).toBe(200);
+    expect((await request(app).get("/api/v1/me").set("Authorization", f.token)).body.company.privacyNoticeCurrent).toBe(true);
+  });
   it("records which privacy notice the founder agreed to", async () => {
     const f = await newFounder(app, "consent");
     const r = await owner.query("select c.consent_version from companies c join users u on u.id = c.owner_id where u.email = $1", [f.email]);

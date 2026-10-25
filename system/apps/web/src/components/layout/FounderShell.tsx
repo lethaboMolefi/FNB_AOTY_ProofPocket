@@ -1,6 +1,7 @@
 // Founder layout: grouped left rail on desktop; bottom tab bar (Home, Books, Get paid, Markets, More) on phones.
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { TwoFactorPrompt } from "../../features/auth/TwoFactor";
+import { PrivacyNoticePrompt } from "../../features/founder/PrivacyNoticePrompt";
 import { FOUNDER_TABS, founderNavFor } from "../../app/nav";
 import { useCounts } from "../../lib/counts";
 import { useMe } from "../../lib/me";
@@ -30,6 +31,7 @@ export function FounderShell() {
           <p className="hint mt-4 border-t border-line px-2.5 pt-3">ProofPocket never holds money.</p>
         </nav>
         <main id="main" className="flex min-w-0 flex-col gap-5" tabIndex={-1}>
+          <PrivacyNoticePrompt />
           {onHome && <TwoFactorPrompt />}
           <InstallHint />
           <Outlet />

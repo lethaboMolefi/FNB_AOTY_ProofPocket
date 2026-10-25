@@ -1,7 +1,7 @@
 // The founder's own data (POPIA s23 access, s24 correction and deletion): download everything, or ask ProofPocket
 // to correct or delete it. Exports read through row-level security as the founder, so they hold only what the
 // founder may already see.
-import { DATA_REQUEST_DAYS, todayZA } from "@proofpocket/shared";
+import { DATA_REQUEST_DAYS, PRIVACY_NOTICE_VERSION, todayZA } from "@proofpocket/shared";
 import { eq, inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { Tx } from "../db/client";
@@ -44,4 +44,11 @@ export async function requestDataChange(tx: Tx, actor: Actor, c: CompanyRow, r: 
   await addActivity(tx, c.id, `Asked ProofPocket to ${r.kind === "deletion" ? "delete" : "correct"} your data.`, actor.userId);
   await audit(tx, actor, { action: `privacy.${r.kind}_requested`, entity: "company", entityId: c.id, companyId: c.id });
   return { message: `Sent. ProofPocket will reply within ${DATA_REQUEST_DAYS} days.` };
+}
+
+/** The founder agrees to the current privacy notice (after it changed since they joined). */
+export async function acceptPrivacyNotice(tx: Tx, actor: Actor, c: CompanyRow) {
+  await tx.update(t.companies).set({ consentAt: new Date(), consentVersion: PRIVACY_NOTICE_VERSION }).where(eq(t.companies.id, c.id));
+  await audit(tx, actor, { action: "privacy.notice_accepted", entity: "company", entityId: c.id, companyId: c.id, before: { version: c.consentVersion }, after: { version: PRIVACY_NOTICE_VERSION } });
+  return { message: "Thanks. You've agreed to the updated privacy notice." };
 }

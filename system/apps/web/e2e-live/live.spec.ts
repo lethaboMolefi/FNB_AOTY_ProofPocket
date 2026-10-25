@@ -13,6 +13,7 @@ test("the hosted PWA: install details, security headers, sign-in, Home, offline"
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page.getByRole("note").getByText("Demo with example data.")).toBeVisible();
   await page.getByLabel("Email").fill("tumelo@proofpocket.example");
   await page.getByLabel("Password", { exact: true }).fill(creds["tumelo@proofpocket.example"]!.password);
   await page.getByRole("button", { name: "Sign in" }).click();

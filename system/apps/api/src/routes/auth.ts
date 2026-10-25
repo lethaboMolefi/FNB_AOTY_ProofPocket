@@ -1,4 +1,4 @@
-import { signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
+import { PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
 import { Router } from "express";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
@@ -97,7 +97,7 @@ export function authRoutes(deps: Deps) {
       id: row.id, email: row.email, displayName: row.displayName, role: row.role,
       org: row.orgId ? { id: row.orgId, name: row.orgName!, type: row.orgType!, verified: row.orgVerified!, setupDone: row.orgSetupDone! } : null,
       company: row.companyId
-        ? { id: row.companyId, name: row.companyName!, town: row.companyTown!, province: row.companyProvince!, businessType: row.companyType!, verified: row.companyVerifiedAt !== null, joined: row.companyJoinedAt !== null }
+        ? { id: row.companyId, name: row.companyName!, town: row.companyTown!, province: row.companyProvince!, businessType: row.companyType!, verified: row.companyVerifiedAt !== null, joined: row.companyJoinedAt !== null, privacyNoticeCurrent: row.companyConsentVersion === PRIVACY_NOTICE_VERSION }
         : null,
       needsOtp: !otpSatisfied(user!, token),
       twoFactor: { enabled: user!.totpEnabled, required: twoFactorRequired(user!) },

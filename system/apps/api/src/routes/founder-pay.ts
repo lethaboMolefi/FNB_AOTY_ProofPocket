@@ -15,7 +15,7 @@ import {
   listSuppliers, markCash, payLink, recordCashPayout, recordSupplierPayment, rejectProof, saveDetails,
 } from "../services/payments";
 import { checkMessage, decideMessage, fingerprints, messageList, privacyView, requestIncubator, setSharing } from "../services/protection";
-import { exportMyData, requestDataChange } from "../services/privacy";
+import { acceptPrivacyNotice, exportMyData, requestDataChange } from "../services/privacy";
 import { checkCode, codeError } from "../services/two-factor";
 
 export function founderPayRoutes(deps: Deps) {
@@ -106,6 +106,7 @@ export function founderPayRoutes(deps: Deps) {
     res.setHeader("Cache-Control", "private, no-store");
     return data;
   }));
+  r.post("/founder/privacy/consent", founder, handle((req) => asFounder(req, (tx, c) => acceptPrivacyNotice(tx, actorOf(req), c))));
   r.post("/founder/privacy/requests", founder, handle((req) => {
     const d = parse(dataRequestSchema, req.body);
     return asFounder(req, (tx, c) => requestDataChange(tx, actorOf(req), c, d));

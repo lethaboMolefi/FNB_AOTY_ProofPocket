@@ -77,7 +77,7 @@ function Details({ signedOut, onDone }: { signedOut: boolean; onDone: () => void
         <fieldset className="form-grid">
           <legend className="label mb-2">Your account</legend>
           <label className="field"><span>Email</span><input type="email" autoComplete="username" autoCapitalize="none" {...form.register("account.email")} />{fieldErr(e.account?.email?.message)}</label>
-          <PasswordField label="Password (at least 10 characters)" autoComplete="new-password" error={e.account?.password?.message} {...form.register("account.password")} />
+          <PasswordField label="Password (at least 12 characters)" autoComplete="new-password" error={e.account?.password?.message} {...form.register("account.password")} />
           <PasswordField label="Type it again" autoComplete="new-password" error={e.account?.confirm?.message} {...form.register("account.confirm")} />
         </fieldset>
       )}

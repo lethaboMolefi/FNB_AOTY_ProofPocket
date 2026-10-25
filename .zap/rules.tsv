@@ -22,4 +22,4 @@
 10109	IGNORE	Modern web application (informational)
 10049	IGNORE	Storable and cacheable content (static, hashed assets)
 10015	IGNORE	Re-examine Cache-control (static assets)
-90003	WARN	Sub Resource Integrity attribute missing (Google Fonts CSS varies by browser, so it cannot carry a hash)
+90003	WARN	Sub Resource Integrity attribute missing (all scripts and styles are same-origin)

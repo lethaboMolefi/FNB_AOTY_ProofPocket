@@ -6,7 +6,7 @@ import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
-import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
+import { NetworkFirst } from "workbox-strategies";
 import { CACHEABLE_API } from "./lib/cache-rules";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -30,14 +30,6 @@ registerRoute(
   }),
 );
 
-registerRoute(({ url }) => url.origin === "https://fonts.googleapis.com", new StaleWhileRevalidate({ cacheName: "google-fonts-css" }));
-registerRoute(
-  ({ url }) => url.origin === "https://fonts.gstatic.com",
-  new CacheFirst({
-    cacheName: "google-fonts",
-    plugins: [new CacheableResponsePlugin({ statuses: [0, 200] }), new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 365 * 86_400 })],
-  }),
-);
 
 // Background Sync: ask open ProofPocket windows to send the offline outbox (they hold the sign-in token).
 self.addEventListener("sync", (event) => {

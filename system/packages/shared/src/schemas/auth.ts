@@ -12,10 +12,10 @@ const COMMON = new Set([
   "iloveyou1", "letmein123", "welcome123", "admin12345", "abc1234567", "proofpocket", "sunshine12", "football12", "monkey12345",
 ]);
 
-/** At least 10 characters, not a common password and not built from the email name. */
+/** At least 12 characters (OWASP ASVS 2.1.1), not a common password and not built from the email name. */
 export const passwordFor = (email?: string) =>
   z.string()
-    .min(10, "Use at least 10 characters. A short sentence works well.")
+    .min(12, "Use at least 12 characters. A short sentence works well.")
     .max(128, "Use 128 characters or fewer.")
     .refine((p) => !COMMON.has(p.toLowerCase()), "That password is too common. Choose another.")
     .refine((p) => {
@@ -44,6 +44,8 @@ export const meSchema = z.object({
     businessType: z.enum(["beauty", "food", "retail", "recycling", "trades", "services"]), verified: z.boolean(),
     /** False until the Join wizard is finished. */
     joined: z.boolean(),
+    /** False when the founder agreed to an older privacy notice (or none) and must agree to the current one. */
+    privacyNoticeCurrent: z.boolean(),
   }).nullable(),
   /** Must enter a Google Authenticator code (or set it up, if required) before continuing this sign-in. */
   needsOtp: z.boolean(),
