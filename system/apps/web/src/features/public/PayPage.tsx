@@ -3,7 +3,6 @@ import { R, RAILS, shortDate, todayZA, type PaymentStatus, type Rail } from "@pr
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Info } from "lucide-react";
 import { FilePick } from "../../components/FilePick";
 import { TopBar } from "../../components/layout/TopBar";
 import { LevelPill, Notice, Spinner, useToast } from "../../components/ui";
@@ -16,19 +15,27 @@ interface Page {
   ways: { payshap?: { shapId: string }; eft?: { bank: string; accountName: string; accountNumber: string }; cash?: true; card_machine?: true; payfast?: true };
 }
 
-/** PayFast card / EFT — shown when the rail is enabled. Currently shows a pending notice while credentials are being processed. */
-function PayFastSection() {
+/** PayFast card or instant EFT. Only shown when ProofPocket's PayFast account is switched on (the API leaves it out otherwise). */
+function PayFastSection({ path, headers }: { path: string; headers: Record<string, string> }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const pay = async () => {
+    setErr(""); setBusy(true);
+    try {
+      const { host, fields } = await api<{ host: string; fields: Record<string, string> }>(`${path}/payfast/initiate`, { body: {}, headers });
+      // PayFast takes a form POST; build it and send the client there.
+      const form = Object.assign(document.createElement("form"), { method: "POST", action: `https://${host}/eng/process` });
+      for (const [name, value] of Object.entries(fields)) form.append(Object.assign(document.createElement("input"), { type: "hidden", name, value }));
+      document.body.append(form);
+      form.submit();
+    } catch (e) { setErr(e instanceof ApiError ? e.message : "PayFast didn't open. Try again, or use another way to pay."); setBusy(false); }
+  };
   return (
     <div className="way">
-      <b>Card or EFT (PayFast)</b>
-      <div className="flex items-start gap-2 rounded border border-border bg-muted/40 p-3 mt-1">
-        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-        <p className="small text-muted-foreground">
-          Card and instant EFT payments via PayFast are coming soon.
-          Our PayFast merchant application is being processed — once approved, clients will be able to pay by card and the books will update automatically.
-          In the meantime, use PayShap, EFT or cash.
-        </p>
-      </div>
+      <b>Card or instant EFT (PayFast)</b>
+      <span className="small">You'll pay on PayFast's secure page. The business is told once PayFast confirms the payment.</span>
+      {err && <p className="err" role="alert">{err}</p>}
+      <button className="btn primary self-start" disabled={busy} onClick={() => void pay()}>{busy ? "Opening PayFast…" : "Pay by card or EFT"}</button>
     </div>
   );
 }
@@ -130,7 +137,7 @@ export default function PayPage() {
               <section className="panel stack">
                 <h2>How to pay</h2>
                 {/* PayFast card/EFT — shown when the rail is included on this request */}
-                {p.ways.payfast && <PayFastSection />}
+                {p.ways.payfast && <PayFastSection path={path} headers={headers} />}
                 {p.ways.payshap && <div className="way"><b>PayShap</b><CopyRow label="ShapID" value={p.ways.payshap.shapId} /><CopyRow label="Reference" value={p.ref} /></div>}
                 {p.ways.eft && <div className="way"><b>Bank EFT</b>
                   <CopyRow label="Bank" value={p.ways.eft.bank} /><CopyRow label="Account name" value={p.ways.eft.accountName} />

@@ -183,4 +183,17 @@ describe("fraud protection and privacy", () => {
     expect((await post(thandi, "/founder/incubator", { incubatorId: ikhaya.id })).body.message).toMatch(/^Request sent\. Ikhaya Incubation Hub will accept you/);
     expect((await get(thandi, "/founder/privacy")).body.pendingRequest.name).toBe("Ikhaya Incubation Hub");
   });
+
+  it("PayFast stays off until its merchant details are set", async () => {
+    const F = (await newFounder(app, "payfastoff")).token;
+    expect((await get(F, "/founder/payments")).body.payfastEnabled).toBe(false);
+    const r = await post(F, "/founder/payment-requests", { client: "Lerato", amount: 120, what: "Braids", rails: ["payfast", "cash"] });
+    expect(r.status).toBe(400);
+    expect(r.body.error.code).toBe("payfast_off");
+    const ok = await post(F, "/founder/payment-requests", { client: "Lerato", amount: 120, what: "Braids", rails: ["cash"] });
+    const { ref, token } = split(ok.body.link);
+    expect((await request(app).post(`/api/v1/pay/${ref}/payfast/initiate`).set("X-Pay-Token", token).send({})).status).toBe(404);
+    expect((await payGet(ok.body.link)).body.ways.payfast).toBeUndefined();
+  });
 });
+

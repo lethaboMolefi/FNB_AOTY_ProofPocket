@@ -71,13 +71,8 @@ export function payRoutes(deps: Deps) {
     const ctx = await payContext(req);
     const view = await withContext(deps.db, ctx, (tx) => payPageView(tx, deps.config, ctx.payRequestId));
 
-    // Build notify_url — the ITN webhook. Must be publicly reachable.
-    const apiBase = deps.config.PUBLIC_WEB_URL.replace(/\/$/, "").replace(
-      /^http:\/\/localhost:\d+/,
-      // In local dev the API is on :8787; sub-domain tunnelling would be needed for real ITN.
-      // For the hackathon demo/sandbox this is fine — sandbox PayFast still calls notify_url.
-      `http://localhost:${deps.config.PORT}`,
-    );
+    // PayFast calls the API itself (a different host from the website), so build it from this request's host.
+    const apiBase = `${req.protocol}://${req.get("host")}`;
     const notifyUrl = `${apiBase}/api/v1/payfast/itn`;
     const returnUrl = `${deps.config.PUBLIC_WEB_URL}/pay/${req.params.ref}?payfast=success`;
     const cancelUrl = `${deps.config.PUBLIC_WEB_URL}/pay/${req.params.ref}?payfast=cancelled`;
@@ -128,7 +123,8 @@ export function payRoutes(deps: Deps) {
       if (err?.code === "itn_not_complete" || err?.statusCode === 200) {
         deps.log.info({ itn: payload.payment_status }, "PayFast ITN not COMPLETE — ignoring");
       } else {
-        deps.log.warn({ err, itn: payload }, "PayFast ITN processing error");
+        // No payload in the log: it holds the payer's name and email.
+        deps.log.warn({ err: (e as Error).message, ref: payload.custom_str1 }, "PayFast ITN processing error");
       }
     }
     // PayFast requires a 200 response regardless of our internal result.

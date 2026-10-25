@@ -6,7 +6,7 @@ import {
 import { Router, type Request } from "express";
 import type { Deps } from "../app";
 import { withContext, type Tx } from "../db/client";
-import { AppError } from "../lib/errors";
+import { AppError, badRequest } from "../lib/errors";
 import { actorOf, contextOf, requireUser } from "../middleware/auth";
 import { handle, limits, parse } from "../middleware/http";
 import { myCompany, type CompanyRow } from "../repositories/companies";
@@ -14,6 +14,7 @@ import {
   addSupplier, cancelRequest, changeSupplierBank, confirmProof, createRequest, currentDetails, decideSupplierChange, detailsView, listRequests,
   listSuppliers, markCash, payLink, recordCashPayout, recordSupplierPayment, rejectProof, saveDetails,
 } from "../services/payments";
+import { payfastEnabled } from "../services/payfast";
 import { checkMessage, decideMessage, fingerprints, messageList, privacyView, requestIncubator, setSharing } from "../services/protection";
 import { acceptPrivacyNotice, exportMyData, requestDataChange } from "../services/privacy";
 import { checkCode, codeError } from "../services/two-factor";
@@ -31,10 +32,12 @@ export function founderPayRoutes(deps: Deps) {
     details: detailsView(await currentDetails(tx, c.id)),
     suppliers: await listSuppliers(tx, c.id),
     authenticatorOn: req.auth!.user!.totpEnabled,
+    payfastEnabled: payfastEnabled(deps.config),
     businessType: c.businessType,
   }))));
   r.post("/founder/payment-requests", founder, handle((req) => {
     const q = parse(paymentRequestSchema, req.body);
+    if (q.rails.includes("payfast") && !payfastEnabled(deps.config)) throw badRequest("payfast_off", "Card payments through PayFast aren't available yet. Choose another way to pay.");
     return asFounder(req, async (tx, c) => {
       const row = await createRequest(tx, actorOf(req), c, q);
       return { ref: row.ref, link: payLink(deps.config, row), message: `Request ${row.ref} created. Send the link on WhatsApp or show the QR code.` };

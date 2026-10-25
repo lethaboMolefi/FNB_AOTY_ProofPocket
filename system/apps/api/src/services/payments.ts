@@ -11,6 +11,7 @@ import type { Tx } from "../db/client";
 import { companies, ledgerEntries, messages, paymentDetails, paymentProofs, paymentRequests, profiles, supplierBankChanges, suppliers, users } from "../db/schema/index";
 import { addActivity, audit, type Actor } from "../lib/audit";
 import { decryptField, encryptField, last4, randomToken } from "../lib/crypto";
+import { payfastEnabled } from "./payfast";
 import { AppError, badRequest, notFound } from "../lib/errors";
 import type { CompanyRow } from "../repositories/companies";
 import { addEntry } from "./books";
@@ -246,7 +247,7 @@ export async function payPageView(tx: Tx, config: Config, requestId: string) {
     if (rail === "eft" && d?.accountNumberEnc) ways.eft = { bank: d.bank, accountName: d.accountName, accountNumber: decryptField(d.accountNumberEnc, config.ACCOUNT_NUMBER_KEY) };
     if (rail === "cash") ways.cash = true;
     if (rail === "card_machine") ways.card_machine = true;
-    if (rail === "payfast") ways.payfast = true;
+    if (rail === "payfast" && payfastEnabled(config)) ways.payfast = true;
   }
   return {
     business: { name: c!.name, verified: c!.verifiedAt !== null, slug: c!.slug, whatsapp: prof?.whatsapp ?? "" },

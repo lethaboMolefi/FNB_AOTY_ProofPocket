@@ -22,7 +22,7 @@ interface Proof { id: string; payer: string; amount: number; paidOn: string; met
 interface Req { id: string; ref: string; client: string; amount: number; what: string; rails: Rail[]; status: PaymentStatus; attempts: number; requestedOn: string; expiresOn: string; link: string; proof: Proof | null }
 interface Supplier { id: string; name: string; bank: string; pending: { bank: string; since: string } | null }
 interface PayData {
-  requests: Req[]; suppliers: Supplier[]; authenticatorOn: boolean; businessType: string;
+  requests: Req[]; suppliers: Supplier[]; authenticatorOn: boolean; payfastEnabled: boolean; businessType: string;
   details: { bank: string; accountName: string; accountMasked: string; shapId: string; inBusinessName: boolean | null } | null;
 }
 
@@ -79,7 +79,7 @@ function ProofBox({ r }: { r: Req }) {
 }
 
 // ---------------------------------------------------------------- ask a client to pay
-function NewRequest({ business }: { business: string }) {
+function NewRequest({ business, payfastOn }: { business: string; payfastOn: boolean }) {
   const toast = useToast();
   const refresh = useRefresh();
   const [f, setF] = useState({ client: "", amount: "", what: "", rails: ["payshap", "eft", "cash"] as Rail[] });
@@ -114,13 +114,18 @@ function NewRequest({ business }: { business: string }) {
           </div>
           <fieldset>
             <legend className="mb-1.5 text-sm font-medium">Ways the client can pay</legend>
-            <div className="flex flex-wrap gap-2">{RAIL_KEYS.map((k) => (
-              <button key={k} type="button" aria-pressed={f.rails.includes(k)} onClick={() => toggle(k)}
-                className={cn("min-h-9 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                  f.rails.includes(k) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-foreground")}>
-                {RAILS[k]}
-              </button>
-            ))}</div>
+            <div className="flex flex-wrap gap-2">{RAIL_KEYS.map((k) => {
+              const off = k === "payfast" && !payfastOn;
+              return (
+                <button key={k} type="button" aria-pressed={f.rails.includes(k)} disabled={off} onClick={() => toggle(k)}
+                  aria-describedby={off ? "payfast-off" : undefined}
+                  className={cn("min-h-9 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    f.rails.includes(k) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground hover:border-foreground")}>
+                  {RAILS[k]}
+                </button>
+              );
+            })}</div>
+            {!payfastOn && <p id="payfast-off" className="mt-1.5 text-xs text-muted-foreground">Card and instant EFT through PayFast will be available once ProofPocket's PayFast account is approved.</p>}
           </fieldset>
           {err && <Callout tone="bad" role="alert">{err}</Callout>}
           <div className="flex justify-end">
@@ -389,7 +394,7 @@ export default function Payments() {
         </Card>
       )}
       <div className="grid gap-6 desktop:grid-cols-2">
-        <NewRequest business={business} />
+        <NewRequest business={business} payfastOn={d.payfastEnabled} />
         <Details key={JSON.stringify(d.details)} data={d} />
       </div>
       <Requests data={d} business={business} />

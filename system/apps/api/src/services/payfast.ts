@@ -189,6 +189,10 @@ export async function processItn(
   if (!["waiting", "not_received"].includes(r.status)) {
     throw badRequest("not_open", `Cannot confirm payment: request is ${r.status}.`);
   }
+  // The amount paid must be the amount asked for; otherwise a R1 payment could close a R200 request.
+  if (Math.round(grossAmount * 100) !== Math.round(Number(r.amount) * 100)) {
+    throw badRequest("itn_amount_mismatch", `PayFast amount ${R(grossAmount)} doesn't match the request (${R(Number(r.amount))}).`);
+  }
 
   // Load the full company row (addEntry needs businessType etc.)
   const [company] = await tx.select().from(companies).where(eq(companies.id, r.companyId));
