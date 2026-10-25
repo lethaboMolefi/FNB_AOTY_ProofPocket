@@ -1,6 +1,6 @@
 // Funder and investor portal (v2/app.js funderSetup, funderPipeline, funderApplications, funderProgrammes, offer/approve/decline/invite).
 // Every decision is written to audit_log; offer changes and declines need reasons.
-import { budgetCheck, isDecided, offerNeedsReason, programmeGaps, R, type DocType } from "@proofpocket/shared";
+import { budgetCheck, isDecided, offerNeedsReason, programmeGaps, R, todayZA, type DocType } from "@proofpocket/shared";
 import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
 import { applications, companies, messages, offers, organisations, programmeRequirements, programmes } from "../db/schema/index";
@@ -121,7 +121,7 @@ async function ownApplication(tx: Tx, orgId: string, id: string) {
 export async function changeOffer(tx: Tx, actor: Actor, orgId: string, id: string, amount: number, reason: string) {
   const a = await ownApplication(tx, orgId, id);
   if (offerNeedsReason(false, reason)) throw badRequest("reason_needed", "Add a reason. Founders see every change to their offer.");
-  await tx.insert(offers).values({ applicationId: a.id, amount: amount.toFixed(2), reason, changedBy: actor.userId });
+  await tx.insert(offers).values({ applicationId: a.id, amount: amount.toFixed(2), reason, changedBy: actor.userId, offeredOn: todayZA() });
   await tx.update(applications).set({ status: "offer_made", reasonRequested: false }).where(eq(applications.id, a.id));
   const [o] = await tx.select({ name: organisations.name }).from(organisations).where(eq(organisations.id, orgId));
   await addActivity(tx, a.companyId, `${o!.name} changed the offer to ${R(amount)}: ${reason}`, actor.userId);
