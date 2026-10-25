@@ -29,7 +29,7 @@ export function fileRoutes(deps: Deps) {
       if (g.op !== "put" || req.headers["content-type"] !== g.t || !Buffer.isBuffer(body) || body.length !== g.s) {
         throw new AppError(400, "upload_mismatch", "The file doesn't match what was expected. Try again.");
       }
-      await store.write(g.p, body);
+      await store.save(g.p, body);
       return { ok: true };
     }));
     r.get("/storage/:token", handle(async (req, res) => {

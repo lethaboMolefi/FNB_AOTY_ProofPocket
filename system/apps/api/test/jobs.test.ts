@@ -20,7 +20,7 @@ describe("scheduled jobs", () => {
       const doc = (await db.query("select d.id, f.bucket_path from documents d join files f on f.id = d.file_id join companies c on c.id = d.company_id join users u on u.id = c.owner_id where u.email = $1 and d.doc_type = 'id'", [f.email])).rows[0];
       await db.query("update documents set status = 'verified', expires_on = $1 where id = $2", [addDays(todayZA(), -1), doc.id]);
       const store = localStore(config);
-      await store.write(doc.bucket_path, Buffer.from("%PDF-1.4 swapped"));
+      await store.save(doc.bucket_path, Buffer.from("%PDF-1.4 swapped"));
 
       const res = await runJobs(process.env.DATABASE_OWNER_URL!, store, { rehash: true });
       expect(res.requestsExpired).toBeGreaterThanOrEqual(1);

@@ -12,7 +12,7 @@ Each security requirement, how ProofPocket meets it, and the evidence. **Done** 
 | Build | Secure coding standard | Done | Rules for routes, RLS, validation, logging, secrets, dependencies | `secure-coding.md`, PR checklist |
 | Build | Static analysis (SAST) | Done | ESLint security rules and Semgrep (`p/default`, `p/typescript`, `p/nodejsscan`) on every push and PR | CI `checks`, `semgrep` |
 | Build | Secret scanning | Done | gitleaks over the full history | CI `gitleaks` |
-| Build | Dependency checks (SCA) | Done | `pnpm audit --audit-level high`, exact pins, 24-hour release age, build-script allow-list, weekly re-run, Dependabot with a 1-day cooldown | CI `checks`, `.github/dependabot.yml` |
+| Build | Dependency checks (SCA) | Done | `pnpm audit --audit-level high`, exact pins, 24-hour release age, build-script allow-list, weekly re-run, Dependabot with a 7-day cooldown | CI `checks`, `.github/dependabot.yml` |
 | Build | Software bill of materials | Done | CycloneDX from `pnpm sbom` on every build | CI `sbom` artifact |
 | Build | Peer review of every change | Owner + People | CODEOWNERS and PR checklist exist; branch protection and a second reviewer are needed | `.github/CODEOWNERS` |
 | Test | Unit and API tests for business rules | Done | 46 shared-rule tests, 130 API tests | `pnpm test` |

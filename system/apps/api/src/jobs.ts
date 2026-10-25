@@ -87,10 +87,10 @@ async function auditChecks(pool: pg.Pool, store: FileStore | null, today: string
     if (r.rows[0]?.hash !== prev.headHash) out.auditChainOk = false;
   } catch { /* first export, or the previous day's run was missed */ }
   const rows = await pool.query(`select * from audit_log where (at at time zone 'Africa/Johannesburg')::date = $1::date order by chain_seq`, [day]);
-  await store.write(`${EXPORTS}/${day}.jsonl`, Buffer.from(rows.rows.map((r) => JSON.stringify(r)).join("\n") + (rows.rows.length ? "\n" : "")), "application/x-ndjson");
+  await store.save(`${EXPORTS}/${day}.jsonl`, Buffer.from(rows.rows.map((r) => JSON.stringify(r)).join("\n") + (rows.rows.length ? "\n" : "")), "application/x-ndjson");
   if (out.auditChainOk && v.head_hash) {
     const head: ExportHead = { day, rowsChecked: out.auditRowsChecked, headHash: v.head_hash };
-    await store.write(`${EXPORTS}/${day}.head.json`, Buffer.from(JSON.stringify(head)), "application/json");
+    await store.save(`${EXPORTS}/${day}.head.json`, Buffer.from(JSON.stringify(head)), "application/json");
   }
   out.auditExported = rows.rowCount ?? 0;
 }
