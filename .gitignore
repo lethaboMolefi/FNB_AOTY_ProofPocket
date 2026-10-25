@@ -30,3 +30,4 @@ test-results/
 # Hosted demo account passwords
 infra/.hosted-credentials.json
 infra/.work/
+system/.firebase/
