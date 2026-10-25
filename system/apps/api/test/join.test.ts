@@ -27,7 +27,8 @@ async function upload(token: string, docType: string, bytes = PDF, contentType =
 }
 
 const details = (over: Record<string, unknown> = {}) => ({
-  founderName: "Lindiwe K.", businessName: "Lindi's Kitchen", businessType: "food", sector: "Catering", town: "Khayelitsha",
+  founderName: "Lindiwe K.", idNumber: "9001015009087", phone: "0821234567",
+  businessName: "Lindi's Kitchen", businessType: "food", sector: "Catering", town: "Khayelitsha",
   province: "Western Cape", area: "township", incubatorId: null, registered: true, legalName: "Lindi's Kitchen (Pty) Ltd", cipcNumber: "2025/481516/07", ...over,
 });
 

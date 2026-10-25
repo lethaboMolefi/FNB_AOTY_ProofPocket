@@ -1,5 +1,5 @@
 // Funding readiness — score, checklist, and funding programmes to apply to.
-import { R } from "@proofpocket/shared";
+import { APPLICATION_STATUS, R, type ApplicationStatus } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -32,15 +32,22 @@ interface FundingData {
   programmes: Programme[];
 }
 
-const APP_STATUS: Record<string, { label: string; variant: "secondary" | "warning" | "success" | "destructive" | "outline" }> = {
-  submitted:           { label: "Submitted",         variant: "secondary" },
-  under_review:        { label: "Under review",      variant: "outline" },
-  offer_made:          { label: "Offer made",        variant: "warning" },
-  awaiting_cofunding:  { label: "Awaiting co-fund",  variant: "warning" },
-  approved:            { label: "Approved",          variant: "success" },
-  declined:            { label: "Declined",          variant: "destructive" },
-  withdrawn:           { label: "Withdrawn",         variant: "outline" },
+// UI-only variant map — labels come from APPLICATION_STATUS in shared
+const APP_STATUS_VARIANT: Record<string, "secondary" | "warning" | "success" | "destructive" | "outline"> = {
+  submitted:          "secondary",
+  under_review:       "outline",
+  offer_made:         "warning",
+  awaiting_cofunding: "warning",
+  approved:           "success",
+  declined:           "destructive",
+  withdrawn:          "outline",
 };
+
+function appStatusMeta(status: string) {
+  const shared = APPLICATION_STATUS[status as ApplicationStatus];
+  const variant = APP_STATUS_VARIANT[status] ?? "outline";
+  return { label: shared?.label ?? status, variant };
+}
 
 const SCORE_COLOR: Record<string, string> = {
   good: "text-good", warn: "text-warn", bad: "text-destructive",
@@ -203,7 +210,7 @@ export default function FundingReadiness() {
           <div className="space-y-3">
             {d.programmes.map((prog) => {
               const app = prog.application;
-              const appMeta = app ? (APP_STATUS[app.status] ?? { label: app.status, variant: "outline" as const }) : null;
+              const appMeta = app ? appStatusMeta(app.status) : null;
               return (
                 <Card key={prog.id}>
                   <CardHeader className="pb-2">

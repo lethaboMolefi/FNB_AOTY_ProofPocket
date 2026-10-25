@@ -1,6 +1,6 @@
 // Funder and investor portal (v2/app.js funderSetup, funderPipeline, funderApplications, funderProgrammes, offer/approve/decline/invite).
 // Every decision is written to audit_log; offer changes and declines need reasons.
-import { budgetCheck, isDecided, offerNeedsReason, programmeGaps, R, type DocType } from "@proofpocket/shared";
+import { budgetCheck, isDecided, offerNeedsReason, programmeGaps, R, DEFAULT_APPROVAL_REASON, type DocType } from "@proofpocket/shared";
 import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
 import { applications, companies, messages, offers, organisations, programmeRequirements, programmes } from "../db/schema/index";
@@ -144,7 +144,7 @@ export async function approve(tx: Tx, actor: Actor, orgId: string, id: string, r
   const p = await ownProgramme(tx, orgId, a.programmeId);
   const b = budgetCheck({ budget: Number(p.budget), committed: Number(p.committed) }, a.currentOffer);
   if (b.exceeds && !confirmOverBudget) throw new AppError(409, "over_budget", `Approving ${R(a.currentOffer)} goes over what's left of this programme's budget (${R(b.left)}). Approve anyway?`);
-  await tx.update(applications).set({ status: "approved", statusReason: reason || "Approved at the current offer." }).where(eq(applications.id, a.id));
+  await tx.update(applications).set({ status: "approved", statusReason: reason || DEFAULT_APPROVAL_REASON }).where(eq(applications.id, a.id));
   await tx.update(programmes).set({ committed: sql`${programmes.committed} + ${a.currentOffer.toFixed(2)}` }).where(eq(programmes.id, p.id));
   await addActivity(tx, a.companyId, `${a.funder} approved the ${a.programme} application.`, actor.userId);
   await audit(tx, actor, { action: "application.approved", entity: "application", entityId: a.id, companyId: a.companyId, after: { amount: a.currentOffer, reason, overBudget: b.exceeds } });

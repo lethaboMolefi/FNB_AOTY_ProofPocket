@@ -1,5 +1,5 @@
 // Reaching formal markets, founder side (v2/app.js vMarkets, vFunding, vProcurement).
-import { canApply, canAskReason, canWithdraw, DOCS, programmeGaps, R, scoreLabel, scoreTone, sectorMatch, tenderAction, todayZA, TENDER_DOCS } from "@proofpocket/shared";
+import { canApply, canAskReason, canWithdraw, DOCS, programmeGaps, R, scoreLabel, scoreTone, sectorMatch, tenderAction, todayZA, TENDER_DOCS, WITHDRAWN_BY_FOUNDER_REASON } from "@proofpocket/shared";
 import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
 import type { Config } from "../config";
 import type { Tx } from "../db/client";
@@ -116,7 +116,7 @@ export async function askReason(tx: Tx, actor: Actor, c: CompanyRow, id: string)
 export async function withdraw(tx: Tx, actor: Actor, c: CompanyRow, id: string) {
   const a = await ownApplication(tx, c, id);
   if (!canWithdraw(a.status)) throw badRequest("decided", "This application has already been decided.");
-  await tx.update(applications).set({ status: "withdrawn", statusReason: "Withdrawn by the founder." }).where(eq(applications.id, a.id));
+  await tx.update(applications).set({ status: "withdrawn", statusReason: WITHDRAWN_BY_FOUNDER_REASON }).where(eq(applications.id, a.id));
   await addActivity(tx, c.id, `Withdrew the ${a.programme} application.`, actor.userId);
   await audit(tx, actor, { action: "application.withdrawn", entity: "application", entityId: a.id, companyId: c.id });
   return { message: "Application withdrawn" };

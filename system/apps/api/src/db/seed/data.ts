@@ -113,11 +113,26 @@ export const COMPANIES: SeedCompany[] = [
     activity: [{ daysAgo: 6, text: "Business plan uploaded for checking." }],
     pay: { bank: "FNB", accountName: "Khanya Solar Installs (Pty) Ltd", accountNumber: "6290 551 873", inBusinessName: true },
   },
+  // c7 — Discovery doc F4 persona: informal township caterer, no accountant, recently joined through GNBI.
+  {
+    key: "c7", name: "Boitumelo Street Kitchen", legalName: null, businessType: "food", sector: "Catering", town: "Tembisa", province: "Gauteng", area: "township",
+    stage: "Early", founded: 2025, founder: { name: "Boitumelo N.", email: "boitumelo@proofpocket.example" }, employees: 1, cipc: null, opening: 800, sharing: "summary",
+    docs: { id: V, addr: "pending" as const },
+    months: [[0, 0], [0, 0], [3200, 2800], [4100, 3600], [3800, 3200]],
+    ledger: [[5, "in", 1200, "cash", "Sales", "School lunch boxes x24"], [4, "out", 650, "cash", "Stock and materials", "Chicken and veg"], [3, "in", 800, "card_machine", "Sales", "Office catering"]],
+    stock: [["Takeaway boxes (50s)", "packs", 4, 2, 85], ["Cooking oil (2 L)", "bottles", 2, 2, 55]],
+    suppliers: [],
+    profile: { tagline: "Home-cooked lunch boxes in Tembisa, ready by 11.", services: "Lunch box R55\nSchool pack (pap + protein) R45\nSmall office catering on request", whatsapp: "072 555 0213", instagram: "", hours: "Mon–Fri, orders by 9:00" },
+    incubator: { key: "n3", stage: 1, adviser: "Obakeng M.", log: [{ daysAgo: 10, type: "Business registration help", note: "Helping founder prepare for CIPC registration. ID document uploaded." }] },
+    activity: [{ daysAgo: 12, text: "Joined ProofPocket as a Starter. ID uploaded, address proof being checked." }],
+    pay: { bank: "Capitec", accountName: "B. N. (personal account)", accountNumber: "1678442093", inBusinessName: false },
+  },
 ];
 
 export const INCUBATORS = [
   { key: "n1", name: "Ikhaya Incubation Hub", advisers: [{ name: "N. Mokoena", email: "n.mokoena@proofpocket.example" }, { name: "L. Dube", email: "l.dube@proofpocket.example" }] },
   { key: "n2", name: "Township Futures Trust", advisers: [{ name: "S. Pillay", email: "s.pillay@proofpocket.example" }, { name: "T. Mahlangu", email: "t.mahlangu@proofpocket.example" }] },
+  { key: "n3", name: "GNBI Business Incubator", advisers: [{ name: "Obakeng M.", email: "obakeng@proofpocket.example" }, { name: "Lethabo M.", email: "lethabo@proofpocket.example" }] },
 ];
 
 export interface SeedProgramme { key: string; name: string; min: number; max: number; budget: number; used: number; req: DocType[]; minMonths: number; minScore: number }
