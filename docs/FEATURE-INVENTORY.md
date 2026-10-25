@@ -27,7 +27,7 @@ The endpoint tables are generated from [`system/apps/api/test/access-matrix.ts`]
 - **Link:** no role gives access; a valid payment-page token, signed storage link or PayFast signature does, and every role gets the same answer without one.
 - **Not applicable:** see the notes; it is used for system jobs.
 
-## 1. API features (128 endpoints in 23 modules)
+## 1. API features (134 endpoints in 23 modules)
 
 ### System
 
@@ -271,6 +271,12 @@ The endpoint tables are generated from [`system/apps/api/test/access-matrix.ts`]
 | F-ADM-14 | Publish a tender | `POST /admin/tenders` | /admin/tenders | Admin |  |
 | F-ADM-15 | Arrange or decline an introduction (no incubator) | `POST /admin/intros/:id` | /admin/tenders | Admin |  |
 | F-ADM-16 | Arrange or decline tender interest (no incubator) | `POST /admin/tenders/:id` | /admin/tenders | Admin |  |
+| F-ADM-17 | Monitoring overview (platform totals) | `GET /admin/overview` | /admin/overview | Admin |  |
+| F-ADM-18 | Activity: audit log with filters and chain check | `GET /admin/activity` | /admin/activity | Admin |  |
+| F-ADM-19 | People: every account with two-step status and last seen | `GET /admin/people` | /admin/people | Admin |  |
+| F-ADM-20 | Businesses: every company with level and score | `GET /admin/companies` | /admin/people | Admin |  |
+| F-ADM-21 | Open one business (audited) | `GET /admin/companies/:id` | /admin/people | Admin |  |
+| F-ADM-22 | Security and system health | `GET /admin/health` | /admin/health | Admin |  |
 
 ## 2. Pages (web app)
 
@@ -443,6 +449,12 @@ A redirect ("→") is how the web app refuses a page; the API behind it refuses 
 | F-ADM-14 | Publish a tender | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-ADM-15 | Arrange or decline an introduction (no incubator) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-ADM-16 | Arrange or decline tender interest (no incubator) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-17 | Monitoring overview (platform totals) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-18 | Activity: audit log with filters and chain check | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-19 | People: every account with two-step status and last seen | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-20 | Businesses: every company with level and score | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-21 | Open one business (audited) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-22 | Security and system health | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-JOB-01, F-JOB-02 | Background jobs | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable |
 
-**Totals:** 128 API endpoints, 13 page groups, 12 other features. Endpoints allowed per role, not counting link-only ones (9): Public 8, Joining 11, Founder 73, Funder 27, Adviser 28, Buyer 16, Admin 35.
+**Totals:** 134 API endpoints, 13 page groups, 12 other features. Endpoints allowed per role, not counting link-only ones (9): Public 8, Joining 11, Founder 73, Funder 27, Adviser 28, Buyer 16, Admin 41.
