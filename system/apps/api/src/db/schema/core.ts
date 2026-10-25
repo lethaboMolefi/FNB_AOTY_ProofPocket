@@ -31,6 +31,8 @@ export const users = pgTable("users", {
   isLead: boolean("is_lead").notNull().default(false),
   /** auth_time of the sign-in that passed the Google Authenticator code. */
   otpVerifiedAuthTime: bigint("otp_verified_auth_time", { mode: "number" }),
+  /** Last API request, kept to within 5 minutes (touch_last_seen), for the admin's People page. */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   isExample: isExample(),
   ...timestamps,
 }, (t) => [

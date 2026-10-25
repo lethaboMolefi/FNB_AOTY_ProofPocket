@@ -67,6 +67,9 @@ export async function runJobs(ownerUrl: string, store: FileStore | null, opts: {
 
     await auditChecks(pool, store, today, out);
     await retention(pool, store, out);
+    // One row per run, so the admin's Security & health page can show when jobs last ran and what they found.
+    await pool.query(`insert into audit_log (actor_role, action, entity, after) values ('system', $1, 'job', $2)`,
+      [opts.rehash ? "job.weekly" : "job.daily", JSON.stringify(out)]);
   } finally {
     await pool.end();
   }

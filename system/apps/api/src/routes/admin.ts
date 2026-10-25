@@ -9,6 +9,9 @@ import { actorOf, contextOf, requireUser } from "../middleware/auth";
 import { handle, parse } from "../middleware/http";
 import { handleRequest } from "../services/adviser";
 import { applicationsView, decideApplication } from "../services/applications";
+import { companyDrawer } from "../services/company-view";
+import { activity, chain, companies, health, overview, people } from "../services/monitoring";
+import { audit } from "../lib/audit";
 import {
   createOrganisation, createTender, decideFeature, decideReport, decideWatch, featureRequests, flaggedPayments, inviteUser, organisationsView, reportsView, setVerified, tendersView,
 } from "../services/admin";
@@ -29,6 +32,34 @@ export function adminRoutes(deps: Deps) {
     await deps.mailer.send({ to: u.email, subject: `You're invited to ProofPocket (${orgName})`, text: `Hello ${u.displayName},\n\nYou've been added to ProofPocket as ${role === "adviser" ? "an adviser" : `a ${role}`} for ${orgName}.\n\n${how}\n\nSign in at ${deps.config.PUBLIC_WEB_URL}/sign-in.${OTP_ROLES.includes(role as Role) ? " You'll set up Google Authenticator the first time." : ""}`, action: { label: "Sign in to ProofPocket", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { message: `Invitation sent to ${u.email}` };
   }));
+
+  // Monitoring: overview, activity (audit log), people and companies, security and health.
+  const page = z.coerce.number().int().min(0).max(10_000).default(0);
+  const text = (max: number) => z.string().trim().max(max).optional().transform((v) => v || undefined);
+  const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal("").transform(() => undefined));
+  r.get("/admin/overview", admin, handle((req) => as(req, overview)));
+  r.get("/admin/activity", admin, handle((req) => {
+    const f = parse(z.object({ action: text(60), person: text(120), company: text(120), from: day, to: day, page }), req.query);
+    return as(req, async (tx) => ({ ...(await activity(tx, f)), chain: f.page === 0 ? await chain(tx) : null }));
+  }));
+  r.get("/admin/people", admin, handle((req) => {
+    const f = parse(z.object({ q: text(120), role: z.enum(["founder", "funder", "adviser", "buyer", "admin"]).optional().or(z.literal("").transform(() => undefined)), page }), req.query);
+    return as(req, (tx) => people(tx, f));
+  }));
+  r.get("/admin/companies", admin, handle((req) => {
+    const f = parse(z.object({ q: text(120), status: z.enum(["starter", "verified", "unfinished"]).optional().or(z.literal("").transform(() => undefined)), page }), req.query);
+    return as(req, (tx) => companies(tx, f));
+  }));
+  r.get("/admin/companies/:id", admin, handle((req) => {
+    const companyId = parse(z.string().uuid(), req.params.id);
+    // Opening one founder's books is recorded (POPIA: the admin sees totals everywhere else).
+    return as(req, async (tx) => {
+      const d = await companyDrawer(tx, companyId, { role: "admin", orgId: null });
+      await audit(tx, actorOf(req), { action: "admin.company_viewed", entity: "company", entityId: companyId, companyId });
+      return d;
+    });
+  }));
+  r.get("/admin/health", admin, handle((req) => as(req, (tx) => health(tx, process.env.APP_VERSION))));
 
   // Portal applications from funders and support organisations.
   r.get("/admin/applications", admin, handle((req) => as(req, (tx) => applicationsView(tx, deps.config))));

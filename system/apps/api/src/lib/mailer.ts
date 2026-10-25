@@ -10,7 +10,8 @@ import { renderEmailHtml } from "./email-template";
 export interface Mail { to: string; subject: string; text: string; action?: { label: string; url: string } }
 export interface Mailer { send(mail: Mail): Promise<void> }
 
-export function createMailer(config: Config, log: Logger): Mailer {
+/** onFailure records a failed send (subject only, never the address or body) for the admin's health page. */
+export function createMailer(config: Config, log: Logger, onFailure?: (subject: string) => Promise<void>): Mailer {
   if (config.MAIL_MODE === "file") {
     // Tests read the latest email (and its PIN) from this folder. Created on each send in case it was cleared.
     return {
@@ -43,6 +44,7 @@ export function createMailer(config: Config, log: Logger): Mailer {
         await transport.sendMail({ from: config.MAIL_FROM, to: mail.to, subject: mail.subject, text, html: renderEmailHtml(mail, config.PUBLIC_WEB_URL) });
       } catch (err) {
         log.warn({ subject: mail.subject, err: (err as Error).message }, "email not sent");
+        await onFailure?.(mail.subject).catch(() => {});
       }
     },
   };

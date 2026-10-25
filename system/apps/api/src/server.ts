@@ -4,6 +4,7 @@ import { loadConfig } from "./config";
 import { createDb } from "./db/client";
 import { createMailer } from "./lib/mailer";
 import { createStore } from "./lib/storage";
+import { recordEmailFailure } from "./services/monitoring";
 import { devVerifier, firebaseVerifier, localVerifier } from "./middleware/auth";
 
 const config = loadConfig();
@@ -17,7 +18,7 @@ const verify = config.AUTH_MODE === "firebase" ? firebaseVerifier(config.FIREBAS
   : config.AUTH_MODE === "local" ? localVerifier(config.OTP_SECRET) : devVerifier(config.OTP_SECRET);
 if (config.AUTH_MODE !== "firebase") log.warn(`AUTH_MODE=${config.AUTH_MODE}: development sign-in, never for production`);
 
-const app = createApp({ config, db, log, mailer: createMailer(config, log), verify, store: createStore(config) });
+const app = createApp({ config, db, log, mailer: createMailer(config, log, recordEmailFailure(db)), verify, store: createStore(config) });
 const server = app.listen(config.PORT, () => log.info(`ProofPocket API on :${config.PORT}`));
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

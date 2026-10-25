@@ -71,6 +71,8 @@ export function authenticate(db: Db, verify: TokenVerifier) {
         sql`select * from auth_lookup_user(${verified.uid}, ${verified.email}, ${verified.emailVerified})`,
       );
       const u = rows.rows[0];
+      // For the admin's People page; the function only writes when the last record is over 5 minutes old.
+      if (u) await db.execute(sql`select touch_last_seen(${u.user_id}::uuid)`);
       req.auth = {
         token: verified,
         user: u ? { id: u.user_id, role: u.user_role, orgId: u.org_id, email: u.email, displayName: u.display_name, otpVerifiedAuthTime: u.otp_verified_auth_time === null ? null : Number(u.otp_verified_auth_time), totpEnabled: u.totp_enabled } : null,

@@ -175,6 +175,12 @@ export const MATRIX: Endpoint[] = [
   { id: "F-ADM-14", module: "Admin portal", feature: "Publish a tender", method: "POST", path: "/admin/tenders", ui: "/admin/tenders", allow: ["admin"] },
   { id: "F-ADM-15", module: "Admin portal", feature: "Arrange or decline an introduction (no incubator)", method: "POST", path: "/admin/intros/:id", ui: "/admin/tenders", allow: ["admin"] },
   { id: "F-ADM-16", module: "Admin portal", feature: "Arrange or decline tender interest (no incubator)", method: "POST", path: "/admin/tenders/:id", ui: "/admin/tenders", allow: ["admin"] },
+  { id: "F-ADM-17", module: "Admin portal", feature: "Monitoring overview (platform totals)", method: "GET", path: "/admin/overview", ui: "/admin/overview", allow: ["admin"] },
+  { id: "F-ADM-18", module: "Admin portal", feature: "Activity: audit log with filters and chain check", method: "GET", path: "/admin/activity", ui: "/admin/activity", allow: ["admin"] },
+  { id: "F-ADM-19", module: "Admin portal", feature: "People: every account with two-step status and last seen", method: "GET", path: "/admin/people", ui: "/admin/people", allow: ["admin"] },
+  { id: "F-ADM-20", module: "Admin portal", feature: "Businesses: every company with level and score", method: "GET", path: "/admin/companies", ui: "/admin/people", allow: ["admin"] },
+  { id: "F-ADM-21", module: "Admin portal", feature: "Open one business (audited)", method: "GET", path: "/admin/companies/:id", ui: "/admin/people", allow: ["admin"] },
+  { id: "F-ADM-22", module: "Admin portal", feature: "Security and system health", method: "GET", path: "/admin/health", ui: "/admin/health", allow: ["admin"] },
 ];
 
 /** Features with no HTTP endpoint of their own (jobs, emails, web-only), listed in the inventory too. */
