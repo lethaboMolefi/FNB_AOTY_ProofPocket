@@ -13,6 +13,10 @@ PROJECT="${PROJECT:-hackathons-warroom}"
 REGION="${REGION:-africa-south1}"
 SITE="${SITE:-proofpocket-aoty}"                         # Firebase Hosting site → https://$SITE.web.app
 WEB_ORIGIN="https://${SITE}.web.app"
+# Google sign-in returns to https://$AUTH_DOMAIN/__/auth/handler, which must be an approved redirect URI on the
+# project's Google OAuth client. Firebase approves the project's default domain; to show ${SITE}.firebaseapp.com
+# on Google's screen instead, add that handler URI in Cloud Console (APIs & Services > Credentials) and set AUTH_DOMAIN.
+AUTH_DOMAIN="${AUTH_DOMAIN:-${PROJECT}.firebaseapp.com}"
 # Firebase Hosting can't route to Cloud Run in africa-south1, so the web app calls the API here directly.
 API_URL="https://${SERVICE:-proofpocket-api}-$(gcloud projects describe "$PROJECT" --format='value(projectNumber)' | cat).${REGION}.run.app"
 NETWORK=proofpocket-vpc
@@ -177,7 +181,7 @@ step_web() {
   app_id=$(firebase apps:list WEB --project "$PROJECT" --json | python3 -c "import json,sys;print([a['appId'] for a in json.load(sys.stdin)['result'] if a['displayName']=='ProofPocket web'][0])")
   cfg=$(firebase apps:sdkconfig WEB "$app_id" --project "$PROJECT" --json | python3 -c "import json,sys;r=json.load(sys.stdin)['result'];c=r.get('sdkConfig',r);print(c['apiKey'],c['authDomain'],c['projectId'],c['appId'])")
   read -r key domain pid aid <<<"$cfg"
-  (cd "$SYSTEM/apps/web" && VITE_API_BASE="$API_URL" VITE_AUTH_MODE=firebase VITE_FIREBASE_API_KEY="$key" VITE_FIREBASE_AUTH_DOMAIN="${SITE}.firebaseapp.com" \
+  (cd "$SYSTEM/apps/web" && VITE_API_BASE="$API_URL" VITE_AUTH_MODE=firebase VITE_FIREBASE_API_KEY="$key" VITE_FIREBASE_AUTH_DOMAIN="${AUTH_DOMAIN}" \
     VITE_FIREBASE_PROJECT_ID="$pid" VITE_FIREBASE_APP_ID="$aid" VITE_DEMO="${DEMO:-no}" pnpm build)
   (cd "$SYSTEM" && firebase deploy --only "hosting:${SITE}" --project "$PROJECT")
   : "$domain"
