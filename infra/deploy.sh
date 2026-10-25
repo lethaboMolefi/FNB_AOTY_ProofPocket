@@ -26,7 +26,7 @@ SA_NAME=proofpocket-api
 SA="${SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
 REPO=proofpocket
 SERVICE=proofpocket-api
-MAIL_USER="${MAIL_USER:-pegphina@gmail.com}"
+MAIL_USER="${MAIL_USER:-pegphina1@gmail.com}"           # Gmail account that sends email (its app password is proofpocket-smtp-pass)
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # Working files live here, not in /tmp: a snap-installed gcloud has its own private /tmp and can't see ours.
 WORK="$HERE/.work"; mkdir -p "$WORK"
@@ -133,7 +133,7 @@ step_bootstrap() {
   # One-off job inside the VPC: migrations, the app role's password, and the example data (only into an empty database).
   local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
     --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest,APP_DB_PASSWORD=proofpocket-db-app-password:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest"
-    --set-env-vars "SEED_EXAMPLE_DATA=${SEED_EXAMPLE_DATA:-yes},SEED_ADMIN_EMAIL=${MAIL_USER},DATABASE_CA_CERT_B64=$(db_ca)" --command node --args dist/bootstrap.js --max-retries 0 --task-timeout 600)
+    --set-env-vars "SEED_EXAMPLE_DATA=${SEED_EXAMPLE_DATA:-no},SEED_ADMIN_EMAIL=${MAIL_USER},DATABASE_CA_CERT_B64=$(db_ca)" --command node --args dist/bootstrap.js --max-retries 0 --task-timeout 600)
   if exists g run jobs describe proofpocket-bootstrap --region "$REGION"; then g run jobs update proofpocket-bootstrap "${args[@]}"
   else g run jobs create proofpocket-bootstrap "${args[@]}"; fi
   g run jobs execute proofpocket-bootstrap --region "$REGION" --wait
@@ -178,7 +178,7 @@ step_web() {
   cfg=$(firebase apps:sdkconfig WEB "$app_id" --project "$PROJECT" --json | python3 -c "import json,sys;r=json.load(sys.stdin)['result'];c=r.get('sdkConfig',r);print(c['apiKey'],c['authDomain'],c['projectId'],c['appId'])")
   read -r key domain pid aid <<<"$cfg"
   (cd "$SYSTEM/apps/web" && VITE_API_BASE="$API_URL" VITE_AUTH_MODE=firebase VITE_FIREBASE_API_KEY="$key" VITE_FIREBASE_AUTH_DOMAIN="${SITE}.firebaseapp.com" \
-    VITE_FIREBASE_PROJECT_ID="$pid" VITE_FIREBASE_APP_ID="$aid" VITE_DEMO="${DEMO:-yes}" pnpm build)
+    VITE_FIREBASE_PROJECT_ID="$pid" VITE_FIREBASE_APP_ID="$aid" VITE_DEMO="${DEMO:-no}" pnpm build)
   (cd "$SYSTEM" && firebase deploy --only "hosting:${SITE}" --project "$PROJECT")
   : "$domain"
 }
