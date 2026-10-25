@@ -11,12 +11,14 @@ import type { FileStore } from "./lib/storage";
 import { authenticate, type TokenVerifier } from "./middleware/auth";
 import { errorHandler, limits, notFoundHandler } from "./middleware/http";
 import { buildOpenApi } from "./openapi";
+import { adviserRoutes } from "./routes/adviser";
 import { authRoutes } from "./routes/auth";
 import { checkRoutes } from "./routes/checks";
 import { fileRoutes } from "./routes/files";
 import { founderBookRoutes } from "./routes/founder-books";
 import { founderDocRoutes } from "./routes/founder-docs";
 import { founderMarketsRoutes } from "./routes/founder-markets";
+import { funderRoutes } from "./routes/funder";
 import { joinRoutes } from "./routes/join";
 
 export interface Deps {
@@ -54,6 +56,8 @@ export function createApp(deps: Deps) {
   v1.use(founderDocRoutes(deps));
   v1.use(founderBookRoutes(deps));
   v1.use(founderMarketsRoutes(deps));
+  v1.use(funderRoutes(deps));
+  v1.use(adviserRoutes(deps));
   v1.use(checkRoutes(deps));
 
   app.use("/api/v1", v1);
