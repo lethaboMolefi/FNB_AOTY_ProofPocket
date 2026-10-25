@@ -1,5 +1,7 @@
 import type { Tone } from "@proofpocket/shared";
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createContext, useCallback, useContext, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Pill = ({ tone, children }: { tone: Tone; children: ReactNode }) => <span className={`pill ${tone}`}>{children}</span>;
@@ -29,9 +31,27 @@ export function PageHead({ label, title, sub, side }: { label?: string; title: s
   );
 }
 
-export const Spinner = ({ label = "Loading" }: { label?: string }) => (
-  <div role="status" className="muted flex min-h-[40vh] items-center justify-center small">{label}…</div>
-);
+/**
+ * Shown while a screen waits for its data. If a request on the screen has failed (after React Query's retries),
+ * it says so and offers Try again, instead of "Loading…" for ever.
+ */
+export function Spinner({ label = "Loading" }: { label?: string }) {
+  const qc = useQueryClient();
+  const cache = qc.getQueryCache();
+  const failed = useSyncExternalStore(
+    (onChange) => cache.subscribe(onChange),
+    () => cache.findAll({ type: "active" }).some((q) => q.state.status === "error" && q.state.fetchStatus === "idle"),
+  );
+  if (failed) {
+    return (
+      <div role="alert" className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-center">
+        <p className="small">Couldn't load this. Check your connection, then try again.</p>
+        <Button type="button" size="sm" variant="outline" onClick={() => void qc.refetchQueries({ type: "active" })}>Try again</Button>
+      </div>
+    );
+  }
+  return <div role="status" className="muted flex min-h-[40vh] items-center justify-center small">{label}…</div>;
+}
 
 const ToastCtx = createContext<(msg: string) => void>(() => {});
 export const useToast = () => useContext(ToastCtx);
