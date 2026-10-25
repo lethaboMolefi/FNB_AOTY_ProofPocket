@@ -35,4 +35,27 @@ describe("scheduled jobs", () => {
       expect(reqs.find((r: { ref: string }) => r.ref === created.body.ref).status).toBe("expired");
     } finally { await db.end(); }
   });
+
+  it("check the audit chain, export yesterday's entries and purge abandoned uploads", async () => {
+    const f = await newFounder(app, "retention");
+    const s = await request(app).post("/api/v1/founder/uploads").set("Authorization", f.token).send({ purpose: "document", name: "never.pdf", contentType: "application/pdf", size: 10 });
+    const db = owner();
+    try {
+      await db.query("update files set created_at = now() - interval '2 days' where id = $1", [s.body.fileId]);
+      // One entry dated yesterday (Johannesburg) so the export has something in it.
+      await db.query("insert into audit_log (actor_role, action, entity, at) values ('system', 'test.yesterday', 'test', now() - interval '1 day')");
+      const store = localStore(config);
+      const res = await runJobs(process.env.DATABASE_OWNER_URL!, store, { rehash: false });
+      expect(res.auditChainOk).toBe(true);
+      expect(res.auditRowsChecked).toBeGreaterThan(0);
+      expect(res.auditExported).toBeGreaterThanOrEqual(1);
+      expect(res.uploadsPurged).toBeGreaterThanOrEqual(1);
+      expect((await db.query("select 1 from files where id = $1", [s.body.fileId])).rowCount).toBe(0);
+      const day = addDays(todayZA(), -1);
+      const lines = (await store.read(`audit-exports/${day}.jsonl`)).toString().trim().split("\n").map((l) => JSON.parse(l));
+      expect(lines.some((l: { action: string }) => l.action === "test.yesterday")).toBe(true);
+      const head = JSON.parse((await store.read(`audit-exports/${day}.head.json`)).toString());
+      expect(head.headHash).toMatch(/^[0-9a-f]{64}$/);
+    } finally { await db.end(); }
+  });
 });

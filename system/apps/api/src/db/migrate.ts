@@ -3,13 +3,14 @@ import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
+import { pgConfig } from "./pg-config";
 
 // src/db/migrate.ts in development, dist/migrate.js once bundled.
 export const MIGRATIONS = process.env.MIGRATIONS_DIR
   ?? fileURLToPath(new URL(import.meta.url.includes("/dist/") ? "../drizzle" : "../../drizzle", import.meta.url));
 
 export async function runMigrations(ownerUrl: string, folder = MIGRATIONS) {
-  const pool = new pg.Pool({ connectionString: ownerUrl, max: 1 });
+  const pool = new pg.Pool({ ...pgConfig(ownerUrl), max: 1 });
   try {
     await migrate(drizzle(pool), { migrationsFolder: folder });
   } finally {

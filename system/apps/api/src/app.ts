@@ -9,7 +9,8 @@ import type { Db } from "./db/client";
 import type { Mailer } from "./lib/mailer";
 import type { FileStore } from "./lib/storage";
 import { authenticate, type TokenVerifier } from "./middleware/auth";
-import { errorHandler, limits, notFoundHandler } from "./middleware/http";
+import { errorHandler, limits, notFoundHandler, useRateLimitStore } from "./middleware/http";
+import { PostgresRateLimitStore } from "./lib/rate-limit-store";
 import { buildOpenApi } from "./openapi";
 import { authRoutes } from "./routes/auth";
 import { checkRoutes } from "./routes/checks";
@@ -39,6 +40,7 @@ export interface Deps {
 export const REDACT = ["req.headers.authorization", "req.headers.cookie", "*.accountNumber", "*.idNumber", "*.code", "*.password"];
 
 export function createApp(deps: Deps) {
+  useRateLimitStore(deps.config.RATE_LIMIT_STORE === "postgres" ? (name) => new PostgresRateLimitStore(deps.db, name) : undefined);
   const app = express();
   app.disable("x-powered-by");
   // Firebase Hosting and Cloud Run's front end sit in front; trust exactly that many hops for client IPs (rate limits).

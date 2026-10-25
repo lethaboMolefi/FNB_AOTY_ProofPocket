@@ -1,18 +1,32 @@
-// Scheduled jobs (Cloud Run Job, started by Cloud Scheduler). Runs as the database owner.
-//   daily:  expire payment requests after 7 days; mark documents past their "valid until" date as expired
+// Scheduled jobs (Cloud Run Job). Runs as the database owner.
+//   daily:  expire payment requests after 7 days; mark documents past their "valid until" date as expired;
+//           check the audit log's hash chain and export yesterday's entries (plus the latest hash) to storage;
+//           delete what the retention schedule says to (docs/security/popia/retention-schedule.md)
 //   weekly: re-check every stored document against its SHA-256 fingerprint (tampering)
 import { createHash } from "node:crypto";
-import { DOCS, PAYMENT_REQUEST_DAYS, todayZA, type DocType } from "@proofpocket/shared";
+import { addDays, DOCS, PAYMENT_REQUEST_DAYS, todayZA, type DocType } from "@proofpocket/shared";
 import pg from "pg";
 import type { Config } from "./config";
 import { gcsStore, localStore, type FileStore } from "./lib/storage";
+import { pgConfig } from "./db/pg-config";
 
-export interface JobResult { requestsExpired: number; documentsExpired: number; filesChecked: number; filesMismatched: number; filesMissing: number }
+export interface JobResult {
+  requestsExpired: number; documentsExpired: number; filesChecked: number; filesMismatched: number; filesMissing: number;
+  auditRowsChecked: number; auditChainOk: boolean; auditExported: number; uploadsPurged: number; rateLimitRowsPurged: number;
+}
+
+/** Abandoned uploads (started, never finished) are deleted after this long. */
+export const ABANDONED_UPLOAD_HOURS = 24;
+const EXPORTS = "audit-exports";
+interface ExportHead { day: string; rowsChecked: number; headHash: string }
 
 export async function runJobs(ownerUrl: string, store: FileStore | null, opts: { rehash: boolean; today?: string }): Promise<JobResult> {
   const today = opts.today ?? todayZA();
-  const pool = new pg.Pool({ connectionString: ownerUrl, max: 1 });
-  const out: JobResult = { requestsExpired: 0, documentsExpired: 0, filesChecked: 0, filesMismatched: 0, filesMissing: 0 };
+  const pool = new pg.Pool({ ...pgConfig(ownerUrl), max: 1 });
+  const out: JobResult = {
+    requestsExpired: 0, documentsExpired: 0, filesChecked: 0, filesMismatched: 0, filesMissing: 0,
+    auditRowsChecked: 0, auditChainOk: true, auditExported: 0, uploadsPurged: 0, rateLimitRowsPurged: 0,
+  };
   try {
     const r = await pool.query(
       `update payment_requests set status = 'expired', updated_at = now()
@@ -50,10 +64,49 @@ export async function runJobs(ownerUrl: string, store: FileStore | null, opts: {
           [f.id, f.company_id, JSON.stringify({ expected: f.sha256, found: actual ?? "missing" })]);
       }
     }
+
+    await auditChecks(pool, store, today, out);
+    await retention(pool, store, out);
   } finally {
     await pool.end();
   }
   return out;
+}
+
+/** Verifies the hash chain, then exports yesterday's entries and the latest hash outside the database. */
+async function auditChecks(pool: pg.Pool, store: FileStore | null, today: string, out: JobResult) {
+  const v = (await pool.query<{ rows_checked: string; first_broken_seq: string | null; head_hash: string | null }>("select * from audit_log_verify()")).rows[0]!;
+  out.auditRowsChecked = Number(v.rows_checked);
+  out.auditChainOk = v.first_broken_seq === null;
+  if (!store) return;
+  const day = addDays(today, -1);
+  // The previous export's head must still be in the chain: catches entries cut off the end since then.
+  try {
+    const prev = JSON.parse((await store.read(`${EXPORTS}/${addDays(day, -1)}.head.json`)).toString()) as ExportHead;
+    const r = await pool.query<{ hash: string }>("select hash from audit_log where chain_seq = $1", [prev.rowsChecked]);
+    if (r.rows[0]?.hash !== prev.headHash) out.auditChainOk = false;
+  } catch { /* first export, or the previous day's run was missed */ }
+  const rows = await pool.query(`select * from audit_log where (at at time zone 'Africa/Johannesburg')::date = $1::date order by chain_seq`, [day]);
+  await store.write(`${EXPORTS}/${day}.jsonl`, Buffer.from(rows.rows.map((r) => JSON.stringify(r)).join("\n") + (rows.rows.length ? "\n" : "")), "application/x-ndjson");
+  if (out.auditChainOk && v.head_hash) {
+    const head: ExportHead = { day, rowsChecked: out.auditRowsChecked, headHash: v.head_hash };
+    await store.write(`${EXPORTS}/${day}.head.json`, Buffer.from(JSON.stringify(head)), "application/json");
+  }
+  out.auditExported = rows.rowCount ?? 0;
+}
+
+/** Deletes data the retention schedule says not to keep. Business records themselves are kept (5 years, Tax Administration Act). */
+async function retention(pool: pg.Pool, store: FileStore | null, out: JobResult) {
+  const r = await pool.query("delete from rate_limit_hits where reset_at < now() - interval '1 day'");
+  out.rateLimitRowsPurged = r.rowCount ?? 0;
+  if (!store) return;
+  const abandoned = await pool.query<{ id: string; bucket_path: string }>(
+    `select id, bucket_path from files where sha256 is null and created_at < now() - make_interval(hours => $1)`, [ABANDONED_UPLOAD_HOURS]);
+  for (const f of abandoned.rows) {
+    await store.remove(f.bucket_path);
+    await pool.query("delete from files where id = $1 and sha256 is null", [f.id]);
+    out.uploadsPurged++;
+  }
 }
 
 // Run as a script: node dist/jobs.js [--rehash]
@@ -63,5 +116,8 @@ if (/jobs\.(ts|js)$/.test(process.argv[1] ?? "")) {
   const store = process.env.STORAGE_MODE === "gcs" && process.env.GCS_BUCKET ? gcsStore(process.env.GCS_BUCKET)
     : process.env.STORAGE_DIR ? localStore({ STORAGE_DIR: process.env.STORAGE_DIR, OTP_SECRET: process.env.OTP_SECRET ?? "" } as Config) : null;
   const rehash = process.argv.includes("--rehash") || new Date().getUTCDay() === 0;
-  console.log(JSON.stringify(await runJobs(url, store, { rehash })));
+  const result = await runJobs(url, store, { rehash });
+  // Cloud Logging turns console.error into an ERROR entry, which the log-based alert watches (infra/deploy.sh logging).
+  if (!result.auditChainOk || result.filesMismatched) console.error(JSON.stringify({ alert: "integrity", ...result }));
+  else console.log(JSON.stringify(result));
 }

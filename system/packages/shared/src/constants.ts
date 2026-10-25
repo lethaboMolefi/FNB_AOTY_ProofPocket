@@ -130,5 +130,9 @@ export type Role = "founder" | "funder" | "adviser" | "buyer" | "admin";
 export const OTP_ROLES: Role[] = ["funder", "adviser", "admin"];
 
 export const PAYMENT_REQUEST_DAYS = 7;
+/** The privacy notice founders agree to when they join (docs/security/popia/privacy-notice.md). Change it when the notice changes. */
+export const PRIVACY_NOTICE_VERSION = "2026-10-25";
+/** Data requests (POPIA s23-25) are answered within this many days. */
+export const DATA_REQUEST_DAYS = 30;
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const CIPC_PATTERN = /^\d{4}\/\d{6}\/\d{2}$/;

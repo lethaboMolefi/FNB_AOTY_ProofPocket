@@ -1,5 +1,5 @@
 // Join wizard: Details → Documents → Join (v2/app.js vJoin, joinsubmit).
-import { joinDocsFor, slug, todayZA, type JoinDetails } from "@proofpocket/shared";
+import { joinDocsFor, PRIVACY_NOTICE_VERSION, slug, todayZA, type JoinDetails } from "@proofpocket/shared";
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
@@ -78,9 +78,9 @@ export async function completeJoin(tx: Tx, actor: Actor, c: CompanyRow, emailVer
   const states = await docStatesOf(tx, c.id);
   const missing = joinDocsFor(registered).filter((k) => states[k] !== "pending" && states[k] !== "verified");
   if (missing.length) throw new AppError(400, "documents_missing", "Attach every document before joining.");
-  await tx.update(companies).set({ joinedAt: new Date(), consentAt: new Date() }).where(eq(companies.id, c.id));
+  await tx.update(companies).set({ joinedAt: new Date(), consentAt: new Date(), consentVersion: PRIVACY_NOTICE_VERSION }).where(eq(companies.id, c.id));
   await addActivity(tx, c.id, `Joined ProofPocket${registered ? "; documents sent for checking" : " as a Starter"}.`, actor.userId);
-  await audit(tx, actor, { action: "company.joined", entity: "company", entityId: c.id, companyId: c.id, after: { registered, consent: true } });
+  await audit(tx, actor, { action: "company.joined", entity: "company", entityId: c.id, companyId: c.id, after: { registered, consent: true, privacyNotice: PRIVACY_NOTICE_VERSION } });
   const checker = await checkerText(tx, c);
   return { message: checker.kind === "adviser" ? `Welcome! ${checker.name} will check your documents.` : "Welcome! A ProofPocket checker is reviewing your documents." };
 }

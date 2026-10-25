@@ -13,6 +13,8 @@ export interface UploadTarget { url: string; method: "PUT"; headers: Record<stri
 export interface FileStore {
   uploadTarget(path: string, contentType: string, size: number): Promise<UploadTarget>;
   read(path: string): Promise<Buffer>;
+  /** Server-side writes only (audit exports); people's files always arrive through uploadTarget. */
+  write(path: string, data: Buffer, contentType?: string): Promise<void>;
   remove(path: string): Promise<void>;
   downloadUrl(path: string, filename: string, contentType: string): Promise<string>;
 }
@@ -28,6 +30,7 @@ export function gcsStore(bucketName: string): FileStore {
       return { url, method: "PUT", headers };
     },
     async read(path) { const [buf] = await bucket.file(path).download(); return buf; },
+    async write(path, data, contentType = "application/octet-stream") { await bucket.file(path).save(data, { contentType, resumable: false }); },
     async remove(path) { await bucket.file(path).delete({ ignoreNotFound: true }); },
     async downloadUrl(path, filename, contentType) {
       const [url] = await bucket.file(path).getSignedUrl({
@@ -45,7 +48,6 @@ interface LocalGrant { p: string; op: "put" | "get"; t: string; s?: number; n?: 
 export interface LocalStore extends FileStore {
   /** Checks a signed storage URL token; throws if forged or expired. */
   grant(token: string): LocalGrant;
-  write(path: string, data: Buffer): Promise<void>;
 }
 
 export function localStore(config: Config): LocalStore {

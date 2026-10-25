@@ -55,5 +55,9 @@ export const checkMessageSchema = z.object({
   text: text(2000, "Paste the message you received."),
 });
 export const sharingSchema = z.object({ sharing: z.enum(["none", "summary", "full"]) });
+export const dataRequestSchema = z.object({
+  kind: z.enum(["correction", "deletion"]),
+  details: z.string().trim().max(1000).default(""),
+});
 export const incubatorRequestSchema = z.object({ incubatorId: z.string().uuid().nullable() });
 export const reportSchema = z.object({ reason: z.string().trim().max(500).default("") });

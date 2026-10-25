@@ -1,7 +1,7 @@
 // Founder: Payments, Fraud protection, Privacy & sharing (phase 4).
 import {
-  cashPayoutSchema, checkMessageSchema, incubatorRequestSchema, messageActionSchema, paymentDetailsSchema, paymentRequestSchema,
-  sharingSchema, supplierBankSchema, supplierPaymentSchema, supplierSchema,
+  cashPayoutSchema, checkMessageSchema, dataRequestSchema, incubatorRequestSchema, messageActionSchema, paymentDetailsSchema, paymentRequestSchema,
+  sharingSchema, supplierBankSchema, supplierPaymentSchema, supplierSchema, todayZA,
 } from "@proofpocket/shared";
 import { Router, type Request } from "express";
 import type { Deps } from "../app";
@@ -15,6 +15,7 @@ import {
   listSuppliers, markCash, payLink, recordCashPayout, recordSupplierPayment, rejectProof, saveDetails,
 } from "../services/payments";
 import { checkMessage, decideMessage, fingerprints, messageList, privacyView, requestIncubator, setSharing } from "../services/protection";
+import { exportMyData, requestDataChange } from "../services/privacy";
 import { checkCode, codeError } from "../services/two-factor";
 
 export function founderPayRoutes(deps: Deps) {
@@ -98,6 +99,16 @@ export function founderPayRoutes(deps: Deps) {
   r.put("/founder/privacy", founder, handle((req) => {
     const { sharing } = parse(sharingSchema, req.body);
     return asFounder(req, (tx, c) => setSharing(tx, actorOf(req), c, sharing));
+  }));
+  r.get("/founder/privacy/export", founder, handle(async (req, res) => {
+    const data = await asFounder(req, (tx, c) => exportMyData(tx, actorOf(req), c));
+    res.setHeader("Content-Disposition", `attachment; filename="proofpocket-my-data-${todayZA()}.json"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    return data;
+  }));
+  r.post("/founder/privacy/requests", founder, handle((req) => {
+    const d = parse(dataRequestSchema, req.body);
+    return asFounder(req, (tx, c) => requestDataChange(tx, actorOf(req), c, d));
   }));
   r.post("/founder/incubator", founder, handle((req) => {
     const { incubatorId } = parse(incubatorRequestSchema, req.body);
