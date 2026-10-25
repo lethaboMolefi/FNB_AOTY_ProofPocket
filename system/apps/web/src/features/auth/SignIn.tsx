@@ -14,10 +14,21 @@ import { ApiError } from "../../lib/api";
 import { AUTH_MODE, useAuth } from "../../lib/auth";
 import { AuthShell, GoogleIcon } from "./AuthShell";
 
-export function AuthPageShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
+/**
+ * Page frame for signing in, joining and the code step. With `toSignIn`, the logo always leads to the sign-in page:
+ * someone part-way through joining is signed out first (what they saved is kept), so "/" can't send them back here.
+ */
+export function AuthPageShell({ children, wide, toSignIn }: { children: ReactNode; wide?: boolean; toSignIn?: boolean }) {
+  const auth = useAuth();
+  const nav = useNavigate();
+  const leave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (auth.status === "signedIn") await auth.signOut();
+    nav("/sign-in");
+  };
   return (
     <main id="main" className={`mx-auto flex min-h-screen flex-col gap-5 px-4 pb-10 pt-[calc(env(safe-area-inset-top,0px)+32px)] ${wide ? "max-w-[1100px]" : "max-w-md"}`}>
-      <Link to="/" className="flex items-center gap-2.5 text-ink no-underline"><BrandMark /><span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span></Link>
+      <Link to={toSignIn ? "/sign-in" : "/"} onClick={toSignIn ? (e) => void leave(e) : undefined} aria-label={toSignIn ? "ProofPocket: go to sign in" : "ProofPocket"} className="flex items-center gap-2.5 self-start text-ink no-underline"><BrandMark /><span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span></Link>
       {children}
     </main>
   );

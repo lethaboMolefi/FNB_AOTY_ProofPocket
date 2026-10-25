@@ -137,6 +137,22 @@ const accountSchema = z.object({ email: emailSchema, password: z.string(), confi
 });
 type Account = z.infer<typeof accountSchema>;
 
+/** Already signed in (e.g. with Google) but not joined: say which email this uses, and allow a different one. */
+function SignedInAs() {
+  const auth = useAuth();
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Your account</CardTitle>
+        <CardDescription>You're signing up as <b className="text-foreground">{auth.email ?? "this account"}</b>. You'll sign in with it.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button type="button" variant="outline" size="sm" onClick={() => void auth.signOut()}>Use a different email</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AccountCard<T extends FieldValues>({ form }: { form: UseFormReturn<T> }) {
   const e = form.formState.errors;
   const reg = (k: string) => form.register(k as never);
@@ -224,7 +240,7 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
   return (
     <form className="space-y-6" onSubmit={submit} noValidate>
       <WizardProgress step={1} total={3} label="About you and your business" />
-      {signedOut && <AccountCard form={form} />}
+      {signedOut ? <AccountCard form={form} /> : <SignedInAs />}
 
       <Card>
         <CardHeader className="pb-4">
@@ -508,7 +524,7 @@ function ApplicationStep1({ kind, signedOut, initial, onNext }: { kind: PortalAp
   return (
     <form className="space-y-6" onSubmit={form.handleSubmit(onNext)} noValidate>
       <WizardProgress step={1} total={2} label="You and your organisation" />
-      {signedOut && <AccountCard form={form} />}
+      {signedOut ? <AccountCard form={form} /> : <SignedInAs />}
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-base">Contact person</CardTitle>
@@ -734,7 +750,7 @@ export default function Join() {
   const step = founderStep ?? (unjoined ? 2 : 1);
 
   return (
-    <AuthPageShell wide>
+    <AuthPageShell wide toSignIn>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">{application ? "Your application" : TITLES[track ?? "choose"]}</h1>
         {!application && !track && <p className="text-sm text-muted-foreground">Anyone can start. Registered businesses that pass the document check get the Verified badge, which funders, buyers and customers look for.</p>}

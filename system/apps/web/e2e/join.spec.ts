@@ -115,3 +115,25 @@ test("a funder applies, the admin approves, and the funder's portal opens", asyn
   await signIn(page, email, "a lovely long passphrase");
   await expect(page).toHaveURL(/\/verify|\/two-step|\/setup/);
 });
+
+test("the logo on Join always leads to sign-in, even part-way through joining", async ({ page }, info) => {
+  const email = `e2e.half.${info.project.name}.${Date.now()}@proofpocket.example`;
+  await page.goto("/join");
+  await page.getByRole("button", { name: /Business founder/ }).click();
+  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "ProofPocket: go to sign in" }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+
+  // A sign-in with no business yet: Join says which email it uses, and the logo still reaches sign-in.
+  const r = await page.request.post("/api/v1/auth/local/sign-up", { data: { email, password: "a lovely long passphrase" } });
+  expect(r.ok()).toBe(true);
+  await page.evaluate((t) => localStorage.setItem("pp.session", t), (await r.json()).token);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/join$/);
+  await page.getByRole("button", { name: /Business founder/ }).click();
+  await expect(page.getByText(`You're signing up as ${email}.`)).toBeVisible();
+  await page.getByRole("link", { name: "ProofPocket: go to sign in" }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/sign-in$/);
+});

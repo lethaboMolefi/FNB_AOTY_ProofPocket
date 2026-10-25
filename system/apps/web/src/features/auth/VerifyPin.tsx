@@ -24,7 +24,7 @@ export default function VerifyPin() {
   const settingUp = me.data && !me.data.twoFactor.enabled;
 
   return (
-    <AuthPageShell>
+    <AuthPageShell toSignIn>
       {settingUp ? (
         <>
           <div><h1>Set up two-step sign-in</h1><p className="muted mt-1.5">Funder, adviser and admin accounts use Google Authenticator to keep founders' records safe. It takes a minute, once.</p></div>
