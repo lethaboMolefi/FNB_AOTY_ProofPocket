@@ -6,6 +6,7 @@
 #
 # Steps: network, database, storage, secrets, identity, registry, image, bootstrap, api, jobs, firebase, web, users, budget, smoke
 # Owner-approved extras (not in "all"; see docs/security/not-implemented.md): iam_hardening, logging
+# One-off: add_admin EMAIL (makes EMAIL a ProofPocket admin; they sign in with Google)
 # Needs: gcloud and firebase CLIs signed in as a project owner, Node 26 + pnpm 12, python3.
 set -euo pipefail
 
@@ -146,7 +147,7 @@ step_api() {
   g run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --service-account "$SA" \
     --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
     --allow-unauthenticated --min-instances 0 --max-instances 4 --memory 512Mi --cpu 1 --concurrency 40 \
-    --set-env-vars "^|^NODE_ENV=production|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}|RATE_LIMIT_STORE=postgres|DATABASE_CA_CERT_B64=$(db_ca)" \
+    --set-env-vars "^|^NODE_ENV=production|APP_VERSION=${TAG}|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}|RATE_LIMIT_STORE=postgres|DATABASE_CA_CERT_B64=$(db_ca)" \
     --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest"
 }
 
@@ -174,6 +175,18 @@ step_firebase() {
   firebase apps:list WEB --project "$PROJECT" 2>/dev/null | grep -q "ProofPocket web" || firebase apps:create WEB "ProofPocket web" --project "$PROJECT"
 }
 
+step_add_admin() {
+  # One-off: make an email a ProofPocket admin (bash infra/deploy.sh add_admin someone@example.com). No password is made:
+  # they sign in with Continue with Google, and Google Authenticator set-up is required first.
+  local email="${ADMIN_EMAIL:-${1:-}}"
+  [ -n "$email" ] || { echo "Usage: bash infra/deploy.sh add_admin EMAIL"; exit 1; }
+  local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
+    --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest"
+    --set-env-vars "ADMIN_EMAIL=${email},DATABASE_CA_CERT_B64=$(db_ca)" --command node --args dist/add-admin.js --max-retries 0 --task-timeout 120)
+  if exists g run jobs describe proofpocket-add-admin --region "$REGION"; then g run jobs update proofpocket-add-admin "${args[@]}"
+  else g run jobs create proofpocket-add-admin "${args[@]}"; fi
+  g run jobs execute proofpocket-add-admin --region "$REGION" --wait
+}
 step_web() {
   # The Firebase web config is public by design (it identifies the project; access is controlled by the API and RLS).
   local app_id cfg
@@ -251,5 +264,6 @@ step_logging() {
 case "${1:-}" in
   all) for s in network database storage secrets identity registry image bootstrap api jobs firebase web users budget smoke; do echo "== $s"; "step_$s"; done ;;
   network|database|storage|secrets|identity|registry|image|bootstrap|api|jobs|firebase|web|users|budget|smoke|iam_hardening|logging) "step_$1" ;;
+  add_admin) step_add_admin "${2:-}" ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
 esac
