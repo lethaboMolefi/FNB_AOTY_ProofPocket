@@ -1,6 +1,7 @@
 // Home dashboard — rebuilt with shadcn, skeleton loading, proper empty states.
 import { R, plural, type Flag, type JourneyStep, type ReadinessItem, type Tone } from "@proofpocket/shared";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle, AlertTriangle, ArrowRight, BadgeCheck, BarChart3,
@@ -105,6 +106,55 @@ function MetricCard({
   );
 }
 
+// ─── Turnover Tax education card ─────────────────────────────────────────────
+/**
+ * Addresses the "SARS panic" feedback: many informal founders avoid registering
+ * because they fear tax bills. Under SARS Turnover Tax, the first R335,000 in
+ * annual turnover is taxed at 0%. Showing this removes the psychological barrier.
+ */
+function TurnoverTaxCard() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 text-primary shrink-0" />
+          <CardTitle className="text-sm text-primary">Good news about SARS and tax</CardTitle>
+        </div>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground text-xs shrink-0 mt-0.5 leading-none"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss tax information"
+        >
+          &times;
+        </button>
+      </CardHeader>
+      <CardContent className="text-sm space-y-2 pb-4">
+        <p>
+          Under <strong>SARS Turnover Tax</strong>, micro-businesses pay{" "}
+          <strong className="text-good">R0 tax</strong> on their first{" "}
+          <strong>R335,000</strong> in annual turnover.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          A salon doing R5,000–R20,000 a month (R60,000–R240,000 a year) owes nothing in tax.
+          Being registered with SARS unlocks funding you cannot get without it — it does not cost you.
+        </p>
+        <a
+          href="https://www.sars.gov.za/types-of-tax/turnover-tax/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-primary underline underline-offset-2 pt-1"
+        >
+          Read more on the SARS website
+          <ArrowRight className="h-3 w-3" />
+        </a>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function Home() {
   const { data: me } = useMe();
@@ -195,9 +245,11 @@ export default function Home() {
         </div>
       )}
 
+      {/* ── Turnover Tax education — only for Starter founders ── */}
+      {d.notices.starter && <TurnoverTaxCard />}
+
       {/* ── Key metrics ── */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">        <MetricCard
           label="Money in this month"
           value={R(t.moneyIn)}
           sub="Revenue in books"

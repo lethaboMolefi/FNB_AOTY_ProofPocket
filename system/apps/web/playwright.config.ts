@@ -28,7 +28,7 @@ export default defineConfig({
       command: "pnpm exec tsx --env-file=.env src/server.ts",
       cwd: "../api",
       env: {
-        PORT: "8788", DATABASE_URL: TEST_DB, NODE_ENV: "development", AUTH_MODE: "local",
+        PORT: "8788", AUTH_RATE_LIMIT: "2000", DATABASE_URL: TEST_DB, NODE_ENV: "development", AUTH_MODE: "local",
         ACCOUNT_NUMBER_KEY: process.env.E2E_ACCOUNT_NUMBER_KEY!, OTP_SECRET: process.env.E2E_OTP_SECRET!, MAIL_MODE: "file", MAIL_DIR, STORAGE_MODE: "local", STORAGE_DIR: new URL("./.e2e-uploads", import.meta.url).pathname },
       url: "http://localhost:8788/api/v1/health",
       reuseExistingServer: false,

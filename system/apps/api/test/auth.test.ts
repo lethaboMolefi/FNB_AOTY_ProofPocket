@@ -33,7 +33,7 @@ describe("password sign-in (local development mode)", () => {
 
   it("rejects weak passwords at sign-up", async () => {
     const weak = await request(app).post("/api/v1/auth/local/sign-up").send({ email: "new.founder@proofpocket.example", password: "password123" });
-    expect(weak.body.error.message).toMatch(/at least 10|too common/);
+    expect(weak.body.error.message).toMatch(/at least 12|too common/);
     const named = await request(app).post("/api/v1/auth/local/sign-up").send({ email: "nomsa@proofpocket.example", password: "nomsa-is-great-2026" });
     expect(named.body.error.message).toMatch(/email name/);
     const ok = await request(app).post("/api/v1/auth/local/sign-up").send({ email: "new.founder@proofpocket.example", password: "a sentence about my spaza" });

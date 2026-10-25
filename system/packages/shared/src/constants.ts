@@ -90,15 +90,18 @@ export const PAY_METHODS = {
   eft: "Bank EFT",
   payshap: "PayShap",
   wallet: "Mobile wallet",
+  payfast: "Card / EFT (PayFast)",
 } as const;
 export type PayMethod = keyof typeof PAY_METHODS;
 export const PAY_METHOD_KEYS = Object.keys(PAY_METHODS) as PayMethod[];
 
 /** Ways a client can pay a payment request. */
-export const RAILS = { payshap: "PayShap", eft: "Bank EFT", cash: "Cash", card_machine: "Card machine" } as const;
+export const RAILS = { payshap: "PayShap", eft: "Bank EFT", cash: "Cash", card_machine: "Card machine", payfast: "Card / EFT (PayFast)" } as const;
 export type Rail = keyof typeof RAILS;
 export const RAIL_KEYS = Object.keys(RAILS) as Rail[];
 export const DIGITAL_RAILS: Rail[] = ["payshap", "eft"];
+/** Rails where ProofPocket can auto-confirm once the gateway notifies (no manual proof needed). */
+export const GATEWAY_RAILS: Rail[] = ["payfast"];
 
 export const PROVINCES = [
   "Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo",
@@ -130,5 +133,9 @@ export type Role = "founder" | "funder" | "adviser" | "buyer" | "admin";
 export const OTP_ROLES: Role[] = ["funder", "adviser", "admin"];
 
 export const PAYMENT_REQUEST_DAYS = 7;
+/** The privacy notice founders agree to when they join (docs/security/popia/privacy-notice.md). Change it when the notice changes. */
+export const PRIVACY_NOTICE_VERSION = "2026-10-25";
+/** Data requests (POPIA s23-25) are answered within this many days. */
+export const DATA_REQUEST_DAYS = 30;
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const CIPC_PATTERN = /^\d{4}\/\d{6}\/\d{2}$/;

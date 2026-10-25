@@ -1,0 +1,25 @@
+# ZAP baseline rules (passive scan). FAIL breaks the build; WARN is reported; IGNORE is a decided non-issue.
+# Format: rule id<TAB>action<TAB>name. Reasons for each IGNORE are in docs/security/asvs-l1.md (V14).
+10020	FAIL	Anti-clickjacking header
+10021	FAIL	X-Content-Type-Options header missing
+10035	FAIL	Strict-Transport-Security header
+10038	FAIL	Content Security Policy header not set
+10055	WARN	CSP issues
+10063	FAIL	Permissions Policy header not set
+10010	FAIL	Cookie no HttpOnly flag
+10011	FAIL	Cookie without Secure flag
+10054	FAIL	Cookie without SameSite attribute
+10017	FAIL	Cross-domain JavaScript source file inclusion
+10098	FAIL	Cross-domain misconfiguration
+10037	FAIL	Server leaks information via X-Powered-By
+90022	FAIL	Application error disclosure
+10024	WARN	Sensitive information in URL
+10036	WARN	Server leaks version information
+90004	WARN	Insufficient site isolation against Spectre
+10202	IGNORE	Absence of anti-CSRF tokens (bearer-token API, no cookies)
+10096	IGNORE	Timestamp disclosure (minified bundles)
+10027	IGNORE	Suspicious comments (minified bundles)
+10109	IGNORE	Modern web application (informational)
+10049	IGNORE	Storable and cacheable content (static, hashed assets)
+10015	IGNORE	Re-examine Cache-control (static assets)
+90003	WARN	Sub Resource Integrity attribute missing (all scripts and styles are same-origin)

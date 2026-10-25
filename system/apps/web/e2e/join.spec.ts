@@ -8,7 +8,7 @@ test("join → upload → approve → Verified", async ({ page }, info) => {
   // 1. Details, with a new account.
   await page.goto("/join");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password (at least 10 characters)", { exact: true }).fill("a lovely long passphrase");
+  await page.getByLabel("Password (at least 12 characters)", { exact: true }).fill("a lovely long passphrase");
   await page.getByLabel("Type it again", { exact: true }).fill("a lovely long passphrase");
   await page.getByLabel("Your name").fill("Ayanda E.");
   await page.getByLabel("Business name").fill(business);

@@ -20,6 +20,7 @@ export default defineConfig({
       DATABASE_OWNER_URL: `postgres://proofpocket_owner:owner_dev_password@${host}/proofpocket_test`,
       AUTH_MODE: "dev",
       MAIL_MODE: "console",
+      RATE_LIMIT_STORE: "memory",
       STORAGE_MODE: "local",
       STORAGE_DIR: ".local-uploads-test",
       ACCOUNT_NUMBER_KEY: process.env.TEST_ACCOUNT_NUMBER_KEY,

@@ -1,0 +1,24 @@
+name: ZAP (hosted site)
+
+# Weekly passive scan of the live site. Baseline only: it reads pages and checks headers, it never attacks.
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 05:00 South African time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: https://proofpocket-aoty.web.app
+          rules_file_name: .zap/rules.tsv
+          cmd_options: -I
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-hosted

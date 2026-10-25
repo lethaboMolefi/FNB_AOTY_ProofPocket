@@ -4,7 +4,8 @@
 #   bash infra/deploy.sh <step>      run one step
 #   bash infra/deploy.sh all         run everything in order
 #
-# Steps: network, database, storage, secrets, identity, registry, image, bootstrap, api, firebase, web, users, budget, smoke
+# Steps: network, database, storage, secrets, identity, registry, image, bootstrap, api, jobs, firebase, web, users, budget, smoke
+# Owner-approved extras (not in "all"; see docs/security/not-implemented.md): iam_hardening, logging
 # Needs: gcloud and firebase CLIs signed in as a project owner, Node 26 + pnpm 12, python3.
 set -euo pipefail
 
@@ -32,6 +33,9 @@ WORK="$HERE/.work"; mkdir -p "$WORK"
 SYSTEM="$HERE/../system"
 TAG="${TAG:-$(git -C "$HERE/.." rev-parse --short HEAD)}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/api:${TAG}"
+
+# The Cloud SQL server CA (public, not a secret): connections verify the server certificate (verify-ca).
+db_ca() { g sql instances describe "$SQL" --format='value(serverCaCert.cert)' | base64 -w0; }
 
 # Output always goes through pipes: snap-installed gcloud fails (exit 120) when writing straight into a file.
 g() { gcloud --project "$PROJECT" --quiet "$@" 2> >(cat >&2) | cat; }
@@ -84,6 +88,10 @@ step_storage() {
   "responseHeader": ["Content-Type", "x-goog-content-length-range"], "maxAgeSeconds": 3600}]
 EOF
   g storage buckets update "gs://$BUCKET" --cors-file="$WORK/cors.json"
+  # Versioning keeps an overwritten or deleted file for 30 days (recovery after a mistake or an attack);
+  # after that it's gone, so deletions for POPIA still complete.
+  echo '{"rule": [{"action": {"type": "Delete"}, "condition": {"isLive": false, "daysSinceNoncurrentTime": 30}}]}' > "$WORK/lifecycle.json"
+  g storage buckets update "gs://$BUCKET" --versioning --lifecycle-file="$WORK/lifecycle.json"
 }
 
 step_secrets() {
@@ -101,8 +109,8 @@ step_identity() {
   g storage buckets add-iam-policy-binding "gs://$BUCKET" --member "serviceAccount:$SA" --role roles/storage.objectAdmin >/dev/null
   # Signs V4 upload/download URLs without a key file (IAM signBlob on itself).
   g iam service-accounts add-iam-policy-binding "$SA" --member "serviceAccount:$SA" --role roles/iam.serviceAccountTokenCreator >/dev/null
-  # Reads users to check Firebase sign-ins haven't been revoked.
-  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role roles/firebaseauth.viewer --condition=None >/dev/null
+  # Checks Firebase sign-ins haven't been revoked, and creates sign-ins for people the admin invites.
+  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" --role roles/firebaseauth.admin --condition=None >/dev/null
 }
 
 step_registry() {
@@ -116,7 +124,8 @@ step_image() {
   [ -z "$(git -C "$HERE/.." status --porcelain system)" ] || { echo "Commit your changes to system/ first."; exit 1; }
   local stage; stage=$(mktemp -d "$WORK/build.XXXXXX")
   git -C "$HERE/.." archive --format=tar "$TAG" system | tar -x -C "$stage"
-  g builds submit "$stage/system" --tag "$IMAGE"
+  # BUILD_SA (from iam_hardening) builds with a least-privilege account instead of the default one.
+  g builds submit "$stage/system" --tag "$IMAGE" ${BUILD_SA:+--service-account "projects/${PROJECT}/serviceAccounts/${BUILD_SA}" --default-buckets-behavior regional-user-owned-bucket}
   rm -rf "$stage"
 }
 
@@ -124,7 +133,7 @@ step_bootstrap() {
   # One-off job inside the VPC: migrations, the app role's password, and the example data (only into an empty database).
   local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
     --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest,APP_DB_PASSWORD=proofpocket-db-app-password:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest"
-    --set-env-vars "SEED_EXAMPLE_DATA=${SEED_EXAMPLE_DATA:-yes},SEED_ADMIN_EMAIL=${MAIL_USER}" --command node --args dist/bootstrap.js --max-retries 0 --task-timeout 600)
+    --set-env-vars "SEED_EXAMPLE_DATA=${SEED_EXAMPLE_DATA:-yes},SEED_ADMIN_EMAIL=${MAIL_USER},DATABASE_CA_CERT_B64=$(db_ca)" --command node --args dist/bootstrap.js --max-retries 0 --task-timeout 600)
   if exists g run jobs describe proofpocket-bootstrap --region "$REGION"; then g run jobs update proofpocket-bootstrap "${args[@]}"
   else g run jobs create proofpocket-bootstrap "${args[@]}"; fi
   g run jobs execute proofpocket-bootstrap --region "$REGION" --wait
@@ -134,8 +143,19 @@ step_api() {
   g run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --service-account "$SA" \
     --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
     --allow-unauthenticated --min-instances 0 --max-instances 4 --memory 512Mi --cpu 1 --concurrency 40 \
-    --set-env-vars "^|^NODE_ENV=production|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}" \
+    --set-env-vars "^|^NODE_ENV=production|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}|RATE_LIMIT_STORE=postgres|DATABASE_CA_CERT_B64=$(db_ca)" \
     --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest"
+}
+
+step_jobs() {
+  # Expiry and fingerprint checks (src/jobs.ts), as a Cloud Run Job in africa-south1. Start it by hand with:
+  #   gcloud run jobs execute proofpocket-jobs --region africa-south1 [--args=dist/jobs.js,--rehash]
+  # Cloud Scheduler isn't available in africa-south1; see the README before scheduling it from another region.
+  local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
+    --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest"
+    --set-env-vars "STORAGE_MODE=gcs,GCS_BUCKET=${BUCKET},DATABASE_CA_CERT_B64=$(db_ca)" --command node --args dist/jobs.js --max-retries 1 --task-timeout 1800)
+  if exists g run jobs describe proofpocket-jobs --region "$REGION"; then g run jobs update proofpocket-jobs "${args[@]}"
+  else g run jobs create proofpocket-jobs "${args[@]}"; fi
 }
 
 step_firebase() {
@@ -158,7 +178,7 @@ step_web() {
   cfg=$(firebase apps:sdkconfig WEB "$app_id" --project "$PROJECT" --json | python3 -c "import json,sys;r=json.load(sys.stdin)['result'];c=r.get('sdkConfig',r);print(c['apiKey'],c['authDomain'],c['projectId'],c['appId'])")
   read -r key domain pid aid <<<"$cfg"
   (cd "$SYSTEM/apps/web" && VITE_API_BASE="$API_URL" VITE_AUTH_MODE=firebase VITE_FIREBASE_API_KEY="$key" VITE_FIREBASE_AUTH_DOMAIN="${SITE}.firebaseapp.com" \
-    VITE_FIREBASE_PROJECT_ID="$pid" VITE_FIREBASE_APP_ID="$aid" pnpm build)
+    VITE_FIREBASE_PROJECT_ID="$pid" VITE_FIREBASE_APP_ID="$aid" VITE_DEMO="${DEMO:-yes}" pnpm build)
   (cd "$SYSTEM" && firebase deploy --only "hosting:${SITE}" --project "$PROJECT")
   : "$domain"
 }
@@ -184,8 +204,49 @@ step_smoke() {
   curl -sf "${WEB_ORIGIN}/manifest.webmanifest" | python3 -c "import json,sys;m=json.load(sys.stdin);print('manifest:',m['name'],m['display'])"
 }
 
+step_iam_hardening() {
+  # Least privilege (STRIDE: elevation of privilege). Changes project IAM, so the project owner runs it.
+  local num compute cb
+  num=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)' | cat)
+  compute="${num}-compute@developer.gserviceaccount.com"
+  # 1. The default compute account loses Editor on the whole project.
+  g projects remove-iam-policy-binding "$PROJECT" --member "serviceAccount:$compute" --role roles/editor --condition=None >/dev/null || true
+  # 2. Cloud Build gets its own account that can only push ProofPocket images and write build logs.
+  cb="proofpocket-build@${PROJECT}.iam.gserviceaccount.com"
+  exists g iam service-accounts describe "$cb" || g iam service-accounts create proofpocket-build --display-name "ProofPocket image builds"
+  g artifacts repositories add-iam-policy-binding "$REPO" --location "$REGION" --member "serviceAccount:$cb" --role roles/artifactregistry.writer >/dev/null
+  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$cb" --role roles/logging.logWriter --condition=None >/dev/null
+  g projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$cb" --role roles/storage.objectUser --condition=None >/dev/null
+  echo "Build images with: BUILD_SA=$cb bash infra/deploy.sh image"
+  # 3. Data Access audit logs for Secret Manager, Cloud SQL and Cloud Storage (who read which secret or file).
+  g projects get-iam-policy "$PROJECT" --format=json > "$WORK/policy.json"
+  python3 -c '
+import json, sys
+p = json.load(open(sys.argv[1]))
+have = {c["service"] for c in p.get("auditConfigs", [])}
+for svc in ["secretmanager.googleapis.com", "cloudsql.googleapis.com", "storage.googleapis.com"]:
+    if svc not in have:
+        p.setdefault("auditConfigs", []).append({"service": svc, "auditLogConfigs": [{"logType": t} for t in ("ADMIN_READ", "DATA_READ", "DATA_WRITE")]})
+json.dump(p, open(sys.argv[1], "w"))' "$WORK/policy.json"
+  g projects set-iam-policy "$PROJECT" "$WORK/policy.json" >/dev/null
+}
+
+step_logging() {
+  # Keeps ProofPocket's logs in Johannesburg for 400 days, and counts integrity alerts from the jobs
+  # (audit chain broken or a document changed) so Monitoring can email whoever is on call.
+  exists g logging buckets describe proofpocket-logs --location "$REGION" ||
+    g logging buckets create proofpocket-logs --location "$REGION" --retention-days 400 --description "ProofPocket logs (africa-south1)"
+  local filter='resource.type=("cloud_run_revision" OR "cloud_run_job") AND (resource.labels.service_name="proofpocket-api" OR resource.labels.job_name=("proofpocket-jobs" OR "proofpocket-bootstrap"))'
+  exists g logging sinks describe proofpocket-logs ||
+    g logging sinks create proofpocket-logs "logging.googleapis.com/projects/${PROJECT}/locations/${REGION}/buckets/proofpocket-logs" --log-filter="$filter"
+  exists g logging metrics describe proofpocket-integrity ||
+    g logging metrics create proofpocket-integrity --description "Integrity alerts from proofpocket-jobs" \
+      --log-filter='resource.type="cloud_run_job" AND resource.labels.job_name="proofpocket-jobs" AND severity>=ERROR AND textPayload:"integrity"'
+  echo "Then add an alert policy on logging.googleapis.com/user/proofpocket-integrity (Monitoring > Alerting) that emails the person on call."
+}
+
 case "${1:-}" in
-  all) for s in network database storage secrets identity registry image bootstrap api firebase web users budget smoke; do echo "== $s"; "step_$s"; done ;;
-  network|database|storage|secrets|identity|registry|image|bootstrap|api|firebase|web|users|budget|smoke) "step_$1" ;;
+  all) for s in network database storage secrets identity registry image bootstrap api jobs firebase web users budget smoke; do echo "== $s"; "step_$s"; done ;;
+  network|database|storage|secrets|identity|registry|image|bootstrap|api|jobs|firebase|web|users|budget|smoke|iam_hardening|logging) "step_$1" ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
 esac

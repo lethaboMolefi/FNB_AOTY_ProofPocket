@@ -50,6 +50,34 @@
       "when": 1792801099373,
       "tag": "0006_totp",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792825561263,
+      "tag": "0007_phase45_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792830719517,
+      "tag": "0008_phase5",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792899403601,
+      "tag": "0009_security_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792931601113,
+      "tag": "0010_rainy_molly_hayes",
+      "breakpoints": true
     }
   ]
 }

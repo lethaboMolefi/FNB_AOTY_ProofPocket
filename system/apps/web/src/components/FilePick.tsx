@@ -3,12 +3,13 @@ import { useId, useState } from "react";
 import { ApiError } from "../lib/api";
 import { uploadFile, type Uploaded } from "../lib/upload";
 
-export function FilePick({ label, purpose = "document", primary, accept = ".pdf,image/*", onUploaded, onError, base }: {
+export function FilePick({ label, purpose = "document", primary, accept = ".pdf,image/*", onUploaded, onError, base, headers }: {
   label: string;
   purpose?: "document" | "receipt" | "statement" | "proof";
   primary?: boolean;
   accept?: string;
   base?: string;
+  headers?: Record<string, string>;
   onUploaded: (f: Uploaded) => void | Promise<void>;
   onError?: (message: string) => void;
 }) {
@@ -24,7 +25,7 @@ export function FilePick({ label, purpose = "document", primary, accept = ".pdf,
           e.target.value = "";
           if (!file) return;
           setBusy(true);
-          try { await onUploaded(await uploadFile(file, purpose, base)); }
+          try { await onUploaded(await uploadFile(file, purpose, base, headers)); }
           catch (err) { onError?.(err instanceof ApiError ? err.message : "The upload didn't go through. Try again."); }
           finally { setBusy(false); }
         }}

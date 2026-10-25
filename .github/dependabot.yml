@@ -1,0 +1,20 @@
+# Dependency updates as pull requests. They go through the same CI (tests, audit, Semgrep, ZAP) and review.
+# A 7-day cooldown: new releases wait a week before an update is proposed (stricter than pnpm's 24-hour minimum).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /system
+    schedule: { interval: weekly, day: monday }
+    versioning-strategy: increase
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch: { update-types: [minor, patch] }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+  - package-ecosystem: docker
+    directory: /system
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }

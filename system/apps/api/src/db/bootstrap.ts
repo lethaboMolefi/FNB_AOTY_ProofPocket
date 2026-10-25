@@ -5,6 +5,7 @@ import pg from "pg";
 import { runMigrations } from "./migrate";
 import * as schema from "./schema/index";
 import { seed } from "./seed/seed";
+import { pgConfig } from "./pg-config";
 
 const ownerUrl = process.env.DATABASE_OWNER_URL;
 if (!ownerUrl) throw new Error("DATABASE_OWNER_URL is required");
@@ -12,7 +13,7 @@ if (!ownerUrl) throw new Error("DATABASE_OWNER_URL is required");
 await runMigrations(ownerUrl);
 console.log("Migrations applied");
 
-const pool = new pg.Pool({ connectionString: ownerUrl, max: 1 });
+const pool = new pg.Pool({ ...pgConfig(ownerUrl), max: 1 });
 try {
   const appPassword = process.env.APP_DB_PASSWORD;
   if (appPassword) {

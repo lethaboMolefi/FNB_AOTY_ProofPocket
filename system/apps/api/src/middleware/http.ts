@@ -1,5 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { type Store } from "express-rate-limit";
 import type { Logger } from "pino";
 import { ZodError, type ZodTypeAny, type z } from "zod";
 import { AppError } from "../lib/errors";
@@ -12,17 +12,26 @@ export const handle = (fn: (req: Request, res: Response) => Promise<unknown>): R
 
 export const parse = <S extends ZodTypeAny>(schema: S, value: unknown): z.infer<S> => schema.parse(value);
 
-const limiter = (windowMs: number, limit: number, message: string) =>
+let storeFor: ((name: string) => Store) | undefined;
+/** Where limiters keep their counts (Postgres in production; each process's memory when unset). Call before building routes. */
+export const useRateLimitStore = (f: ((name: string) => Store) | undefined) => { storeFor = f; };
+
+// Every limiter of one kind shares one counter per client IP (e.g. all sign-in and code endpoints).
+const limiter = (name: string, windowMs: number, limit: number, message: string) =>
   rateLimit({
-    windowMs, limit, standardHeaders: "draft-7", legacyHeaders: false,
+    windowMs, limit, standardHeaders: "draft-7", legacyHeaders: false, store: storeFor?.(name),
+    // If the counter can't be reached the request goes on; the database it needs is the same one.
+    passOnStoreError: true,
     handler: (_req, res) => { res.status(429).json({ error: { code: "rate_limited", message } }); },
   });
 
 export const limits = {
-  general: () => limiter(60_000, 300, "Too many requests. Wait a minute and try again."),
-  auth: () => limiter(15 * 60_000, 30, "Too many sign-in attempts. Wait 15 minutes and try again."),
-  uploads: () => limiter(15 * 60_000, 60, "Too many uploads. Wait a few minutes and try again."),
-  pay: () => limiter(60_000, 30, "Too many requests. Wait a minute and try again."),
+  general: () => limiter("general", 60_000, 300, "Too many requests. Wait a minute and try again."),
+  // Per IP. Many people can share one mobile-network IP, and each account also locks after 5 wrong tries,
+  // so this is a backstop. AUTH_RATE_LIMIT raises it (end-to-end tests sign in many times from one machine).
+  auth: () => limiter("auth", 15 * 60_000, Number(process.env.AUTH_RATE_LIMIT) || 60, "Too many sign-in attempts. Wait 15 minutes and try again."),
+  uploads: () => limiter("uploads", 15 * 60_000, 60, "Too many uploads. Wait a few minutes and try again."),
+  pay: () => limiter("pay", 60_000, 30, "Too many requests. Wait a minute and try again."),
 };
 
 export const notFoundHandler: RequestHandler = (_req, res) => {

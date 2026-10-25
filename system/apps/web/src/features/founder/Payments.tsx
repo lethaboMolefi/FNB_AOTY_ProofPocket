@@ -42,7 +42,7 @@ const STATUS_META: Record<string, { label: string; variant: "secondary" | "warni
   cancelled:    { label: "Cancelled",     variant: "outline" },
 };
 
-const RAIL_LABELS: Record<string, string> = { payshap: "PayShap", eft: "EFT", cash: "Cash", card_machine: "Card machine" };
+const RAIL_LABELS: Record<string, string> = { payshap: "PayShap", eft: "EFT", cash: "Cash", card_machine: "Card machine", payfast: "Card/EFT (PayFast)" };
 
 function ProofSection({ req, onAction }: { req: PayReq; onAction: () => void }) {
   const toast = useToast();

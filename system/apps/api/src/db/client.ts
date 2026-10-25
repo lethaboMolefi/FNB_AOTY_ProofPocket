@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema/index";
+import { pgConfig } from "./pg-config";
 
 export type Db = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -15,7 +16,7 @@ export interface DbContext {
 }
 
 export function createDb(url: string) {
-  const pool = new pg.Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30_000 });
+  const pool = new pg.Pool({ ...pgConfig(url), max: 10, idleTimeoutMillis: 30_000 });
   return { pool, db: drizzle(pool, { schema }) };
 }
 

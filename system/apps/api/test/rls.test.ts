@@ -45,7 +45,11 @@ describe("row-level security", () => {
 
   it("an adviser sees their incubator's cohort only", async () => {
     await as(ADVISER_N1, async (tx) => {
-      expect(names(await tx.select({ name: companies.name }).from(companies))).toEqual(["Khanya Solar Installs", "Mabele AgriLink", "Nala Nails & Lashes"]);
+      // Other tests may add companies to this cohort; the seeded ones are there and other incubators' aren't.
+      const seen = names(await tx.select({ name: companies.name }).from(companies));
+      expect(seen).toEqual(expect.arrayContaining(["Khanya Solar Installs", "Mabele AgriLink", "Nala Nails & Lashes"]));
+      expect(seen).not.toContain("ReKasi Plastics");
+      expect(seen).not.toContain("Green Route Waste Services");
     });
   });
 
@@ -61,22 +65,22 @@ describe("row-level security", () => {
 
   it("a funder sees no companies with sharing 'none', unless they applied to that funder", async () => {
     const owner = async (email: string) => (await ctxFor(email)).userId!;
-    // Mabele (no application to Lesedi) and ReKasi (applied to Lesedi) both switch sharing off.
-    await as(FOUNDER_2, (tx) => tx.update(companies).set({ funderSharing: "none" }).where(sql`true`));
-    await as("tumelo@proofpocket.example", (tx) => tx.update(companies).set({ funderSharing: "none" }).where(sql`true`));
+    // Kopano Enterprise Finance: Khanya applied to it, Mabele didn't. Both switch sharing off.
+    const SIPHO = "sipho@proofpocket.example", TUMELO = "tumelo@proofpocket.example";
+    await as(SIPHO, (tx) => tx.update(companies).set({ funderSharing: "none" }).where(sql`true`));
+    await as(TUMELO, (tx) => tx.update(companies).set({ funderSharing: "none" }).where(sql`true`));
     try {
-      await as(FUNDER_F1, async (tx) => {
+      await as("kopano@proofpocket.example", async (tx) => {
         const seen = names(await tx.select({ name: companies.name }).from(companies));
         expect(seen).not.toContain("Mabele AgriLink");
-        expect(seen).toContain("ReKasi Plastics");
+        expect(seen).toContain("Khanya Solar Installs");
         // Applicant with sharing 'none' is summary-level: no book entries.
-        const rekasi = await owner(FOUNDER_2);
-        const [c] = await tx.select({ id: companies.id }).from(companies).where(eq(companies.ownerId, rekasi));
+        const [c] = await tx.select({ id: companies.id }).from(companies).where(eq(companies.ownerId, await owner(SIPHO)));
         expect(await tx.select().from(ledgerEntries).where(eq(ledgerEntries.companyId, c!.id))).toHaveLength(0);
       });
     } finally {
-      await as(FOUNDER_2, (tx) => tx.update(companies).set({ funderSharing: "full" }).where(sql`true`));
-      await as("tumelo@proofpocket.example", (tx) => tx.update(companies).set({ funderSharing: "full" }).where(sql`true`));
+      await as(SIPHO, (tx) => tx.update(companies).set({ funderSharing: "full" }).where(sql`true`));
+      await as(TUMELO, (tx) => tx.update(companies).set({ funderSharing: "full" }).where(sql`true`));
     }
   });
 
@@ -94,7 +98,7 @@ describe("row-level security", () => {
     await as(FUNDER_F1, async (tx) => expect(await tx.select().from(paymentDetails)).toHaveLength(0));
     await as(ADVISER_N1, async (tx) => expect(await tx.select().from(paymentDetails)).toHaveLength(0));
     await as(FOUNDER, async (tx) => expect(await tx.select().from(paymentDetails)).toHaveLength(1));
-    await as(ADMIN, async (tx) => expect((await tx.select().from(paymentDetails)).length).toBe(6));
+    await as(ADMIN, async (tx) => expect((await tx.select().from(paymentDetails)).length).toBeGreaterThanOrEqual(6));
   });
 
   it("the payment page sees only its own request", async () => {

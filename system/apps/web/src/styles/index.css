@@ -2,6 +2,7 @@
    Light theme only for now; every colour is a token so dark mode can be added later.
    shadcn/ui CSS variables are layered on top for shadcn components. */
 @import "tailwindcss";
+@import "./fonts.css";
 
 /* Tailwind theme (v4): utilities such as bg-surface or text-muted read the tokens below. */
 @theme inline {

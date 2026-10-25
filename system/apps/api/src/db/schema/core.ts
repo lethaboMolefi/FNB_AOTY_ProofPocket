@@ -65,6 +65,8 @@ export const companies = pgTable("companies", {
   /** Set when the founder finishes the Join wizard (consent given, documents sent for checking). */
   joinedAt: timestamp("joined_at", { withTimezone: true }),
   consentAt: timestamp("consent_at", { withTimezone: true }),
+  /** The privacy notice version the founder agreed to (PRIVACY_NOTICE_VERSION in shared). */
+  consentVersion: text("consent_version"),
   isExample: isExample(),
   ...timestamps,
 }, (t) => [
@@ -145,9 +147,21 @@ export const auditLog = pgTable("audit_log", {
   before: jsonb("before"),
   after: jsonb("after"),
   requestId: text("request_id"),
+  /** Hash chain (set by a trigger, 0009): each row's hash covers its fields and the previous row's hash. */
+  // The defaults only satisfy insert types; the trigger always sets all three.
+  chainSeq: bigint("chain_seq", { mode: "number" }).notNull().default(0),
+  prevHash: text("prev_hash").notNull().default(""),
+  hash: text("hash").notNull().default(""),
   createdAt: timestamps.createdAt,
   updatedAt: timestamps.updatedAt,
-}, (t) => [index("audit_entity_idx").on(t.entity, t.entityId)]);
+}, (t) => [index("audit_entity_idx").on(t.entity, t.entityId), uniqueIndex("audit_chain_seq_key").on(t.chainSeq)]);
+
+/** Rate-limit counters shared by every API instance. Only reached through rate_limit_hit() (0009). */
+export const rateLimitHits = pgTable("rate_limit_hits", {
+  key: text("key").primaryKey(),
+  hits: integer("hits").notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+}, (t) => [index("rate_limit_reset_idx").on(t.resetAt)]);
 
 /**
  * Google Authenticator (TOTP) two-step sign-in. One row per user, readable only by that user.

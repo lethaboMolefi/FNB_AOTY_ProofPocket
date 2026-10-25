@@ -1,7 +1,7 @@
 // Loads the example data into an empty, migrated database. Runs as the owner (bypasses RLS).
 import { randomBytes, randomUUID } from "node:crypto";
 import {
-  DOC_TYPES, DOCS, addDays, expiresOn, firstOfMonth, isVerified, monthsEnding, proofChecks, slug, todayZA, type DocState,
+  DOC_TYPES, DOCS, addDays, expiresOn, firstOfMonth, isVerified, monthsEnding, PRIVACY_NOTICE_VERSION, proofChecks, slug, todayZA, type DocState,
 } from "@proofpocket/shared";
 import type { Db } from "../client";
 import * as s from "../schema/index";
@@ -76,7 +76,7 @@ export async function seed(db: Db, opts: SeedOptions) {
         openingBalance: money(c.opening), openingBalanceDate: firstOfMonth(today), funderSharing: c.sharing,
         verifiedAt: isVerified(docStates) ? at(45) : null,
         incubatorId: incubator, adviserId: c.incubator.adviser ? userId.get(c.incubator.adviser)! : null, supportStage: c.incubator.stage,
-        joinedAt: at(60), consentAt: at(60), createdAt: at(60), ...ex,
+        joinedAt: at(60), consentAt: at(60), consentVersion: PRIVACY_NOTICE_VERSION, createdAt: at(60), ...ex,
       }).returning();
       const cid = co!.id;
       companyId.set(c.key, cid);

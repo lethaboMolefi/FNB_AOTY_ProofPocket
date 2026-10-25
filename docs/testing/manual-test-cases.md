@@ -1,6 +1,6 @@
 # ProofPocket manual test cases
 
-Hand tests for everything that's built (phases 1–3, sign-in with Google Authenticator, and the PWA). Each test gives the steps, what should happen, and a box to tick.
+Hand tests for the whole system (all five feature phases, sign-in with Google Authenticator, and the PWA). Each test gives the steps, what should happen, and a box to tick.
 
 **Where to test**
 - **Hosted:** https://proofpocket-aoty.web.app (recommended). Passwords are in `infra/.hosted-credentials.json` on the deploying machine.
@@ -27,7 +27,16 @@ Hand tests for everything that's built (phases 1–3, sign-in with Google Authen
 | I. Offline | TC-I1 – I3 |
 | J. Stock | TC-J1 – J5 |
 | K. Cash flow and settings | TC-K1 – K3 |
-| L. Not built yet | TC-L1 |
+| L. Payments and the payment page | TC-L1 – L9 |
+| M. Fraud protection | TC-M1 – M5 |
+| N. Privacy and incubators | TC-N1 – N4 |
+| O. Profile, posts and the directory | TC-O1 – O6 |
+| P. Funding readiness | TC-P1 – P4 |
+| Q. Procurement | TC-Q1 – Q2 |
+| R. Funder portal | TC-R1 – R8 |
+| S. Incubator portal | TC-S1 – S6 |
+| T. Admin portal | TC-T1 – T7 |
+| U. Security checks | TC-U1 – U8 |
 
 ---
 
@@ -513,12 +522,400 @@ Use `zanele@proofpocket.example` (Nala).
 
 ---
 
-## L. Not built yet
+## L. Payments and the payment page
 
-### TC-L1 Placeholders for phases 4–5
-1. Open **Payments, Profile & marketing, Funding readiness, Procurement, Fraud protection, Privacy & sharing**, the funder **Pipeline**, the adviser **Cohort board** and **Support log**, the admin **Reports**, `/directory` and `/pay/PP-4821`.
+Use `zanele@proofpocket.example` (Nala) unless stated. Open client links in a **private window** (no account).
 
-**Expected:** each shows a "**Being built.** … arrives in phase 4" (or 5) notice. Nothing crashes. *These aren't failures; they show what's left to build.*
+### TC-L1 Naledi's proof to check
+1. Open **Payments**.
+
+**Expected:** "Proof of payment to check" shows "Naledi says they paid R250", five ✓ checks ("Amount matches (R250)", "Client says they used reference PP-4790", "Paid after the request was sent", "Proof file not used before", "Paid by PayShap"), the banking-app warning, and **The money is in my account** / **Not received**.
+☐ Pass ☐ Fail
+
+### TC-L2 Confirm in your own bank
+1. Press **The money is in my account**.
+
+**Expected:** "Confirmed and added to your books with the proof attached". PP-4790 shows **Paid · in books**, and Books has a +R250 entry for "PP-4790 · proof of payment attached" with receipt **Kept**.
+☐ Pass ☐ Fail
+
+### TC-L3 Ask a client to pay
+1. Client `Thabo`, amount `300`, for `Lash fill`; keep PayShap, Bank EFT, Cash; press **Create payment request**.
+2. Press **Copy link**, **Show QR**, and **Send on WhatsApp**.
+
+**Expected:** "Request PP-NNNN created…". The link looks like `…/pay/PP-1234-<long code>`. A QR code appears. WhatsApp opens with a message containing the amount, reference and link. Empty client or no ways to pay gives "Add the client's name and an amount" / "Choose at least one way to pay".
+☐ Pass ☐ Fail
+
+### TC-L4 The client's payment page
+1. Open the link from TC-L3 in a private window.
+
+**Expected:** "You're paying Nala Nails & Lashes", **Starter** badge, **R300**, reference, How to pay with PayShap (ShapID `071 555 0142`), Bank EFT (Capitec, account number), Cash, each with **Copy** buttons, and "**Only pay to the details on this page.**". No card machine (not allowed). No sign-in asked.
+☐ Pass ☐ Fail
+
+### TC-L5 A wrong link shows nothing
+1. Change the last few characters of the link and open it.
+
+**Expected:** "This payment link isn't valid." Nothing about Nala is shown.
+☐ Pass ☐ Fail
+
+### TC-L6 Client sends a wrong proof; founder says not received twice
+1. On the client page: amount `250`, untick "I used reference", attach a screenshot, **Send proof of payment** → "Proof of payment sent."
+2. As Nala, Payments shows "2 things to check" (amount and reference ✗). Press **Not received**.
+3. Client page (reload) shows "hasn't received this payment yet". Send the **same** screenshot again.
+4. Founder now also sees "This exact file was used as proof before". Press **Not received**.
+
+**Expected:** after step 4: "Marked not received. Flagged as a possible fake proof of payment." The client page says "This request is closed." Fraud protection has a message from "Thabo (client)" with the flags "Possible fake proof of payment" and "Don't hand over goods until the money shows in your bank".
+☐ Pass ☐ Fail
+
+### TC-L7 Paid me cash, and cancel
+1. Create a request with Cash allowed and press **Paid me cash**.
+2. Create another and press **Cancel**, then open its link.
+
+**Expected:** "Payment added to your books" (a cash entry appears in Books). The cancelled link shows "cancelled this request. Don't pay it."
+☐ Pass ☐ Fail
+
+### TC-L8 Payment details need Google Authenticator
+1. As a founder **without** Google Authenticator, look at "Your payment details".
+2. Set it up (Business settings), come back, press **Change**, fill new details and a wrong code, then the right code.
+
+**Expected:** step 1: a notice to set up Google Authenticator; no Change button. Wrong code: "That code isn't right…". Right code: "Payment details saved"; only the last four digits show (••1234); the founder gets an email, and the incubator's advisers are emailed. The client page for a new request shows the new number. Nala's "personal account" warning shows while her account name says personal.
+☐ Pass ☐ Fail
+
+### TC-L9 Suppliers and cash payouts
+1. **Record a supplier payment** to "Glam Supplies · ON HOLD".
+2. **Add a supplier** (name, bank, account number) → it appears with only the last 4 digits.
+3. **Record a cash payment out**: paid to `Thabo (collector)`, `85`, "Payee has no phone" ticked.
+
+**Expected:** step 1: "Payment blocked: Glam Supplies's bank details changed. Confirm by phone under Fraud protection first." Step 2: "Supplier saved". Step 3: "Cash payment recorded…", and Books shows the entry with "slip S#####". Works offline too ("Saved on this phone, will sync").
+☐ Pass ☐ Fail
+
+---
+
+## M. Fraud protection
+
+### TC-M1 Messages about money
+1. As Nala → **Fraud protection**.
+
+**Expected:** "Funding Approvals Desk · **Not verified**" with three red flags, and **Report and block** / **It's genuine**. "Ikhaya Incubation Hub · Verified on ProofPocket" has no buttons.
+☐ Pass ☐ Fail
+
+### TC-M2 Report and block warns other founders
+1. Press **Report and block** on the scam.
+2. Sign in as another founder (e.g. `thandi@…`) → Fraud protection → **Check a message**: from `approvals.fund@quickgrantz-mail.com`, text "You qualify for a grant. Pay the admin fee today."
+
+**Expected:** step 1: "Reported. Other founders will be warned about this sender." Step 2 lists warning signs including "**Other founders reported this sender**".
+☐ Pass ☐ Fail
+
+### TC-M3 Check a harmless message
+1. Check from `0715550000`: "Can I book a catering tasting for Saturday?"
+
+**Expected:** "No warning signs found…"
+☐ Pass ☐ Fail
+
+### TC-M4 Supplier bank detail changes
+1. Glam Supplies shows "New details received… Payments are on hold until you confirm by phone". Press **Reject change**.
+2. On another supplier press **Supplier sent new details**, enter a bank and number.
+
+**Expected:** "Change rejected. Old details kept." / "Change received. Payments to this supplier are on hold." and the hold message shows. **I've confirmed by phone** replaces the bank details.
+☐ Pass ☐ Fail
+
+### TC-M5 Fingerprints and rules
+**Expected:** "Document fingerprints" lists each uploaded document with a 16-character fingerprint; "Rules that keep you safe" shows four rules.
+☐ Pass ☐ Fail
+
+---
+
+## N. Privacy and incubators
+
+### TC-N1 Funder sharing
+1. As `palesa@…` → **Privacy & sharing** → choose **Nothing**.
+2. As funder `kopano@…` (authenticator) → Company pipeline.
+3. Back as Palesa, choose **Full books**.
+
+**Expected:** "Sharing updated". ReKasi disappears from Kopano's pipeline while set to Nothing, and returns after.
+☐ Pass ☐ Fail
+
+### TC-N2 Summary hides book entries
+1. Set sharing to **Summary**; as a funder open the company.
+
+**Expected:** "This founder shares a summary only. Individual book entries are private." Readiness and totals still show.
+☐ Pass ☐ Fail
+
+### TC-N3 Leave an incubator
+1. As a founder with an incubator, press **Leave {incubator}** and confirm.
+
+**Expected:** "You've left the incubator…", and the adviser no longer sees the company on their cohort board.
+☐ Pass ☐ Fail
+
+### TC-N4 Ask to join an incubator
+1. Choose an incubator and **Send request**.
+2. As that incubator's adviser → Cohort board → "Asking to join" → **Accept**.
+
+**Expected:** the founder sees "You asked to join…"; after acceptance the company is on the board (Assessment) and the founder's Privacy page names the incubator.
+☐ Pass ☐ Fail
+
+---
+
+## O. Profile, posts and the directory
+
+### TC-O1 Public profile
+1. As `tumelo@…` → **Profile & marketing**, change the one-line description and **Save profile**.
+2. Press **Open your page**.
+
+**Expected:** "Profile saved". The public page shows the new line, services, WhatsApp button, "What ProofPocket checked" and **Report this business**.
+☐ Pass ☐ Fail
+
+### TC-O2 QR code
+**Expected:** a QR code that opens the business's public page when scanned with a phone camera; **Copy profile link** says "Profile link copied".
+☐ Pass ☐ Fail
+
+### TC-O3 Posts and share links
+1. Write a post and **Save post**, then press **WhatsApp**, **Facebook**, **X**.
+
+**Expected:** "Saved. Use the buttons to share it…". Each opens that app/site with the text and profile link (nothing is posted automatically). The post shows "shared to WhatsApp, Facebook, X".
+☐ Pass ☐ Fail
+
+### TC-O4 Feature requests
+1. As Nala (Starter): there's no "Save and request a feature" button.
+2. As Tumelo: **Save and request a feature**.
+3. As admin → **Feature requests** → **Feature**.
+
+**Expected:** step 2: "Feature requested" pill. Step 3: "Featured for 7 days", and the post shows under **Featured this week** on `/directory`.
+☐ Pass ☐ Fail
+
+### TC-O5 Directory and Starters
+1. Open `/directory` signed out; search "catering".
+2. Open `/b/nala-nails-lashes`.
+
+**Expected:** only Verified businesses are listed (no Nala). Mama Tau opens with **Verified on ProofPocket**. Nala's page exists but shows **Starter: not verified yet**.
+☐ Pass ☐ Fail
+
+### TC-O6 Buyers and introductions
+1. As Tumelo, on "Buyers looking for suppliers", press **Request introduction** on Farmer Co-op Network.
+2. As Nala, look at the same list.
+
+**Expected:** "Your adviser will arrange the introduction" and **Requested**. Nala sees **Verified only** instead of buttons.
+☐ Pass ☐ Fail
+
+---
+
+## P. Funding readiness
+
+### TC-P1 Score and breakdown
+1. As Tumelo → **Funding readiness**.
+
+**Expected:** score ring **100**, "Funding ready", Documents and Bookkeeping checklists with points.
+☐ Pass ☐ Fail
+
+### TC-P2 Programmes and gaps
+**Expected:** each programme shows amount range, funds left, and either "Nothing, you qualify" or chips such as "× 12 months of records (you have 6)". As Nala, every programme starts with "× Verified account".
+☐ Pass ☐ Fail
+
+### TC-P3 Apply
+1. On a programme you qualify for, enter an amount above the maximum and **Apply**, then a valid amount.
+
+**Expected:** "Enter an amount between R… and R…", then "Application sent to {funder}". The row shows **Applied**, and the application appears under "Your applications" with offer history "Requested amount".
+☐ Pass ☐ Fail
+
+### TC-P4 Ask why, and withdraw
+1. As `palesa@…`: the Youth Micro Grant application shows R28 000 with "**No reason given**" in red. Press **Ask the funder for a reason**.
+2. On a pending application press **Withdraw** and confirm.
+
+**Expected:** "Request sent to the funder" and the button changes to **Reason requested**. "Application withdrawn".
+☐ Pass ☐ Fail
+
+---
+
+## Q. Procurement
+
+### TC-Q1 Tenders and requirements
+1. As Tumelo → **Procurement**.
+
+**Expected:** track record, account and tender-document tiles; a table of open tenders with ✓/× chips for documents and months; actions such as **Express interest**, "Add N documents" or "N more months". Closed tenders aren't listed. As Nala every tender says **Verify first**.
+☐ Pass ☐ Fail
+
+### TC-Q2 Express interest
+1. Press **Express interest** on an eligible tender.
+
+**Expected:** "Interest sent with your checked documents and track record" and **Interest sent**. The adviser sees it in **Support log** with **Mark arranged**.
+☐ Pass ☐ Fail
+
+---
+
+## R. Funder portal
+
+Sign in as `lesedi@…` (Google Authenticator).
+
+### TC-R1 Pipeline
+**Expected:** tiles (Verified and sharing, "N Starter or private", meet requirements, funding ready, applications), filters (search, sector, area, minimum readiness slider) and a table sorted by readiness with sparklines. **No Starter companies** (no Nala).
+☐ Pass ☐ Fail
+
+### TC-R2 Company drawer
+1. Click ReKasi Plastics.
+
+**Expected:** a drawer (full screen on phones) with readiness, key figures, flags, chart, latest entries, documents (status only), bookkeeping health, the application with offer history (R50 000 → R40 000 → R28 000 "No reason given"), incubator support and activity. **Esc** or **Close** closes it.
+☐ Pass ☐ Fail
+
+### TC-R3 Offer changes need a reason
+1. Change the offer without a reason, then with "Branch cap raised".
+
+**Expected:** "Add a reason. Founders see every change to their offer." then "Offer updated and shared with the founder". The founder's Funding page shows the new offer with the reason.
+☐ Pass ☐ Fail
+
+### TC-R4 Decline needs a reason; approve commits budget
+1. On an open application press **Decline** with no reason.
+2. On another, press **Approve current offer**. Check **Programmes & requirements**.
+
+**Expected:** "Add a reason before declining. The founder will see it." Approval shows "Application approved", and the programme's Committed rises by the offer. If it would exceed the budget, you're asked to confirm.
+☐ Pass ☐ Fail
+
+### TC-R5 Invite to apply
+1. In a drawer, choose a programme under **Invite to apply** and **Send invite**.
+
+**Expected:** "Invite sent". The founder's Home → Messages shows "You're invited to apply to …" from a **Verified** funder.
+☐ Pass ☐ Fail
+
+### TC-R6 Programmes and requirements
+1. Click a document chip, then **Close to applications**, then **Reopen**.
+
+**Expected:** "Requirements updated; founders see the change"; the founder's gaps change. Closed programmes disappear from founders' Funding page.
+☐ Pass ☐ Fail
+
+### TC-R7 New funder set-up gate
+1. Sign in as `bophelo@…`.
+
+**Expected:** after Google Authenticator, only **Set your requirements** opens (other pages redirect). Saving opens the pipeline with "Requirements saved. Founders can see them now."
+☐ Pass ☐ Fail
+
+### TC-R8 Applications list
+**Expected:** every application to you, with requested, current offer ("No reason given" / "Founder asked why" notes), status and readiness; **Open** opens the drawer.
+☐ Pass ☐ Fail
+
+---
+
+## S. Incubator portal
+
+Sign in as `n.mokoena@…` (Ikhaya).
+
+### TC-S1 Cohort board
+**Expected:** tiles and five columns (Assessment … Monitoring & evaluation) with cards for Nala, Khanya and Mabele only (no ReKasi). Cards show score, adviser and up to 2 flags.
+☐ Pass ☐ Fail
+
+### TC-S2 Drawer: full books, adviser and stage
+1. Open Khanya; choose an adviser; press **Move to …**, then **Back a stage**.
+
+**Expected:** latest entries are visible (advisers always see books). "Adviser assigned", "Moved to …". The card moves column.
+☐ Pass ☐ Fail
+
+### TC-S3 Needs attention
+**Expected:** every flag across the cohort, **Act now** items first, each with **Open**.
+☐ Pass ☐ Fail
+
+### TC-S4 Support log
+1. Log support for Nala ("Bookkeeping coaching", note), with an empty note first.
+
+**Expected:** "Add a note about the support", then "Support logged"; it heads History and appears in the company's drawer and timeline.
+☐ Pass ☐ Fail
+
+### TC-S5 Introductions and tender interest
+**Expected:** requests from TC-O6/TC-Q2 appear with **Mark arranged** / **Decline**; the founder's page then shows "Being arranged" / "Passed to buyer".
+☐ Pass ☐ Fail
+
+### TC-S6 Navigation counts
+**Expected:** red numbers on **Document checks** and **Needs attention** (and on a founder's Registration steps, Stock, Payments, Fraud protection) match what's waiting.
+☐ Pass ☐ Fail
+
+---
+
+## T. Admin portal
+
+Sign in as the admin (`pegphina@gmail.com`).
+
+### TC-T1 Add and verify an organisation
+1. **Organisations** → add a Funder "Test Fund". Press **Verify**.
+
+**Expected:** "Test Fund added" (Not verified), then "…is verified and shows the badge".
+☐ Pass ☐ Fail
+
+### TC-T2 Invite a person
+1. Under Test Fund, invite a name and an email you can read.
+
+**Expected:** "Invitation sent to …". The email has a link to set a password (hosted) or a temporary password (local). Signing in asks for Google Authenticator, then **Set your requirements**.
+☐ Pass ☐ Fail
+
+### TC-T3 Reset a lost authenticator
+1. **Reset authenticator** next to a person, confirm.
+
+**Expected:** "Authenticator reset for …"; they get an email, and their next sign-in starts set-up again.
+☐ Pass ☐ Fail
+
+### TC-T4 Reports
+1. Report a business from `/b/<slug>` and a payment request from a payment page.
+2. **Reports** → **Resolve** (with a note) / **Dismiss**.
+
+**Expected:** both reports listed with company and reason; statuses change.
+☐ Pass ☐ Fail
+
+### TC-T5 Feature requests
+**Expected:** as TC-O4; **Reject** asks for a reason the founder sees.
+☐ Pass ☐ Fail
+
+### TC-T6 Flagged payments and reported senders
+**Expected:** TC-L6's request appears under "Possible fake proofs of payment"; TC-M2's sender under "Reported senders" with **Confirm scam** / **Clear**.
+☐ Pass ☐ Fail
+
+### TC-T7 Tenders
+1. Publish a tender (title, buyer, value, future closing date, sectors, documents).
+
+**Expected:** "Tender published"; founders in those sectors see it under Procurement.
+☐ Pass ☐ Fail
+
+---
+
+## U. Security checks (seed data only)
+
+### TC-U1 Cross-company access
+1. Signed in as Nala, open DevTools → Network, copy a request such as `/api/v1/founder/books`, and repeat it with an entry or document id from another company.
+
+**Expected:** 403 or 404; never another company's data.
+☐ Pass ☐ Fail
+
+### TC-U2 Unconsented funder access
+**Expected:** as TC-N1/N2: a funder never sees a company with sharing Nothing (unless it applied to them), and never sees entries without Full books.
+☐ Pass ☐ Fail
+
+### TC-U3 Role tampering
+1. As a founder, open `/funder/pipeline`, `/adviser/cohort`, `/admin/organisations`.
+2. Call `/api/v1/admin/organisations` with the founder's token.
+
+**Expected:** redirected home; the API returns 403.
+☐ Pass ☐ Fail
+
+### TC-U4 XSS payloads
+1. Put `<img src=x onerror=alert(1)>` in a business name (Join), a book entry note, a post and a profile tagline.
+
+**Expected:** the text shows literally; no alert ever appears (React escaping and a strict Content Security Policy).
+☐ Pass ☐ Fail
+
+### TC-U5 Malicious uploads
+1. Upload `docs/testing/files/not-really-a.pdf`, an `.html` or `.svg` file renamed to `.pdf`, and a file over 5 MB.
+
+**Expected:** each is refused ("That file isn't a PDF or photo we can open…" / "Files must be 5 MB or smaller").
+☐ Pass ☐ Fail
+
+### TC-U6 Link expiry
+1. As an adviser, press **Open file** on a document, copy the download address, wait 6 minutes, open it again.
+
+**Expected:** the second time it's refused (links last 5 minutes).
+☐ Pass ☐ Fail
+
+### TC-U7 Sign-in rate limits
+**Expected:** as TC-B4 and TC-C5: wrong passwords and wrong codes lock the account temporarily.
+☐ Pass ☐ Fail
+
+### TC-U8 Audit log immutability
+1. (Developers) `docker compose exec db psql -U proofpocket_app -d proofpocket -c "delete from audit_log"`.
+
+**Expected:** `permission denied`. Offer history can't be edited either (`offer history is append-only`).
 ☐ Pass ☐ Fail
 
 ---
@@ -528,7 +925,7 @@ Use `zanele@proofpocket.example` (Nala).
 The same areas are covered automatically. Run these in `system/`:
 
 ```bash
-pnpm test        # 108 unit and API tests (rules, sign-in, RLS, join, documents, books, statements)
-pnpm test:e2e    # 24 browser tests, phone + desktop (join → Verified, offline sync once, duplicates…)
+pnpm test        # 149 unit and API tests (rules, sign-in, RLS, join, documents, books, payments, portals, jobs)
+pnpm test:e2e    # 40 browser tests, phone + desktop (join → Verified, offline sync, payment flow, funder, incubator, admin…)
 cd apps/web && pnpm exec playwright test -c playwright.live.config.ts   # against the hosted site
 ```

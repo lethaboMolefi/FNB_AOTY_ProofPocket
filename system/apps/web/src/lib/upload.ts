@@ -28,12 +28,12 @@ export async function compressImage(file: File): Promise<File> {
 export interface Uploaded { fileId: string; sha256: string; name: string }
 
 /** Uploads one file and returns its fingerprint. `base` is "/founder" or a public payment path. */
-export async function uploadFile(file: File, purpose: "document" | "receipt" | "statement" | "proof", base = "/founder"): Promise<Uploaded> {
+export async function uploadFile(file: File, purpose: "document" | "receipt" | "statement" | "proof", base = "/founder", headers?: Record<string, string>): Promise<Uploaded> {
   const f = purpose === "statement" ? file : await compressImage(file);
   if (f.size > MAX_UPLOAD_BYTES) throw new ApiError(400, "too_large", "Files must be 5 MB or smaller");
   const contentType = f.type || (f.name.toLowerCase().endsWith(".csv") ? "text/csv" : "application/octet-stream");
   const start = await api<{ fileId: string; upload: { url: string; method: "PUT"; headers: Record<string, string> } }>(
-    `${base}/uploads`, { body: { purpose, name: f.name, contentType, size: f.size } });
+    `${base}/uploads`, { body: { purpose, name: f.name, contentType, size: f.size }, headers });
   let put: Response;
   try {
     // Cloud Storage gives an absolute signed URL; the local stand-in gives a path on the API.
@@ -43,5 +43,5 @@ export async function uploadFile(file: File, purpose: "document" | "receipt" | "
     throw new ApiError(0, "offline", "The upload didn't go through. Check your connection and try again.");
   }
   if (!put.ok) throw new ApiError(put.status, "upload_failed", "The upload didn't go through. Try again.");
-  return api<Uploaded>(`${base}/uploads/${start.fileId}/complete`, { body: {} });
+  return api<Uploaded>(`${base}/uploads/${start.fileId}/complete`, { body: {}, headers });
 }

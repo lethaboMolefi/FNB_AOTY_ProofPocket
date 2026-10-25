@@ -33,7 +33,7 @@ if (AUTH_MODE === "local") setTokenGetter(async () => readLocal());
 
 /** Removes this person's cached API data from the phone (service worker cache). */
 function clearUserCache() {
-  navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_USER_CACHE" });
+  navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_FOUNDER_API_CACHE" });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

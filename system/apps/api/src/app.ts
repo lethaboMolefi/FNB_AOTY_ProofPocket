@@ -9,17 +9,23 @@ import type { Db } from "./db/client";
 import type { Mailer } from "./lib/mailer";
 import type { FileStore } from "./lib/storage";
 import { authenticate, type TokenVerifier } from "./middleware/auth";
-import { errorHandler, limits, notFoundHandler } from "./middleware/http";
+import { errorHandler, limits, notFoundHandler, useRateLimitStore } from "./middleware/http";
+import { PostgresRateLimitStore } from "./lib/rate-limit-store";
 import { buildOpenApi } from "./openapi";
+import { adminRoutes } from "./routes/admin";
 import { adviserRoutes } from "./routes/adviser";
 import { authRoutes } from "./routes/auth";
 import { checkRoutes } from "./routes/checks";
+import { countRoutes } from "./routes/counts";
 import { fileRoutes } from "./routes/files";
 import { founderBookRoutes } from "./routes/founder-books";
 import { founderDocRoutes } from "./routes/founder-docs";
 import { founderMarketsRoutes } from "./routes/founder-markets";
+import { founderPayRoutes } from "./routes/founder-pay";
 import { funderRoutes } from "./routes/funder";
 import { joinRoutes } from "./routes/join";
+import { payRoutes } from "./routes/pay";
+import { publicRoutes } from "./routes/public";
 
 export interface Deps {
   config: Config;
@@ -34,6 +40,7 @@ export interface Deps {
 export const REDACT = ["req.headers.authorization", "req.headers.cookie", "*.accountNumber", "*.idNumber", "*.code", "*.password"];
 
 export function createApp(deps: Deps) {
+  useRateLimitStore(deps.config.RATE_LIMIT_STORE === "postgres" ? (name) => new PostgresRateLimitStore(deps.db, name) : undefined);
   const app = express();
   app.disable("x-powered-by");
   // Firebase Hosting and Cloud Run's front end sit in front; trust exactly that many hops for client IPs (rate limits).
@@ -43,6 +50,8 @@ export function createApp(deps: Deps) {
   app.use(helmet());
   app.use(cors({ origin: deps.config.WEB_ORIGIN.split(",").map((s) => s.trim()), maxAge: 600 }));
   app.use(express.json({ limit: "100kb" }));
+  // PayFast ITN webhooks arrive as application/x-www-form-urlencoded.
+  app.use(express.urlencoded({ extended: false, limit: "50kb" }));
 
   const v1 = Router();
   v1.use(limits.general());
@@ -56,8 +65,13 @@ export function createApp(deps: Deps) {
   v1.use(founderDocRoutes(deps));
   v1.use(founderBookRoutes(deps));
   v1.use(founderMarketsRoutes(deps));
+  v1.use(founderPayRoutes(deps));
+  v1.use(payRoutes(deps));
   v1.use(funderRoutes(deps));
   v1.use(adviserRoutes(deps));
+  v1.use(adminRoutes(deps));
+  v1.use(publicRoutes(deps));
+  v1.use(countRoutes(deps));
   v1.use(checkRoutes(deps));
 
   app.use("/api/v1", v1);

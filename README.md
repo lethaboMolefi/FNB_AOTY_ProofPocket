@@ -53,11 +53,11 @@ The build runs in phases (brief section 13). Each phase is committed and pushed 
 | 2 | Join and Start: join wizard, signed uploads, SHA-256, document checks, Verified | ✅ Done |
 | — | Secure sign-in: passwords, lockout, Google Authenticator two-step sign-in | ✅ Done |
 | 3 | Trade and cash flow: books, offline outbox, statements, stock, cash flow, Home | ✅ Done |
-| 4 | Get paid and stay safe: payment requests, public pay page, proofs, suppliers, fraud | ⏳ Next |
-| 5 | Formal markets and the other portals | ⏳ |
-| 6 | Deploy to Google Cloud (`africa-south1`) | ✅ Hosted at **https://proofpocket-aoty.web.app** (phases 1–3) |
+| 4 | Get paid and stay safe: payment requests, public pay page, proofs, suppliers, fraud, privacy | ✅ Done |
+| 5 | Formal markets, funder, incubator and admin portals, public directory | ✅ Done |
+| 6 | Deploy to Google Cloud (`africa-south1`) | ✅ Hosted at **https://proofpocket-aoty.web.app** |
 
-Screens not built yet show a "Being built" notice naming their phase.
+Every screen in `docs/feature-inventory.md` is built (162 rows) except editing a funder programme's amounts, which is partly built. Manual test cases: `docs/testing/manual-test-cases.md`.
 
 ## Quick start
 
@@ -171,6 +171,12 @@ To try the installable app and offline mode, run the production build: `pnpm --f
 - **Data:** bank account numbers and authenticator secrets are encrypted with AES-256-GCM. ID numbers, account numbers, codes and passwords are never logged. `audit_log` is append-only.
 - **Web:** Helmet security headers, strict CORS, rate limits on sign-in, uploads and the payment page, and no inline scripts.
 - **Supply chain:** exact dependency versions, `pnpm audit`, ESLint security rules, Semgrep and gitleaks in CI.
+- **Tamper evidence:** `audit_log` is hash-chained; the daily job checks the chain and exports entries and the latest hash to storage.
+- **Infrastructure:** the database connection verifies the Cloud SQL server certificate; rate limits are shared across instances (Postgres); bucket versioning is on.
+- **Testing:** a security regression suite (`apps/api/test/security.test.ts`, `e2e/security.spec.ts`), OWASP ZAP in CI and weekly against the hosted site, and an SBOM on every build.
+- **POPIA:** privacy notice at `/privacy-notice` with a recorded consent version; founders download their data and ask for correction or deletion.
+
+Full documentation: [docs/security/](docs/security/README.md). What still needs the owner or the team: [docs/security/not-implemented.md](docs/security/not-implemented.md). How the whole system works: [docs/system-workflow.md](docs/system-workflow.md).
 
 ## Troubleshooting
 
@@ -232,7 +238,7 @@ With `MAIL_MODE=console`, nothing is sent; notification emails (such as "Two-ste
 
 ## The hosted site
 
-**https://proofpocket-aoty.web.app**: the installable PWA, with phases 1–3 working and the example data loaded.
+**https://proofpocket-aoty.web.app**: the installable PWA with every phase working and the example data loaded.
 
 | Part | Where |
 |---|---|
@@ -255,6 +261,10 @@ With `MAIL_MODE=console`, nothing is sent; notification emails (such as "Two-ste
 5. **Offline.** After opening it once, turn on flight mode and open the app again. The app and your last Home screen still open, and book entries you add are saved on the phone and sync when you're back online.
 6. **Check it on a computer.** In Chrome, press F12 and open **Application**. **Manifest** should show the ProofPocket name and icons with no errors, and **Service workers** should show `sw.js` as activated. **Lighthouse → Progressive Web App** runs the installability checks.
 7. **Automated checks:** `cd system/apps/web && pnpm exec playwright test -c playwright.live.config.ts` runs sign-in, Home, the service worker and offline on phone and desktop against the live site. `bash infra/deploy.sh smoke` checks health, CORS, security headers and the manifest.
+
+### Two things waiting for a decision
+- **Scheduling the daily jobs.** Cloud Scheduler isn't offered in `africa-south1`, so `proofpocket-jobs` (document expiry, request expiry, and the weekly fingerprint check) runs only when started: `gcloud run jobs execute proofpocket-jobs --region africa-south1 --project hackathons-warroom`. Payment requests also expire whenever they're viewed. A scheduler in another region would only send the "start" signal; no data would leave South Africa.
+- **Admin invites on the hosted site** need the API's service account to hold `roles/firebaseauth.admin` (it has `firebaseauth.viewer`): `bash infra/deploy.sh identity`. Until then, inviting a person adds them but can't create their sign-in.
 
 ### Turning on email notifications
 Sign-in alerts are sent from Gmail and need an **app password** (Google account → Security → 2-Step Verification → App passwords). Store it without it appearing on screen, then redeploy the API:
