@@ -22,7 +22,7 @@ export interface Application {
 }
 interface Data {
   verified: boolean; readiness: { score: number; label: string; tone: Tone; items: ReadinessItem[] };
-  programmes: { id: string; name: string; funder: string; kind: string | null; min: number; max: number; left: number; gaps: string[]; applied: boolean }[];
+  programmes: { id: string; name: string; funder: string; kind: string | null; min: number; max: number; gaps: string[]; applied: boolean }[];
   applications: Application[];
 }
 const SUB = "Funders set their own requirements on ProofPocket. See what each one checks, and what you still need, before you apply.";
@@ -101,7 +101,7 @@ export default function Funding() {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow><TableHead>Programme</TableHead><TableHead className="hidden sm:table-cell">Amount</TableHead><TableHead className="hidden md:table-cell">Funds left</TableHead><TableHead className="hidden sm:table-cell">What you still need</TableHead><TableHead>Apply</TableHead></TableRow>
+              <TableRow><TableHead>Programme</TableHead><TableHead className="hidden sm:table-cell">Amount</TableHead><TableHead className="hidden sm:table-cell">What you still need</TableHead><TableHead>Apply</TableHead></TableRow>
             </TableHeader>
             <TableBody>
               {d.programmes.map((p) => (
@@ -115,7 +115,6 @@ export default function Funding() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden whitespace-nowrap tabular-nums sm:table-cell">{R(p.min)}–{R(p.max)}</TableCell>
-                  <TableCell className="hidden tabular-nums md:table-cell">{R(p.left)}</TableCell>
                   <TableCell className="hidden sm:table-cell">{p.gaps.length
                     ? <div className="flex flex-wrap gap-1">{p.gaps.map((g) => <Badge key={g} variant="outline" className="font-normal">× {g}</Badge>)}</div>
                     : <Badge variant="success">Nothing, you qualify</Badge>}</TableCell>
@@ -126,7 +125,7 @@ export default function Funding() {
                     </div>)}</TableCell>
                 </TableRow>
               ))}
-              {!d.programmes.length && <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">No programmes yet.</TableCell></TableRow>}
+              {!d.programmes.length && <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">No programmes yet.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

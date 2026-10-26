@@ -75,7 +75,7 @@ export async function fundingView(tx: Tx, c: CompanyRow) {
       const f = funders.find((x) => x.id === p.funderId)!;
       return {
         id: p.id, name: p.name, funder: f.name, kind: f.kind, min: Number(p.minAmount), max: Number(p.maxAmount),
-        left: Number(p.budget) - Number(p.committed), gaps: programmeGaps(elig, programmeRules(p)),
+        gaps: programmeGaps(elig, programmeRules(p)),
         applied: mine.some((a) => a.programmeId === p.id),
       };
     }).sort((a, b) => a.gaps.length - b.gaps.length),
