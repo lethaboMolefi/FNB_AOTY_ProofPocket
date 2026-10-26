@@ -45,14 +45,15 @@ export async function verifyEmailCode(db: Db, config: Config, who: { uid: string
     if (row.expiresAt < new Date()) throw new AppError(400, "code_expired", "That code has expired. Ask for a new one.");
     if (row.attempts >= CODE_TRIES) throw new AppError(400, "code_locked", "Too many wrong codes. Ask for a new one.");
     const match = timingSafeEqual(Buffer.from(row.codeHash, "hex"), Buffer.from(hash(who.uid, code), "hex"));
-    if (!match) {
-      await tx.update(emailCodes).set({ attempts: row.attempts + 1 }).where(eq(emailCodes.firebaseUid, who.uid));
-      return false;
-    }
-    await tx.delete(emailCodes).where(eq(emailCodes.firebaseUid, who.uid));
-    return true;
+    if (!match) await tx.update(emailCodes).set({ attempts: row.attempts + 1 }).where(eq(emailCodes.firebaseUid, who.uid));
+    return match;
   });
   if (!ok) throw new AppError(400, "code_wrong", "That code isn't right. Check the email and try again.");
-  if (config.AUTH_MODE === "firebase") await getAuth(getApps()[0]).updateUser(who.uid, { emailVerified: true });
+  // Mark the email confirmed first; the code is used up only once that has worked, so a hiccup doesn't waste it.
+  if (config.AUTH_MODE === "firebase") {
+    try { await getAuth(getApps()[0]).updateUser(who.uid, { emailVerified: true }); }
+    catch { throw new AppError(503, "confirm_failed", "We couldn't confirm your email just now. Try the same code again in a minute."); }
+  }
+  await withContext(db, { role: "auth" }, (tx) => tx.delete(emailCodes).where(eq(emailCodes.firebaseUid, who.uid)));
   return { message: "Email confirmed" };
 }
