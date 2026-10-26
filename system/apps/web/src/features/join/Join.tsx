@@ -6,9 +6,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AREAS, BUSINESS_TYPES, BUSINESS_TYPE_KEYS, DOCS, PROVINCES, SECTORS,
-  coFounderSchema, investorDetailsSchema, joinCompleteSchema, joinDetailsSchema,
-  joinDocsFor, orgOnboardSchema, passwordFor, emailSchema, shortFingerprint,
-  type CoFounder, type DocType, type InvestorDetails, type JoinDetails, type Me, type OrgOnboard,
+  joinDetailsSchema,
+  joinDocsFor, passwordFor, emailSchema, shortDate, shortFingerprint,
+  type DocType, type InvestorDetails, type JoinDetails, type Me, type OrgOnboard, type PortalApplicationKind,
 } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -17,9 +17,10 @@ import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
 import {
   AlertCircle, ArrowLeft, ArrowRight, Building2, CheckCircle2, ChevronDown, ChevronUp,
-  Loader2, Plus, Trash2, Upload, User, Users, X,
+  Clock, Loader2, Plus, Upload, User, Users, X, XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Callout } from "@/components/ui/callout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { FilePick } from "../../components/FilePick";
 import { Spinner } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
@@ -266,6 +268,8 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
   return (
     <form className="space-y-5" onSubmit={submit} noValidate>
       <WizardProgress step={1} total={3} label="Your details" />
+
+      {!signedOut && <SignedInAs />}
 
       {/* Account (signed-out only) */}
       {signedOut && (
@@ -516,7 +520,7 @@ function FounderDocuments({ data, onBack, onNext }: { data: DocumentsResponse; o
   };
 
   // Reusable upload row
-  const DocRow = ({ k, hint }: { k: DocType; hint?: string }) => {
+  const docRow = (k: DocType, hint?: string) => {
     const d = doc(k);
     const uploaded = d && d.state !== "missing";
     return (
@@ -553,36 +557,11 @@ function FounderDocuments({ data, onBack, onNext }: { data: DocumentsResponse; o
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* ID selfie — first and most important */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <User className="h-4 w-4" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div>
-                    <span className="font-medium text-sm">ID selfie</span>
-                    <Badge className="ml-2 text-[10px]">Required</Badge>
-                  </div>
-                  <FilePick label={doc("id")?.state !== "missing" ? "Replace" : "Upload photo"} primary={doc("id")?.state === "missing"} accept="image/*" onUploaded={(f) => attach("id", f.fileId)} onError={setErr} />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  A photo of <strong>you holding your ID book or card next to your face</strong> — both your face and the ID must be clearly visible. Use good lighting. No sunglasses or face coverings.
-                </p>
-                {doc("id") && doc("id")!.state !== "missing" && doc("id")!.sha256 && (
-                  <p className="mt-1 text-xs text-good">{doc("id")!.fileName} · Fingerprint {shortFingerprint(doc("id")!.sha256!)}</p>
-                )}
-              </div>
-            </div>
-          </div>
+          {docRow("id", "A clear copy of your green ID book, smart ID card, or passport. PDF or photo.")}
 
-          {/* SA ID copy (separate from selfie) */}
-          <DocRow k="id" hint="A clear copy of your green ID book, smart ID card, or passport. PDF or photo." />
-
-          {registered && <DocRow k="cipc" hint="The certificate you received from CIPC when registering your company. PDF preferred." />}
-          {registered && <DocRow k="bank" hint="A confirmation letter from your business bank account. Usually downloadable from your banking app." />}
-          <DocRow k="addr" hint="A utility bill, lease agreement, or a letter from your landlord or ward councillor showing your trading address." />
+          {registered && docRow("cipc", "The certificate you received from CIPC when registering your company. PDF preferred.")}
+          {registered && docRow("bank", "A confirmation letter from your business bank account. Usually downloadable from your banking app.")}
+          {docRow("addr", "A utility bill, lease agreement, or a letter from your landlord or ward councillor showing your trading address.")}
         </CardContent>
       </Card>
 
@@ -645,7 +624,7 @@ function FounderConfirm({ data, onBack, onJoined }: { data: DocumentsResponse; o
 
   const join = useMutation({
     mutationFn: () => api<{ message: string }>("/join/complete", { body: { agree: true } }),
-    onSuccess: async (r) => {
+    onSuccess: async () => {
       qc.setQueryData<Me>(meKey, (m) => (m?.company ? { ...m, company: { ...m.company, joined: true } } : m));
       await qc.invalidateQueries({ queryKey: meKey });
       onJoined();
@@ -701,6 +680,22 @@ function FounderConfirm({ data, onBack, onJoined }: { data: DocumentsResponse; o
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Already signed in (e.g. with Google) but not joined: say which email this uses, and allow a different one. */
+function SignedInAs() {
+  const auth = useAuth();
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Your account</CardTitle>
+        <CardDescription>You're signing up as <b className="text-foreground">{auth.email ?? "this account"}</b>. You'll sign in with it.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button type="button" variant="outline" size="sm" onClick={() => void auth.signOut()}>Use a different email</Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -819,6 +814,7 @@ function InvestorStep1({ initial, onNext }: { initial: Partial<InvestorDetails>;
 }
 
 function InvestorStep2({ initial, onBack, onDone }: { initial: Partial<InvestorDetails>; onBack: () => void; onDone: () => void }) {
+  const qc = useQueryClient();
   const step2Schema = z.object({
     sectors: z.array(z.string()).min(1, "Select at least one sector"),
     stages: z.array(z.enum(["idea", "seed", "early", "growth", "expansion"])).min(1, "Select at least one stage"),
@@ -838,7 +834,8 @@ function InvestorStep2({ initial, onBack, onDone }: { initial: Partial<InvestorD
   const submit = form.handleSubmit(async (d) => {
     setSubmitErr("");
     try {
-      await api("/join/investor", { body: { ...initial, ...d } });
+      await api("/join/applications", { body: { kind: "funder", details: { ...initial, ...d } } });
+      await qc.invalidateQueries({ queryKey: ["join-application"] });
       onDone();
     } catch (x) { setSubmitErr(x instanceof ApiError ? x.message : "Something went wrong. Try again."); }
   });
@@ -1033,6 +1030,7 @@ function OrgStep1({ initial, onNext }: { initial: Partial<OrgOnboard>; onNext: (
 }
 
 function OrgStep2({ initial, onBack, onDone }: { initial: Partial<OrgOnboard>; onBack: () => void; onDone: () => void }) {
+  const qc = useQueryClient();
   const step2Schema = z.object({
     sectors: z.array(z.string()).min(1, "Select at least one sector or cause area"),
     description: z.string().trim().min(1, "Describe your organisation's mission and programmes").max(1000),
@@ -1050,7 +1048,8 @@ function OrgStep2({ initial, onBack, onDone }: { initial: Partial<OrgOnboard>; o
   const submit = form.handleSubmit(async (d) => {
     setSubmitErr("");
     try {
-      await api("/join/org", { body: { ...initial, ...d } });
+      await api("/join/applications", { body: { kind: "support_org", details: { ...initial, ...d } } });
+      await qc.invalidateQueries({ queryKey: ["join-application"] });
       onDone();
     } catch (x) { setSubmitErr(x instanceof ApiError ? x.message : "Something went wrong. Try again."); }
   });
@@ -1255,6 +1254,49 @@ function JoinSidebar({ role, founderStep }: { role: Role | null; founderStep: nu
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
+interface MyApplication { kind: PortalApplicationKind; orgName: string; status: "pending" | "approved" | "rejected"; reason: string | null; sentOn: string }
+
+/** What an applicant sees each time they sign in, until (and after) a decision. */
+function ApplicationStatus({ a }: { a: MyApplication }) {
+  const auth = useAuth();
+  const portal = a.kind === "funder" ? "funder portal" : "support organisation portal";
+  return (
+    <Card>
+      <CardContent className="space-y-4 pt-6 text-center">
+        <span className={cn("mx-auto flex h-14 w-14 items-center justify-center rounded-full", a.status === "rejected" ? "bg-bad-soft text-bad" : "bg-accent-soft text-primary")}>
+          {a.status === "rejected" ? <XCircle className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
+        </span>
+        {a.status === "rejected" ? <>
+          <h2 className="text-lg font-semibold">We couldn't approve this application</h2>
+          <p className="text-sm text-muted-foreground">The {portal} for <b className="text-foreground">{a.orgName}</b> wasn't approved.</p>
+          {a.reason && <Callout tone="bad" className="text-left"><b>The reason:</b> {a.reason}</Callout>}
+          <p className="text-sm text-muted-foreground">If something can be fixed, reply to the email we sent you and we'll look at it again.</p>
+        </> : <>
+          <h2 className="text-lg font-semibold">We're checking your application</h2>
+          <p className="text-sm text-muted-foreground">You applied for a {portal} for <b className="text-foreground">{a.orgName}</b> on {shortDate(String(a.sentOn).slice(0, 10))}. ProofPocket will call you to confirm the details, usually within 2–3 business days, and email you once it's decided.</p>
+        </>}
+        <Button variant="outline" onClick={() => void auth.signOut()}>Sign out</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Investors and organisations need a sign-in before they apply. */
+function SignUpFirst() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Create your sign-in first</CardTitle>
+        <CardDescription>Your application is linked to the email you sign in with. Create a sign-in, then come back here to apply.</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        <Button asChild><Link to="/sign-up">Create a sign-in</Link></Button>
+        <Button variant="outline" asChild><Link to="/sign-in">I already have one</Link></Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Join() {
   const auth = useAuth();
   const me = useMe();
@@ -1266,21 +1308,23 @@ export default function Join() {
     queryFn: () => api<DocumentsResponse>("/founder/documents"),
     enabled: !!unjoined,
   });
+  const mine = useQuery({ queryKey: ["join-application"], queryFn: () => api<{ application: MyApplication | null }>("/join/application"), enabled: noAccount });
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [founderStep, setFounderStep] = useState<FounderStep>(unjoined ? 2 : 1);
   const [joined, setJoined] = useState(false);
 
   if (joined) return <Navigate to="/app/start" replace />;
-  if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending)) return <Spinner />;
+  if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending) || (noAccount && mine.isPending)) return <Spinner />;
   if (me.data && !unjoined) return <Navigate to={HOME_FOR[me.data.role]} replace />;
   if (me.data?.needsOtp) return <Navigate to="/verify" replace />;
 
   const isReturningFounder = !signedOut && !noAccount && unjoined;
+  const application = mine.data?.application ?? null;
   const activeRole: Role | null = selectedRole ?? (isReturningFounder ? "founder" : null);
 
   return (
-    <AuthPageShell wide>
+    <AuthPageShell wide toSignIn>
       {/* Header */}
       <div className="text-center space-y-1 py-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">ProofPocket</h1>
@@ -1293,8 +1337,10 @@ export default function Join() {
         {/* ── Main content (left / full on mobile) ── */}
         <div className="w-full min-w-0 lg:flex-1">
 
+          {application && <ApplicationStatus a={application} />}
+
           {/* Role selector */}
-          {!isReturningFounder && !selectedRole && (
+          {!application && !isReturningFounder && !selectedRole && (
             <RoleSelector onSelect={setSelectedRole} />
           )}
 
@@ -1315,12 +1361,13 @@ export default function Join() {
           )}
 
           {/* Investor track */}
-          {selectedRole === "investor" && (
+          {(selectedRole === "investor" || selectedRole === "org") && signedOut && <SignUpFirst />}
+          {selectedRole === "investor" && !signedOut && (
             <InvestorTrack onBack={() => setSelectedRole(null)} />
           )}
 
           {/* Org track */}
-          {selectedRole === "org" && (
+          {selectedRole === "org" && !signedOut && (
             <OrgTrack onBack={() => setSelectedRole(null)} />
           )}
         </div>

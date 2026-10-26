@@ -35,7 +35,6 @@ export function PasswordStrength({ password, email, className }: PasswordStrengt
   }, [password, email]);
 
   const score = checks.filter((c) => c.met).length;
-  const allMet = score === checks.length;
 
   const strengthLabel = password.length === 0 ? "" : score <= 2 ? "Weak" : score <= 4 ? "Fair" : "Strong";
   const strengthColor = password.length === 0
