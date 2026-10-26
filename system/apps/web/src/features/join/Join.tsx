@@ -6,12 +6,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AREAS, BUSINESS_TYPES, BUSINESS_TYPE_KEYS, DOCS, PROVINCES, SECTORS,
-  joinDetailsSchema,
+  investorFieldsSchema, joinDetailsSchema, orgFieldsSchema,
   joinDocsFor, passwordFor, emailSchema, shortDate, shortFingerprint,
   type DocType, type InvestorDetails, type JoinDetails, type Me, type OrgOnboard, type PortalApplicationKind,
 } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Link, Navigate } from "react-router-dom";
 import { z } from "zod";
@@ -102,13 +102,28 @@ const BENEFICIARY_GROUPS = [
 ];
 
 /** Reusable form field wrapper */
+const FieldId = createContext<{ id?: string; note?: string }>({});
+const FieldSelectTrigger = ({ children }: { children: React.ReactNode }) => {
+  const { id, note } = useContext(FieldId);
+  return <SelectTrigger id={id} aria-describedby={note}>{children}</SelectTrigger>;
+};
+
 function Field({ label, error, children, hint }: { label: string; error?: string; children: React.ReactNode; hint?: string }) {
+  // Tie the label (and hint or error) to the control, so screen readers name it and tests can find it by label.
+  const id = useId();
+  const child = isValidElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean }>(children) ? children : null;
+  const fid = child?.props.id ?? id;
+  const note = error || hint ? `${fid}-note` : undefined;
+  // A Select's id belongs on its trigger button, which FieldSelectTrigger picks up from here.
+  const isSelect = child?.type === Select;
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm font-medium text-foreground">{label}</Label>
-      {children}
-      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
+      <Label htmlFor={child ? fid : undefined} className="text-sm font-medium text-foreground">{label}</Label>
+      <FieldId.Provider value={{ id: fid, note }}>
+        {child && !isSelect ? cloneElement(child, { id: fid, "aria-describedby": note, "aria-invalid": !!error || undefined }) : children}
+      </FieldId.Provider>
+      {hint && !error && <p id={note} className="text-xs text-muted-foreground">{hint}</p>}
+      {error && <p id={note} className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
     </div>
   );
 }
@@ -282,12 +297,8 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
               <Input type="email" autoComplete="username" autoCapitalize="none" placeholder="you@example.com" {...form.register("account.email")} />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Password (at least 10 characters)" error={e["account.password"]?.message}>
-                <PasswordField label="Password" autoComplete="new-password" error={e["account.password"]?.message} {...form.register("account.password")} />
-              </Field>
-              <Field label="Confirm password" error={e["account.confirm"]?.message}>
-                <PasswordField label="Confirm password" autoComplete="new-password" error={e["account.confirm"]?.message} {...form.register("account.confirm")} />
-              </Field>
+              <PasswordField label="Password (at least 12 characters)" autoComplete="new-password" error={e["account.password"]?.message} {...form.register("account.password")} />
+              <PasswordField label="Confirm password" autoComplete="new-password" error={e["account.confirm"]?.message} {...form.register("account.confirm")} />
             </div>
           </CardContent>
         </Card>
@@ -326,7 +337,7 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
               </Field>
               <Field label="Type of business" error={e.businessType?.message}>
                 <Select value={form.watch("businessType")} onValueChange={(v) => form.setValue("businessType", v as never)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <FieldSelectTrigger><SelectValue /></FieldSelectTrigger>
                   <SelectContent>
                     {BUSINESS_TYPE_KEYS.map((k) => <SelectItem key={k} value={k}>{BUSINESS_TYPES[k].label}</SelectItem>)}
                   </SelectContent>
@@ -334,7 +345,7 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
               </Field>
               <Field label="Sector" error={e.sector?.message}>
                 <Select value={form.watch("sector")} onValueChange={(v) => form.setValue("sector", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <FieldSelectTrigger><SelectValue /></FieldSelectTrigger>
                   <SelectContent>
                     {SECTORS[type].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
@@ -345,7 +356,7 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
               </Field>
               <Field label="Province" error={e.province?.message}>
                 <Select value={form.watch("province")} onValueChange={(v) => form.setValue("province", v as never)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <FieldSelectTrigger><SelectValue /></FieldSelectTrigger>
                   <SelectContent>
                     {PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                   </SelectContent>
@@ -353,7 +364,7 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
               </Field>
               <Field label="Area type" error={e.area?.message}>
                 <Select value={form.watch("area")} onValueChange={(v) => form.setValue("area", v as never)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <FieldSelectTrigger><SelectValue /></FieldSelectTrigger>
                   <SelectContent>
                     {Object.entries(AREAS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
@@ -361,7 +372,7 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
               </Field>
               <Field label="Incubator or NGO supporting you" error={e.incubatorId?.message}>
                 <Select value={form.watch("incubatorId") ?? "none"} onValueChange={(v) => form.setValue("incubatorId", v === "none" ? null : v)}>
-                  <SelectTrigger><SelectValue placeholder="None yet" /></SelectTrigger>
+                  <FieldSelectTrigger><SelectValue placeholder="None yet" /></FieldSelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None yet</SelectItem>
                     {options.data?.incubators.map((n) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}
@@ -735,21 +746,8 @@ function InvestorTrack({ onBack }: { onBack: () => void }) {
 }
 
 function InvestorStep1({ initial, onNext }: { initial: Partial<InvestorDetails>; onNext: (d: Partial<InvestorDetails>) => void }) {
-  const step1Schema = z.object({
-    repName: z.string().trim().min(1, "Add the representative's full name").max(80),
-    repIdNumber: z.string().trim().regex(/^\d{13}$/, "SA ID numbers are 13 digits"),
-    repRole: z.string().trim().min(1, "Add the representative's role").max(60),
-    repEmail: z.string().trim().toLowerCase().email("Enter a valid email address"),
-    repPhone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    orgName: z.string().trim().min(1, "Add the organisation name").max(120),
-    entityType: z.enum(["vc", "angel", "pe", "dfi", "corporate_csi", "bank", "family_office", "grant_maker", "individual"], { message: "Choose an investor type" }),
-    website: z.string().trim().url("Enter a valid website URL").max(255),
-    email: z.string().trim().toLowerCase().email("Enter a valid organisation email"),
-    phone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    province: z.enum(PROVINCES),
-    town: z.string().trim().min(1, "Add the town or city").max(60),
-    physicalAddress: z.string().trim().min(1, "Add the physical address").max(200),
-  });
+  // The shared rules, so the form and the server always agree.
+  const step1Schema = investorFieldsSchema.pick({ repName: true, repIdNumber: true, repRole: true, repEmail: true, repPhone: true, orgName: true, entityType: true, website: true, email: true, phone: true, province: true, town: true, physicalAddress: true });
   const form = useForm({ resolver: zodResolver(step1Schema), defaultValues: initial as never });
   const e = form.formState.errors as Record<string, { message?: string }>;
   const submit = form.handleSubmit((d) => onNext(d as Partial<InvestorDetails>));
@@ -783,7 +781,7 @@ function InvestorStep1({ initial, onNext }: { initial: Partial<InvestorDetails>;
             <Field label="Organisation name" error={e.orgName?.message}><Input placeholder="ABC Ventures" {...form.register("orgName")} /></Field>
             <Field label="Investor / funder type" error={e.entityType?.message}>
               <Select value={((form.watch("entityType" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("entityType" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Choose type" /></SelectTrigger>
+                <FieldSelectTrigger><SelectValue placeholder="Choose type" /></FieldSelectTrigger>
                 <SelectContent>{INVESTOR_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -792,7 +790,7 @@ function InvestorStep1({ initial, onNext }: { initial: Partial<InvestorDetails>;
             <Field label="Organisation phone" error={e.phone?.message}><Input type="tel" placeholder="0111234567" {...form.register("phone")} /></Field>
             <Field label="Province" error={e.province?.message}>
               <Select value={((form.watch("province" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("province" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
+                <FieldSelectTrigger><SelectValue placeholder="Select province" /></FieldSelectTrigger>
                 <SelectContent>{PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -815,15 +813,8 @@ function InvestorStep1({ initial, onNext }: { initial: Partial<InvestorDetails>;
 
 function InvestorStep2({ initial, onBack, onDone }: { initial: Partial<InvestorDetails>; onBack: () => void; onDone: () => void }) {
   const qc = useQueryClient();
-  const step2Schema = z.object({
-    sectors: z.array(z.string()).min(1, "Select at least one sector"),
-    stages: z.array(z.enum(["idea", "seed", "early", "growth", "expansion"])).min(1, "Select at least one stage"),
-    instruments: z.array(z.enum(["equity", "debt", "grant", "convertible", "blended"])).min(1, "Select at least one instrument"),
-    ticketMin: z.coerce.number().min(0, "Enter the minimum ticket size"),
-    ticketMax: z.coerce.number().min(1, "Enter the maximum ticket size"),
-    aumBand: z.enum(["under_1m", "1m_10m", "10m_100m", "over_100m"], { message: "Select AUM band" }),
-    description: z.string().trim().min(1, "Add a brief description of your investment mandate").max(1000),
-  });
+  // The shared rules, so the form and the server always agree.
+  const step2Schema = investorFieldsSchema.pick({ sectors: true, stages: true, instruments: true, ticketMin: true, ticketMax: true, aumBand: true, description: true });
   const form = useForm({
     resolver: zodResolver(step2Schema),
     defaultValues: { sectors: [], stages: [], instruments: [], ticketMin: 0, ticketMax: 0, ...initial } as never,
@@ -873,7 +864,7 @@ function InvestorStep2({ initial, onBack, onDone }: { initial: Partial<InvestorD
             </Field>
             <Field label="Assets under management" error={e.aumBand?.message}>
               <Select value={((form.watch("aumBand" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("aumBand" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger>
+                <FieldSelectTrigger><SelectValue placeholder="Select range" /></FieldSelectTrigger>
                 <SelectContent>{AUM_BANDS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -937,23 +928,8 @@ function OrgTrack({ onBack }: { onBack: () => void }) {
 }
 
 function OrgStep1({ initial, onNext }: { initial: Partial<OrgOnboard>; onNext: (d: Partial<OrgOnboard>) => void }) {
-  const step1Schema = z.object({
-    contactName: z.string().trim().min(1, "Add the contact person's full name").max(80),
-    contactIdNumber: z.string().trim().regex(/^\d{13}$/, "SA ID numbers are 13 digits"),
-    contactRole: z.string().trim().min(1, "Add their role").max(60),
-    contactEmail: z.string().trim().toLowerCase().email("Enter a valid email address"),
-    contactPhone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    orgType: z.enum(["incubator", "accelerator", "ngo", "npo", "cbo"], { message: "Choose an organisation type" }),
-    orgName: z.string().trim().min(1, "Add the organisation name").max(120),
-    website: z.string().trim().url("Enter a valid website URL").max(255),
-    orgEmail: z.string().trim().toLowerCase().email("Enter a valid organisation email"),
-    orgPhone: z.string().trim().regex(/^(\+27|0)[6-8][0-9]{8}$/, "Enter a valid South African phone number"),
-    province: z.enum(PROVINCES),
-    town: z.string().trim().min(1, "Add the town or city").max(60),
-    physicalAddress: z.string().trim().min(1, "Add the physical address").max(200),
-    cipcNumber: z.string().trim().optional(),
-    npoNumber: z.string().trim().optional(),
-  });
+  // The shared rules, so the form and the server always agree.
+  const step1Schema = orgFieldsSchema.pick({ contactName: true, contactIdNumber: true, contactRole: true, contactEmail: true, contactPhone: true, orgType: true, orgName: true, website: true, orgEmail: true, orgPhone: true, province: true, town: true, physicalAddress: true, cipcNumber: true, npoNumber: true });
   const form = useForm({ resolver: zodResolver(step1Schema), defaultValues: initial as never });
   const e = form.formState.errors as Record<string, { message?: string }>;
   const orgType = (form.watch("orgType" as never) as unknown) as string | undefined;
@@ -990,7 +966,7 @@ function OrgStep1({ initial, onNext }: { initial: Partial<OrgOnboard>; onNext: (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Organisation type" error={e.orgType?.message}>
               <Select value={((form.watch("orgType" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("orgType" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Choose type" /></SelectTrigger>
+                <FieldSelectTrigger><SelectValue placeholder="Choose type" /></FieldSelectTrigger>
                 <SelectContent>{ORG_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -1000,7 +976,7 @@ function OrgStep1({ initial, onNext }: { initial: Partial<OrgOnboard>; onNext: (
             <Field label="Organisation phone" error={e.orgPhone?.message}><Input type="tel" placeholder="0111234567" {...form.register("orgPhone")} /></Field>
             <Field label="Province" error={e.province?.message}>
               <Select value={((form.watch("province" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("province" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select province" /></SelectTrigger>
+                <FieldSelectTrigger><SelectValue placeholder="Select province" /></FieldSelectTrigger>
                 <SelectContent>{PROVINCES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -1031,13 +1007,8 @@ function OrgStep1({ initial, onNext }: { initial: Partial<OrgOnboard>; onNext: (
 
 function OrgStep2({ initial, onBack, onDone }: { initial: Partial<OrgOnboard>; onBack: () => void; onDone: () => void }) {
   const qc = useQueryClient();
-  const step2Schema = z.object({
-    sectors: z.array(z.string()).min(1, "Select at least one sector or cause area"),
-    description: z.string().trim().min(1, "Describe your organisation's mission and programmes").max(1000),
-    foundedYear: z.coerce.number().min(1900).max(new Date().getFullYear()),
-    beneficiaryGroups: z.array(z.string()).min(1, "Select at least one beneficiary group"),
-    annualBudgetBand: z.enum(["under_500k", "500k_2m", "2m_10m", "over_10m"], { message: "Select a budget band" }),
-  });
+  // The shared rules, so the form and the server always agree.
+  const step2Schema = orgFieldsSchema.pick({ sectors: true, description: true, foundedYear: true, beneficiaryGroups: true, annualBudgetBand: true });
   const form = useForm({
     resolver: zodResolver(step2Schema),
     defaultValues: { sectors: [], beneficiaryGroups: [], foundedYear: new Date().getFullYear(), ...initial } as never,
@@ -1084,7 +1055,7 @@ function OrgStep2({ initial, onBack, onDone }: { initial: Partial<OrgOnboard>; o
             </Field>
             <Field label="Annual budget band" error={e.annualBudgetBand?.message}>
               <Select value={((form.watch("annualBudgetBand" as never) as unknown) as string) ?? ""} onValueChange={(v) => form.setValue("annualBudgetBand" as never, v as never)}>
-                <SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger>
+                <FieldSelectTrigger><SelectValue placeholder="Select range" /></FieldSelectTrigger>
                 <SelectContent>{BUDGET_BANDS.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
@@ -1361,13 +1332,13 @@ export default function Join() {
           )}
 
           {/* Investor track */}
-          {(selectedRole === "investor" || selectedRole === "org") && signedOut && <SignUpFirst />}
-          {selectedRole === "investor" && !signedOut && (
+          {!application && (selectedRole === "investor" || selectedRole === "org") && signedOut && <SignUpFirst />}
+          {!application && selectedRole === "investor" && !signedOut && (
             <InvestorTrack onBack={() => setSelectedRole(null)} />
           )}
 
           {/* Org track */}
-          {selectedRole === "org" && !signedOut && (
+          {!application && selectedRole === "org" && !signedOut && (
             <OrgTrack onBack={() => setSelectedRole(null)} />
           )}
         </div>

@@ -65,3 +65,20 @@ export async function signInWithAuthenticator(page: Page, email: string) {
 }
 
 export const PDF = Buffer.from("%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n");
+
+/** The 6-digit code from the latest "Your ProofPocket sign-up code" email (MAIL_MODE=file). */
+export async function signUpCode(email: string) {
+  const { MAIL_DIR } = await import("../playwright.config");
+  const { readdirSync, readFileSync } = await import("node:fs");
+  for (let i = 0; i < 20; i++) {
+    let files: string[] = [];
+    try { files = readdirSync(MAIL_DIR).filter((f) => f.includes(email.replace(/[^a-z0-9@.]/gi, "_"))).sort().reverse(); } catch { /* not written yet */ }
+    for (const f of files) {
+      const m = JSON.parse(readFileSync(`${MAIL_DIR}/${f}`, "utf8")) as { subject: string; text: string };
+      const code = m.subject === "Your ProofPocket sign-up code" ? m.text.match(/\b(\d{6})\b/)?.[1] : undefined;
+      if (code) return code;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`no sign-up code emailed to ${email}`);
+}

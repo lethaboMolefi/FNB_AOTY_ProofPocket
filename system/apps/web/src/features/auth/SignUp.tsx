@@ -24,7 +24,7 @@ const otpSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digi
 
 const firebaseMessage = (code: string) =>
   code === "auth/email-already-in-use" ? "There's already an account with this email. Sign in instead."
-  : code === "auth/weak-password" ? "Use at least 10 characters for your password."
+  : code === "auth/weak-password" ? "Use at least 12 characters for your password. A short sentence works well."
   : "Something went wrong. Try again.";
 
 export default function SignUp() {

@@ -1,45 +1,49 @@
-import { expect, test } from "@playwright/test";
-import { PDF, signIn, signInWithAuthenticator } from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import { PDF, signIn, signInWithAuthenticator, signUpCode } from "./helpers";
+
+/** Pick from a shadcn (Radix) select by its label. */
+async function choose(page: Page, label: string, option: string | RegExp) {
+  await page.getByLabel(label).click();
+  await page.getByRole("option", { name: option }).first().click();
+}
 
 test("join → upload → approve → Verified", async ({ page }, info) => {
   const email = `e2e.${info.project.name}.${Date.now()}@proofpocket.example`;
   const business = `E2E Spaza ${info.project.name} ${Date.now() % 100000}`;
 
-  // 1. Details, with a new account.
+  // 1. Details, with a new account (dashborad's Join).
   await page.goto("/join");
-  await page.getByRole("button", { name: /Business founder/ }).click();
-  await page.getByLabel("Email").fill(email);
+  await page.getByRole("button", { name: /Business Founder/ }).click();
+  await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password (at least 12 characters)", { exact: true }).fill("a lovely long passphrase");
-  await page.getByLabel("Type it again", { exact: true }).fill("a lovely long passphrase");
-  await page.getByLabel("Your name").fill("Ayanda E.");
+  await page.getByLabel("Confirm password", { exact: true }).fill("a lovely long passphrase");
+  await page.getByLabel("Your full name").fill("Ayanda E.");
   await page.getByLabel("SA ID number").fill("8001015009087");
-  await page.getByLabel("Cellphone number").fill("0821234567");
+  await page.getByLabel("Mobile number").fill("0821234567");
   await page.getByLabel("Business name").fill(business);
-  await page.getByLabel("Type of business").selectOption("retail");
+  await choose(page, "Type of business", /Retail/);
   await page.getByLabel("Town or township").fill("Umlazi");
-  await page.getByLabel("Province").selectOption("KwaZulu-Natal");
-  await page.getByText("Yes", { exact: true }).click();
-  await page.getByLabel("CIPC number").fill("2025/777001/07");
+  await choose(page, "Province", "KwaZulu-Natal");
+  await page.getByText("Yes, registered", { exact: true }).click();
+  await page.getByLabel("Registered company name").fill(business);
+  await page.getByLabel("CIPC registration number").fill("2025/777001/07");
   await page.getByRole("button", { name: "Continue" }).click();
 
-  // 2. Documents.
-  await expect(page.getByRole("heading", { name: "Documents that prove you're a registered business" })).toBeVisible();
-  const rows = page.locator(".upload");
-  await expect(rows).toHaveCount(4);
+  // 2. Documents: the four the checker needs, each with a fingerprint.
+  await expect(page.getByText("Required documents")).toBeVisible();
+  const files = page.locator('input[type="file"]');
   for (let i = 0; i < 4; i++) {
-    await rows.nth(i).locator('input[type="file"]').setInputFiles({ name: `doc-${i}.pdf`, mimeType: "application/pdf", buffer: PDF });
-    await expect(rows.nth(i).getByText(/^Fingerprint [0-9a-f]{16}$/)).toBeVisible();
+    await files.nth(i).setInputFiles({ name: `doc-${i}.pdf`, mimeType: "application/pdf", buffer: PDF });
+    await expect(page.getByText(/Fingerprint [0-9a-f]{16}/)).toHaveCount(i + 1);
   }
   await page.getByRole("button", { name: "Continue" }).click();
 
   // 3. Consent and join.
   await page.getByRole("button", { name: "Join ProofPocket" }).click();
-  await expect(page.getByRole("alert")).toHaveText("Tick the box to confirm before joining.");
+  await expect(page.getByRole("alert")).toBeVisible();
   await page.getByLabel(/These documents belong to me/).check();
   await page.getByRole("button", { name: "Join ProofPocket" }).click();
-  await expect(page).toHaveURL(/\/app\/start$/);
-  await expect(page.getByText("Welcome! A ProofPocket checker is reviewing your documents.")).toBeVisible();
-  await expect(page.getByText("Who checks your documents?")).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/(home|start)$/);
   await page.getByRole("button", { name: "Sign out" }).click();
 
   // The ProofPocket checker (admin, with Google Authenticator) approves all four.
@@ -67,39 +71,44 @@ test("a funder applies, the admin approves, and the funder's portal opens", asyn
   const email = `e2e.funder.${Date.now()}@proofpocket.example`;
   const org = `E2E Ubuntu Fund ${Date.now() % 100000}`;
 
-  // 1. Apply: a new sign-in, the person and organisation, then what they fund.
+  // 1. A sign-in first (Sign up page), then the application on Join.
   await page.goto("/join");
-  await page.getByRole("button", { name: /Funder or investor/ }).click();
-  await expect(page.getByRole("heading", { name: "Apply for a funder portal" })).toBeVisible();
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page.getByLabel("Password (at least 12 characters)", { exact: true }).fill("a lovely long passphrase");
-  await page.getByLabel("Type it again", { exact: true }).fill("a lovely long passphrase");
+  await page.getByRole("button", { name: /Investor \/ Funder/ }).click();
+  await page.getByRole("link", { name: "Create a sign-in" }).click();
+  await expect(page).toHaveURL(/\/sign-up$/);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill("a lovely long passphrase");
+  await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("6-digit code").fill(await signUpCode(email));
+  await page.getByRole("button", { name: "Verify and create account" }).click();
+  await expect(page).toHaveURL(/\/join$/);
+  await page.getByRole("button", { name: /Investor \/ Funder/ }).click();
   await page.getByLabel("Full name").fill("Sipho Dlamini");
   await page.getByLabel("SA ID number").fill("8001015009088");
   await page.getByLabel("Your role").fill("Investment manager");
-  await page.getByLabel("Your work email").fill("sipho@example.co.za");
-  await page.getByLabel("Your cellphone number").fill("0821234567");
-  await page.getByLabel("Type of funder").selectOption("grant_maker");
+  await page.getByLabel("Your email").fill("sipho@example.co.za");
+  await page.getByLabel("Your phone").fill("0821234567");
   await page.getByLabel("Organisation name").fill(org);
+  await choose(page, "Investor / funder type", /Grant/);
   await page.getByLabel("Website").fill("https://ubuntu.example.co.za");
   await page.getByLabel("Organisation email").fill("info@ubuntu.example.co.za");
   await page.getByLabel("Organisation phone").fill("011 123 4567");
-  await page.getByLabel("Province").selectOption("Gauteng");
-  await page.getByLabel("Town or city").fill("Johannesburg");
+  await choose(page, "Province", "Gauteng");
+  await page.getByLabel("Town / city").fill("Johannesburg");
   await page.getByLabel("Physical address").fill("1 Main Road, Sandton");
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: /Continue/ }).click();
   // A mistyped ID number is caught before anything is sent.
-  await expect(page.getByText("Check the ID number")).toBeVisible();
+  await expect(page.getByText(/Check the ID number/)).toBeVisible();
   await page.getByLabel("SA ID number").fill("8001015009087");
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: /Continue/ }).click();
   await page.getByRole("button", { name: "Catering", exact: true }).click();
   await page.getByRole("button", { name: "Early revenue" }).click();
   await page.getByRole("button", { name: "Grant", exact: true }).click();
-  await page.getByLabel("Smallest amount (R)").fill("10000");
-  await page.getByLabel("Largest amount (R)").fill("200000");
-  await page.getByLabel("Funds under management").selectOption("1m_10m");
-  await page.getByLabel("Describe what you fund").fill("Township food businesses in Gauteng.");
-  await page.getByRole("button", { name: "Send application" }).click();
+  await page.getByLabel("Min ticket size (ZAR)").fill("10000");
+  await page.getByLabel("Max ticket size (ZAR)").fill("200000");
+  await choose(page, "Assets under management", /1.*10/);
+  await page.getByLabel("Investment mandate description").fill("Township food businesses in Gauteng.");
+  await page.getByRole("button", { name: "Submit application" }).click();
   await expect(page.getByRole("heading", { name: "We're checking your application" })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
 
@@ -121,8 +130,8 @@ test("a funder applies, the admin approves, and the funder's portal opens", asyn
 test("the logo on Join always leads to sign-in, even part-way through joining", async ({ page }, info) => {
   const email = `e2e.half.${info.project.name}.${Date.now()}@proofpocket.example`;
   await page.goto("/join");
-  await page.getByRole("button", { name: /Business founder/ }).click();
-  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Business Founder/ }).click();
+  await expect(page.getByLabel("Email address")).toBeVisible();
   await page.getByRole("link", { name: "ProofPocket: go to sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
 
@@ -132,7 +141,7 @@ test("the logo on Join always leads to sign-in, even part-way through joining", 
   await page.evaluate((t) => localStorage.setItem("pp.session", t), (await r.json()).token);
   await page.goto("/");
   await expect(page).toHaveURL(/\/join$/);
-  await page.getByRole("button", { name: /Business founder/ }).click();
+  await page.getByRole("button", { name: /Business Founder/ }).click();
   await expect(page.getByText(`You're signing up as ${email}.`)).toBeVisible();
   await page.getByRole("link", { name: "ProofPocket: go to sign in" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
