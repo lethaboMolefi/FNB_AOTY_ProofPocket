@@ -14,6 +14,7 @@ import { PostgresRateLimitStore } from "./lib/rate-limit-store";
 import { buildOpenApi } from "./openapi";
 import { authRoutes } from "./routes/auth";
 import { checkRoutes } from "./routes/checks";
+import { testingRoutes } from "./routes/testing";
 import { umlRoutes } from "./routes/uml";
 import { fileRoutes } from "./routes/files";
 import { founderBookRoutes } from "./routes/founder-books";
@@ -75,6 +76,7 @@ export function createApp(deps: Deps) {
   v1.use(countRoutes(deps));
   v1.use(checkRoutes(deps));
   v1.use(umlRoutes(deps));
+  v1.use(testingRoutes(deps));
 
   app.use("/api/v1", v1);
   app.use(notFoundHandler);

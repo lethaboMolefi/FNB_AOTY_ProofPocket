@@ -2,6 +2,8 @@ import pg from "pg";
 import request from "supertest";
 import { afterAll, describe, expect, it } from "vitest";
 import { adminRows, generateTempPassword, setLocalPassword } from "../src/db/admin-accounts";
+import { assertDemoDatabase } from "../src/db/demo-reset";
+import { parseTestCases } from "../src/routes/testing";
 import { ADMIN, FOUNDER, FUNDER_F1, signIn, staffToken, testApp } from "./helpers";
 
 const { app, mailer } = testApp();
@@ -211,5 +213,28 @@ describe("UML diagrams", () => {
     expect((await request(app).get("/api/v1/uml/..%2Fpackage/source").set("Authorization", signIn(FOUNDER))).status).toBe(400);
     expect((await request(app).get("/api/v1/uml").set("Authorization", await staffToken(app, FUNDER_F1))).status).toBe(403);
     expect((await request(app).get("/api/v1/uml/use-case-diagram/source")).status).toBe(401);
+  });
+});
+
+describe("demo reset", () => {
+  it("refuses any database with data that isn't marked as the demo", async () => {
+    await expect(assertDemoDatabase(owner)).rejects.toThrow(/isn't marked as the demo/);
+  });
+});
+
+describe("testing page", () => {
+  it("reads every test case from TEST-CASES.md", async () => {
+    const { readFileSync } = await import("node:fs");
+    const cases = parseTestCases(readFileSync("../../../docs/TEST-CASES.md", "utf8"));
+    expect(cases.length).toBeGreaterThan(500);
+    expect(cases.find((c) => c.id === "MON-11")).toMatchObject({ section: "Admin monitoring", result: "Pass", role: "Admin" });
+    expect(new Set(cases.map((c) => c.id)).size).toBe(cases.length);
+  });
+  it("is for admins only; the demo password is never on the demo site itself", async () => {
+    const r = await request(app).get("/api/v1/testing").set("Authorization", await staffToken(app, ADMIN));
+    expect(r.status).toBe(200);
+    expect(r.body).toHaveProperty("documents");
+    expect((await request(app).get("/api/v1/testing").set("Authorization", signIn(FOUNDER))).status).toBe(403);
+    expect((await request(app).get("/api/v1/testing/documents/../../etc").set("Authorization", await staffToken(app, ADMIN))).status).toBe(404);
   });
 });

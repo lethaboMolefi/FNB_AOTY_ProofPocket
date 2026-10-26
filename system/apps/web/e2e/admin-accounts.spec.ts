@@ -139,3 +139,16 @@ test("other roles can't open the admin pages or the diagrams", async ({ page }) 
   });
   expect(res).toEqual({ uml: 403, approvals: 403, log: 403 });
 });
+
+test("admin: Testing page lists the test cases and downloads the documents", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Admin desktop flow.");
+  await signInWithAuthenticator(page, "admin@proofpocket.example");
+  await page.goto("/admin/testing");
+  await expect(page.getByRole("heading", { name: "Testing", level: 1 })).toBeVisible();
+  await page.getByLabel("Search cases").fill("MON-11");
+  await expect(page.getByText("MON-11", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Details" }).first().click();
+  await expect(page.getByText("admin.company_viewed").first()).toBeVisible();
+  const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Test cases", exact: true }).click()]);
+  expect(dl.suggestedFilename()).toBe("Test-cases.md");
+});

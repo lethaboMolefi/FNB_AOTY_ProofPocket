@@ -8,6 +8,7 @@ import * as schema from "../schema/index";
 import { runMigrations } from "../migrate";
 import { exampleAccounts } from "./accounts";
 import { seed } from "./seed";
+import { pgConfig } from "../pg-config";
 
 /** Git-ignored. Keeps the same passwords across resets so you don't have to relearn them. */
 export const CREDENTIALS_FILE = fileURLToPath(new URL("../../../.seed-credentials.json", import.meta.url));
@@ -21,7 +22,7 @@ export function assertResettable(env: NodeJS.ProcessEnv, url: string) {
 }
 
 export async function resetDatabase(url: string, opts: { accountKey: string; adminEmail: string; today?: string; passwords?: Record<string, string> }) {
-  const pool = new pg.Pool({ connectionString: url, max: 1 });
+  const pool = new pg.Pool({ ...pgConfig(url), max: 1 });
   try {
     await pool.query("DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE; CREATE SCHEMA public;");
     await runMigrations(url);

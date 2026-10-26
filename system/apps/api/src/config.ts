@@ -34,6 +34,14 @@ const schema = z.object({
   DATABASE_CA_CERT_B64: z.string().optional(),
   /** Where people open ProofPocket; used in payment links and emails. */
   PUBLIC_WEB_URL: z.string().default("http://localhost:5173"),
+  /**
+   * yes = the separate demo site (its own database server, keys and bucket): example data and demo accounts with
+   * local passwords, and no real email. Never set on the live site.
+   */
+  DEMO_MODE: z.enum(["yes", "no"]).default("no"),
+  /** Live site only, for the admin's Testing page: the demo site's address and its demo accounts' password. */
+  DEMO_URL: z.string().optional(),
+  DEMO_PASSWORD: z.string().optional(),
   // ---------------------------------------------------------------- PayFast
   /** PayFast merchant ID (from sandbox or live dashboard). Leave empty to disable the PayFast rail. */
   PAYFAST_MERCHANT_ID: z.string().optional(),
@@ -44,9 +52,14 @@ const schema = z.object({
   /** true = use sandbox.payfast.co.za; false = www.payfast.co.za */
   PAYFAST_SANDBOX: z.string().optional().transform((v) => v !== "false").pipe(z.boolean()).default(true),
 }).superRefine((c, ctx) => {
-  if (c.NODE_ENV === "production" && c.AUTH_MODE !== "firebase") ctx.addIssue({ code: "custom", path: ["AUTH_MODE"], message: "production must use Firebase Authentication" });
+  const demo = c.DEMO_MODE === "yes";
+  if (c.NODE_ENV === "production" && c.AUTH_MODE !== "firebase" && !demo) ctx.addIssue({ code: "custom", path: ["AUTH_MODE"], message: "production must use Firebase Authentication" });
+  // The demo uses its own local demo accounts and never sends email, so it can't reach real people or real sign-ins.
+  if (demo && c.AUTH_MODE !== "local") ctx.addIssue({ code: "custom", path: ["AUTH_MODE"], message: "the demo uses local demo accounts" });
+  if (demo && c.MAIL_MODE !== "console") ctx.addIssue({ code: "custom", path: ["MAIL_MODE"], message: "the demo never sends real email" });
+  if (demo && c.DEMO_PASSWORD) ctx.addIssue({ code: "custom", path: ["DEMO_PASSWORD"], message: "only the live site shows the demo password (to admins)" });
   if (c.AUTH_MODE === "dev" && c.NODE_ENV !== "test") ctx.addIssue({ code: "custom", path: ["AUTH_MODE"], message: "dev tokens are for automated tests only; use AUTH_MODE=local" });
-  if (c.NODE_ENV === "production" && c.MAIL_MODE !== "smtp") ctx.addIssue({ code: "custom", path: ["MAIL_MODE"], message: "production must send real email" });
+  if (c.NODE_ENV === "production" && c.MAIL_MODE !== "smtp" && !demo) ctx.addIssue({ code: "custom", path: ["MAIL_MODE"], message: "production must send real email" });
   if (c.AUTH_MODE === "firebase" && !c.FIREBASE_PROJECT_ID) ctx.addIssue({ code: "custom", path: ["FIREBASE_PROJECT_ID"], message: "required with AUTH_MODE=firebase" });
   if (c.NODE_ENV === "production" && c.TEST_RATE_LIMIT) ctx.addIssue({ code: "custom", path: ["TEST_RATE_LIMIT"], message: "TEST_RATE_LIMIT is for automated tests only" });
   if (c.NODE_ENV === "production" && c.RATE_LIMIT_STORE !== "postgres") ctx.addIssue({ code: "custom", path: ["RATE_LIMIT_STORE"], message: "production must share rate limits across instances" });

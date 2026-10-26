@@ -29,6 +29,7 @@ COPY --from=deps /src/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /src/apps/api/dist ./apps/api/dist
 COPY --from=build /src/apps/api/drizzle ./apps/api/drizzle
 COPY --from=build /src/apps/api/uml ./apps/api/uml
+COPY --from=build /src/apps/api/testing ./apps/api/testing
 COPY --from=build /src/apps/api/package.json ./apps/api/package.json
 WORKDIR /srv/apps/api
 USER node

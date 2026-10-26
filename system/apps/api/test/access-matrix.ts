@@ -192,6 +192,9 @@ export const MATRIX: Endpoint[] = [
   { id: "F-UML-01", module: "UML diagrams", feature: "List and view UML diagrams", method: "GET", path: "/uml", ui: "/admin/uml, /app/uml", allow: ["founder", "admin"] },
   { id: "F-UML-02", module: "UML diagrams", feature: "View or download a diagram (SVG, PNG, PDF or Mermaid source)", method: "GET", path: "/uml/:id/:format", ui: "/admin/uml, /app/uml", allow: ["founder", "admin"] },
   { id: "F-UML-03", module: "UML diagrams", feature: "Admin decisions log (summary for founders)", method: "GET", path: "/admin-log", ui: "/app/admin-log", allow: ["founder", "admin"] },
+  { id: "F-TST-01", module: "Testing", feature: "Testing page: demo site and accounts, latest results", method: "GET", path: "/testing", ui: "/admin/testing", allow: ["admin"] },
+  { id: "F-TST-02", module: "Testing", feature: "Test cases (from TEST-CASES.md)", method: "GET", path: "/testing/cases", ui: "/admin/testing", allow: ["admin"] },
+  { id: "F-TST-03", module: "Testing", feature: "Download a test document", method: "GET", path: "/testing/documents/:id", ui: "/admin/testing", allow: ["admin"] },
 ];
 
 /** Features with no HTTP endpoint of their own (jobs, emails, web-only), listed in the inventory too. */

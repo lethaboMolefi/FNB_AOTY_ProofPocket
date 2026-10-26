@@ -1,0 +1,38 @@
+{
+ "ranAt": "2026-10-26T12:53:57.252591+00:00",
+ "commit": "7c8ec76+ (uncommitted: demo site and Testing page)",
+ "suites": [
+  {
+   "name": "Business rules (shared)",
+   "passed": 62,
+   "failed": 0,
+   "skipped": 0,
+   "durationMs": 0,
+   "failures": []
+  },
+  {
+   "name": "API and database (incl. access matrix: every endpoint \u00d7 every role)",
+   "passed": 334,
+   "failed": 0,
+   "skipped": 0,
+   "durationMs": 0,
+   "failures": []
+  },
+  {
+   "name": "Web unit",
+   "passed": 9,
+   "failed": 0,
+   "skipped": 0,
+   "durationMs": 0,
+   "failures": []
+  },
+  {
+   "name": "Browser (end-to-end, phone and desktop)",
+   "passed": 83,
+   "failed": 0,
+   "skipped": 9,
+   "durationMs": 432000,
+   "failures": []
+  }
+ ]
+}

@@ -302,3 +302,38 @@ None remain. Three places show the business name inside a page, and they stay be
 Two things were kept on purpose:
 - **Home notices and the bell:** Home's notices also appear in the notifications bell. The bell is the cross-page summary; Home is where you act on them.
 - **The "Starter account, not yet verified" flag:** this comes from the business rules (`rules/flags.ts`), whose wording is fixed by the brief.
+
+## New pages: admin accounts, user approvals, UML diagrams, testing (26 Oct 2026)
+
+Every page uses the shared shell, nav icon, `PageHeader` (H1 and one-line description), cards, tables and badges. No organisation name or title is repeated.
+
+| Route | Who can open it (server-enforced) | Purpose | Links to |
+|---|---|---|---|
+| `/admin/approvals` | Admin. API `GET/POST /admin/approvals…`: 403 for every other role; 403 for founder accounts, other admins and yourself | **User approvals.** Everyone who isn't a founder: name, email, role, organisation, registration date, status (pending, approved, rejected, suspended) and what they submitted. Approve, reject (reason required) or suspend (reason required), and reinstate | The applicant's or person's detail panel; decisions email the person; every action goes to Activity (`/admin/activity`) and, as a summary, to founders' Admin decisions |
+| `/admin/uml`, `/app/uml` | Admin and founder. API `/uml`, `/uml/:id/:format`: 403 for funders, advisers and buyers, 401 signed out | **UML diagrams.** 29 diagrams (use case, component, deployment, class, ER, 12 sequence, 9 state, 3 activity). View, and download SVG, PNG, PDF or the Mermaid source | — |
+| `/app/admin-log` | Founder (and admin). API `/admin-log` | **Admin decisions.** When admins approved, turned down, suspended or reinstated a funder, adviser or buyer account. A summary only: no names, emails or reasons (POPIA) | — |
+| `/admin/profile` | Admin | Their own account, two-step status, change password (fresh sign-in, plus the Google Authenticator code) | — |
+| `/admin/testing` | Admin. API `/testing…` | **Testing.** The demo site's link and demo accounts with their shared password; the latest automated test results per suite; every test case, searchable, with the documents to download | The demo site (separate) |
+| `/change-password` | Anyone signed in with a temporary password | Forced first: set your own password. Nothing else works until it's done (the API refuses with `password_change_required`) | `/verify` (Google Authenticator set-up) next |
+| `/account-status` | Anyone whose account is suspended or whose temporary password expired | Says so and what to do; sign out | `/sign-in` |
+
+**Where the rules are enforced**
+- **Server, every request** (`middleware/auth.ts`): suspended accounts and expired temporary passwords are refused. A temporary password that must be changed allows only `/me` and `POST /auth/password`.
+- **Who an admin may act on:** `rules/accounts.ts` (`accountActionError`, unit-tested) decides, and the service applies it.
+- **Database, as a second layer** (migration 0013):
+  - the users trigger refuses suspending founders or admins
+  - nobody can change their own suspension or temporary-password flag (only `password_changed()` clears it)
+  - `founder_admin_log()` returns the summary only
+
+**Admin accounts with temporary passwords**
+- **Running it:** `bash infra/deploy.sh admins EMAIL…`.
+  - A Cloud Run job writes the database rows. Its log holds emails and outcomes only; existing emails are skipped.
+  - The operator's own machine then sets each temporary password in Firebase and prints the table once.
+  - Passwords never reach the database, Cloud Run, a log or a file.
+- **Expired temporary passwords:** `admins --reissue EMAIL` gives 7 more days. This is an operator command, not an admin button, because admins can't change other admin accounts.
+
+**Demo site** (`https://proofpocket-demo.web.app`)
+- **Fully separate:** its own Cloud SQL server, database roles, encryption keys, bucket, service account and API (`proofpocket-api-demo`).
+- **Example data:** demo accounts for every role share one password, which admins see on the Testing page.
+- **Enforced by config:** the demo can't use Firebase sign-in or send real email, and the live site can't use local passwords.
+- **Reset:** `bash infra/deploy.sh demo_reset` (add `ROTATE=1` for a new password). It refuses any database that isn't marked as the demo.

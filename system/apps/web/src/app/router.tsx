@@ -18,6 +18,7 @@ const Uml = lazy(() => import("../features/common/Uml"));
 const AdminLog = lazy(() => import("../features/founder/AdminLog"));
 const Approvals = lazy(() => import("../features/admin/Approvals"));
 const AdminProfile = lazy(() => import("../features/admin/Profile"));
+const AdminTesting = lazy(() => import("../features/admin/Testing"));
 const VerifyPin = lazy(() => import("../features/auth/VerifyPin"));
 const pub = () => import("../features/public/Directory");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
@@ -94,6 +95,7 @@ const BUILT: Record<string, ReactNode> = {
   "admin/approvals": s(<Approvals />),
   "admin/uml": s(<Uml />),
   "admin/profile": s(<AdminProfile />),
+  "admin/testing": s(<AdminTesting />),
   "adviser/checks": s(<Checks scope="adviser" />),
   "admin/checks": s(<Checks scope="admin" />),
 };

@@ -9,7 +9,7 @@ const externalPackages = {
 };
 
 await build({
-  entryPoints: { server: "src/server.ts", migrate: "src/db/migrate.ts", bootstrap: "src/db/bootstrap.ts", jobs: "src/jobs.ts", "add-admin": "src/db/add-admin.ts", "add-admins": "src/db/add-admins.ts" },
+  entryPoints: { server: "src/server.ts", migrate: "src/db/migrate.ts", bootstrap: "src/db/bootstrap.ts", jobs: "src/jobs.ts", "add-admin": "src/db/add-admin.ts", "add-admins": "src/db/add-admins.ts", "demo-reset": "src/db/demo-reset.ts" },
   outdir: "dist",
   bundle: true,
   platform: "node",

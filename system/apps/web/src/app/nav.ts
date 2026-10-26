@@ -83,6 +83,7 @@ export const ADMIN_NAV: NavPage[] = [
   { path: "features", label: "Feature requests", title: "Feature requests", sub: "Posts Verified businesses asked to feature in the directory this week.", phase: 5 },
   { path: "flagged", label: "Flagged payments", title: "Flagged payments", sub: "Payment requests where a founder rejected the proof of payment twice.", phase: 5 },
   { path: "tenders", label: "Tenders & buyers", title: "Tenders & buyers", sub: "Opportunities founders can express interest in, and buyers they can ask to meet.", phase: 5 },
+  { path: "testing", label: "Testing", title: "Testing", sub: "The demo site, test results and test cases.", phase: 5 },
   { path: "uml", label: "UML diagrams", title: "UML diagrams", sub: "How ProofPocket is built.", phase: 5 },
   { path: "profile", label: "Profile", title: "Profile", sub: "Your own account and password.", phase: 5 },
 ];

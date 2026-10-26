@@ -16,7 +16,8 @@
     "db:up": "docker compose up -d db",
     "db:migrate": "pnpm --filter @proofpocket/api db:migrate",
     "db:reset": "pnpm --filter @proofpocket/api db:reset",
-    "db:generate": "pnpm --filter @proofpocket/api db:generate"
+    "db:generate": "pnpm --filter @proofpocket/api db:generate",
+    "test:report": "node scripts/test-report.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

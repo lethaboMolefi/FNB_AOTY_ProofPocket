@@ -7,6 +7,9 @@
 # Steps: network, database, storage, secrets, identity, registry, image, bootstrap, api, jobs, firebase, web, users, budget, smoke
 # Owner-approved extras (not in "all"; see docs/security/not-implemented.md): iam_hardening, logging
 # One-off: add_admin EMAIL (makes EMAIL a ProofPocket admin; they sign in with Google)
+#          admins [--reissue] EMAIL... (admins with temporary passwords, printed once on this machine)
+# Demo site (separate server, keys, bucket, service account and website; never touches live data):
+#          demo_infra, demo_reset (ROTATE=1 for a new demo password), demo_api, demo_web
 # Needs: gcloud and firebase CLIs signed in as a project owner, Node 26 + pnpm 12, python3.
 set -euo pipefail
 
@@ -144,11 +147,13 @@ step_bootstrap() {
 }
 
 step_api() {
+  # The demo's password, for the admin's Testing page, once the demo exists (demo_infra).
+  local demo_secret=""; exists g secrets describe proofpocket-demo-password && demo_secret=",DEMO_PASSWORD=proofpocket-demo-password:latest"
   g run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --service-account "$SA" \
     --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
     --allow-unauthenticated --min-instances 0 --max-instances 4 --memory 512Mi --cpu 1 --concurrency 40 \
-    --set-env-vars "^|^NODE_ENV=production|APP_VERSION=${TAG}|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}|RATE_LIMIT_STORE=postgres|DATABASE_CA_CERT_B64=$(db_ca)" \
-    --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest"
+    --set-env-vars "^|^NODE_ENV=production|APP_VERSION=${TAG}|TRUST_PROXY_HOPS=1|AUTH_MODE=firebase|FIREBASE_PROJECT_ID=${PROJECT}|MAIL_MODE=smtp|SMTP_USER=${MAIL_USER}|MAIL_FROM=ProofPocket <${MAIL_USER}>|STORAGE_MODE=gcs|GCS_BUCKET=${BUCKET}|WEB_ORIGIN=${WEB_ORIGIN},https://${SITE}.firebaseapp.com|PUBLIC_WEB_URL=${WEB_ORIGIN}|RATE_LIMIT_STORE=postgres|DEMO_URL=https://proofpocket-demo.web.app|DATABASE_CA_CERT_B64=$(db_ca)" \
+    --set-secrets "DATABASE_URL=proofpocket-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-account-key:latest,OTP_SECRET=proofpocket-otp-secret:latest,SMTP_PASS=proofpocket-smtp-pass:latest${demo_secret}"
 }
 
 step_jobs() {
@@ -216,6 +221,84 @@ print(' '.join(json.loads(l)['email'] for l in sys.stdin if l.strip() and json.l
   # shellcheck disable=SC2086
   (cd "$SYSTEM/apps/api" && pnpm exec tsx scripts/firebase-temp-passwords.ts "$PROJECT" $todo)
 }
+# ---------------------------------------------------------------- demo site
+# A separate copy of ProofPocket for trying everything with example data: its own Cloud SQL server, database roles,
+# encryption keys, bucket, service account and website. Its credentials can't reach the live database.
+DEMO_SQL=proofpocket-demo-db
+DEMO_BUCKET="${PROJECT}-proofpocket-demo-files"
+DEMO_SA_NAME=proofpocket-api-demo
+DEMO_SA="${DEMO_SA_NAME}@${PROJECT}.iam.gserviceaccount.com"
+DEMO_SERVICE=proofpocket-api-demo
+DEMO_SITE=proofpocket-demo
+DEMO_ORIGIN="https://${DEMO_SITE}.web.app"
+DEMO_API_URL="https://${DEMO_SERVICE}-$(gcloud projects describe "$PROJECT" --format='value(projectNumber)' | cat).${REGION}.run.app"
+demo_ca() { g sql instances describe "$DEMO_SQL" --format='value(serverCaCert.cert)' | base64 -w0; }
+demo_pw() { python3 -c "import secrets,string;a=string.ascii_letters+string.digits;print('Demo-'+''.join(secrets.choice(a) for _ in range(14)))"; }
+
+step_demo_infra() {
+  exists g sql instances describe "$DEMO_SQL" || g sql instances create "$DEMO_SQL" \
+    --database-version=POSTGRES_18 --edition=ENTERPRISE --tier=db-f1-micro --region "$REGION" \
+    --network="projects/${PROJECT}/global/networks/${NETWORK}" --no-assign-ip \
+    --ssl-mode=ENCRYPTED_ONLY --storage-size=10 --storage-auto-increase
+  exists g sql databases describe "$DB" --instance "$DEMO_SQL" || g sql databases create "$DB" --instance "$DEMO_SQL"
+  if ! exists g secrets describe proofpocket-demo-db-owner-url; then
+    local owner_pw app_pw ip
+    owner_pw=$(pw); app_pw=$(pw)
+    ip=$(g sql instances describe "$DEMO_SQL" --format='value(ipAddresses[0].ipAddress)')
+    exists g sql users describe proofpocket_owner --instance "$DEMO_SQL" && g sql users set-password proofpocket_owner --instance "$DEMO_SQL" --password "$owner_pw" ||
+      g sql users create proofpocket_owner --instance "$DEMO_SQL" --password "$owner_pw"
+    secret_set proofpocket-demo-db-owner-url "postgres://proofpocket_owner:${owner_pw}@${ip}:5432/${DB}?sslmode=no-verify"
+    secret_set proofpocket-demo-db-app-url "postgres://proofpocket_app:${app_pw}@${ip}:5432/${DB}?sslmode=no-verify"
+    secret_set proofpocket-demo-db-app-password "$app_pw"
+  fi
+  exists g secrets describe proofpocket-demo-account-key || secret_set proofpocket-demo-account-key "$(rand)"
+  exists g secrets describe proofpocket-demo-otp-secret || secret_set proofpocket-demo-otp-secret "$(rand)"
+  exists g secrets describe proofpocket-demo-password || secret_set proofpocket-demo-password "$(demo_pw)"
+  exists g storage buckets describe "gs://$DEMO_BUCKET" || g storage buckets create "gs://$DEMO_BUCKET" --location "$REGION" \
+    --uniform-bucket-level-access --public-access-prevention
+  printf '[{"origin": ["%s", "https://%s.firebaseapp.com"], "method": ["PUT", "GET"], "responseHeader": ["Content-Type", "x-goog-content-length-range"], "maxAgeSeconds": 3600}]\n' \
+    "$DEMO_ORIGIN" "$DEMO_SITE" > "$WORK/demo-cors.json"
+  g storage buckets update "gs://$DEMO_BUCKET" --cors-file="$WORK/demo-cors.json"
+  # Its own service account: demo secrets and the demo bucket only. Nothing of the live site.
+  exists g iam service-accounts describe "$DEMO_SA" || g iam service-accounts create "$DEMO_SA_NAME" --display-name "ProofPocket demo API"
+  for s in proofpocket-demo-db-owner-url proofpocket-demo-db-app-url proofpocket-demo-db-app-password proofpocket-demo-account-key proofpocket-demo-otp-secret proofpocket-demo-password; do
+    g secrets add-iam-policy-binding "$s" --member "serviceAccount:$DEMO_SA" --role roles/secretmanager.secretAccessor >/dev/null
+  done
+  g storage buckets add-iam-policy-binding "gs://$DEMO_BUCKET" --member "serviceAccount:$DEMO_SA" --role roles/storage.objectAdmin >/dev/null
+  g iam service-accounts add-iam-policy-binding "$DEMO_SA" --member "serviceAccount:$DEMO_SA" --role roles/iam.serviceAccountTokenCreator >/dev/null
+  # The live API shows the demo password to admins on its Testing page.
+  g secrets add-iam-policy-binding proofpocket-demo-password --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor >/dev/null
+  firebase hosting:sites:list --project "$PROJECT" 2>/dev/null | grep -q " $DEMO_SITE " || firebase hosting:sites:create "$DEMO_SITE" --project "$PROJECT"
+}
+
+step_demo_reset() {
+  # Fresh example data and demo accounts (refuses any database not marked as the demo). ROTATE=1: a new demo password.
+  [ "${ROTATE:-0}" = "1" ] && secret_set proofpocket-demo-password "$(demo_pw)"
+  local args=(--image "$IMAGE" --region "$REGION" --service-account "$DEMO_SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
+    --set-secrets "DATABASE_OWNER_URL=proofpocket-demo-db-owner-url:latest,APP_DB_PASSWORD=proofpocket-demo-db-app-password:latest,ACCOUNT_NUMBER_KEY=proofpocket-demo-account-key:latest,DEMO_PASSWORD=proofpocket-demo-password:latest"
+    --set-env-vars "DEMO_MODE=yes,DATABASE_CA_CERT_B64=$(demo_ca)" --command node --args dist/demo-reset.js --max-retries 0 --task-timeout 600)
+  if exists g run jobs describe proofpocket-demo-reset --region "$REGION"; then g run jobs update proofpocket-demo-reset "${args[@]}"
+  else g run jobs create proofpocket-demo-reset "${args[@]}"; fi
+  g run jobs execute proofpocket-demo-reset --region "$REGION" --wait
+  # Uploads from the last round of testing go too.
+  g storage rm --recursive "gs://$DEMO_BUCKET/**" 2>/dev/null || true
+  # The live Testing page shows the password: a new one needs a new live API revision.
+  if [ "${ROTATE:-0}" = "1" ]; then step_api; fi
+}
+
+step_demo_api() {
+  g run deploy "$DEMO_SERVICE" --image "$IMAGE" --region "$REGION" --service-account "$DEMO_SA" \
+    --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only \
+    --allow-unauthenticated --min-instances 0 --max-instances 2 --memory 512Mi --cpu 1 --concurrency 40 \
+    --set-env-vars "^|^NODE_ENV=production|DEMO_MODE=yes|APP_VERSION=${TAG}|TRUST_PROXY_HOPS=1|AUTH_MODE=local|MAIL_MODE=console|STORAGE_MODE=gcs|GCS_BUCKET=${DEMO_BUCKET}|WEB_ORIGIN=${DEMO_ORIGIN},https://${DEMO_SITE}.firebaseapp.com|PUBLIC_WEB_URL=${DEMO_ORIGIN}|RATE_LIMIT_STORE=postgres|DATABASE_CA_CERT_B64=$(demo_ca)" \
+    --set-secrets "DATABASE_URL=proofpocket-demo-db-app-url:latest,ACCOUNT_NUMBER_KEY=proofpocket-demo-account-key:latest,OTP_SECRET=proofpocket-demo-otp-secret:latest"
+}
+
+step_demo_web() {
+  (cd "$SYSTEM/apps/web" && VITE_API_BASE="$DEMO_API_URL" VITE_AUTH_MODE=local VITE_DEMO=yes pnpm build)
+  (cd "$SYSTEM" && firebase deploy --only "hosting:${DEMO_SITE}" --project "$PROJECT")
+}
+
 step_web() {
   # The Firebase web config is public by design (it identifies the project; access is controlled by the API and RLS).
   local app_id cfg
@@ -295,5 +378,9 @@ case "${1:-}" in
   network|database|storage|secrets|identity|registry|image|bootstrap|api|jobs|firebase|web|users|budget|smoke|iam_hardening|logging) "step_$1" ;;
   add_admin) step_add_admin "${2:-}" ;;
   admins) shift; step_admins "$@" ;;
+  demo_infra) step_demo_infra ;;
+  demo_reset) step_demo_reset ;;
+  demo_api) step_demo_api ;;
+  demo_web) step_demo_web ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
 esac

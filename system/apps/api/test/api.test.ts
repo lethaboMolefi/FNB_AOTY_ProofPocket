@@ -110,6 +110,14 @@ describe("config and crypto", () => {
     expect(() => loadConfig({ ...process.env, NODE_ENV: "development", AUTH_MODE: "dev" })).toThrow(/tests only/);
     expect(() => loadConfig({ ...process.env, NODE_ENV: "production", AUTH_MODE: "firebase", FIREBASE_PROJECT_ID: "x", MAIL_MODE: "console" })).toThrow(/MAIL_MODE/);
   });
+  it("allows local demo accounts only on the demo site, which never sends email or holds the demo password", () => {
+    const prod = { ...process.env, NODE_ENV: "production", STORAGE_MODE: "gcs", GCS_BUCKET: "demo-files", RATE_LIMIT_STORE: "postgres", TEST_RATE_LIMIT: "" };
+    expect(loadConfig({ ...prod, DEMO_MODE: "yes", AUTH_MODE: "local", MAIL_MODE: "console" }).DEMO_MODE).toBe("yes");
+    expect(() => loadConfig({ ...prod, DEMO_MODE: "yes", AUTH_MODE: "firebase", FIREBASE_PROJECT_ID: "x", MAIL_MODE: "console" })).toThrow(/local demo accounts/);
+    expect(() => loadConfig({ ...prod, DEMO_MODE: "yes", AUTH_MODE: "local", MAIL_MODE: "smtp", SMTP_USER: "a", SMTP_PASS: "b" })).toThrow(/never sends real email/);
+    expect(() => loadConfig({ ...prod, DEMO_MODE: "yes", AUTH_MODE: "local", MAIL_MODE: "console", DEMO_PASSWORD: "x" })).toThrow(/DEMO_PASSWORD/);
+    expect(() => loadConfig({ ...prod, DEMO_MODE: "no", AUTH_MODE: "local", MAIL_MODE: "console" })).toThrow(/Firebase/);
+  });
   it("encrypts account numbers so the stored value doesn't contain them", () => {
     const enc = encryptField("6281 004 517", config.ACCOUNT_NUMBER_KEY);
     expect(enc).not.toContain("6281");

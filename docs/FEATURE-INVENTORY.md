@@ -27,7 +27,7 @@ The endpoint tables are generated from [`system/apps/api/test/access-matrix.ts`]
 - **Link:** no role gives access; a valid payment-page token, signed storage link or PayFast signature does, and every role gets the same answer without one.
 - **Not applicable:** see the notes; it is used for system jobs.
 
-## 1. API features (134 endpoints in 23 modules)
+## 1. API features (148 endpoints in 25 modules)
 
 ### System
 
@@ -41,7 +41,10 @@ The endpoint tables are generated from [`system/apps/api/test/access-matrix.ts`]
 | ID | Feature | Method and endpoint | Page | Roles with access | Notes |
 |---|---|---|---|---|---|
 | F-AUTH-01 | Sign in with email and password (local) | `POST /auth/local/sign-in` | /sign-in | Everyone |  |
-| F-AUTH-02 | Create a sign-in (local, used by Join) | `POST /auth/local/sign-up` | /join | Everyone |  |
+| F-AUTH-02 | Create a sign-in (local, used by Join) | `POST /auth/local/sign-up` | /join, /sign-up | Everyone |  |
+| F-AUTH-10 | Email a sign-up code (local) | `POST /auth/email-otp/send` | /sign-up | Everyone |  |
+| F-AUTH-11 | Check a sign-up code (local) | `POST /auth/email-otp/verify` | /sign-up | Everyone |  |
+| F-AUTH-12 | Set your own password (forced after a temporary one) | `POST /auth/password` | /change-password, /admin/profile | Founder, Funder, Adviser, Buyer, Admin | Needs a fresh sign-in (within 15 minutes) |
 | F-AUTH-03 | Who am I (account, role, company) | `GET /me` | every signed-in page | Founder, Funder, Adviser, Buyer, Admin |  |
 | F-AUTH-04 | Start Google Authenticator set-up | `POST /auth/totp/setup` | /verify, Business settings | Founder, Funder, Adviser, Buyer, Admin | Staff who already have it get 409; founders may start it any time |
 | F-AUTH-05 | Activate Google Authenticator | `POST /auth/totp/activate` | /verify, Business settings | Founder, Funder, Adviser, Buyer, Admin |  |
@@ -277,6 +280,27 @@ The endpoint tables are generated from [`system/apps/api/test/access-matrix.ts`]
 | F-ADM-20 | Businesses: every company with level and score | `GET /admin/companies` | /admin/people | Admin |  |
 | F-ADM-21 | Open one business (audited) | `GET /admin/companies/:id` | /admin/people | Admin |  |
 | F-ADM-22 | Security and system health | `GET /admin/health` | /admin/health | Admin |  |
+| F-ADM-23 | User approvals: everyone who isn't a founder | `GET /admin/approvals` | /admin/approvals | Admin |  |
+| F-ADM-24 | Open an application or account (founders refused) | `GET /admin/approvals/:type/:id` | /admin/approvals | Admin |  |
+| F-ADM-25 | Approve or reject an application (reason required) | `POST /admin/approvals/application/:id` | /admin/approvals | Admin |  |
+| F-ADM-26 | Suspend an account (reason required; not founders, admins or yourself) | `POST /admin/approvals/user/:id/suspend` | /admin/approvals | Admin |  |
+| F-ADM-27 | Reinstate a suspended account | `POST /admin/approvals/user/:id/reinstate` | /admin/approvals | Admin |  |
+
+### UML diagrams
+
+| ID | Feature | Method and endpoint | Page | Roles with access | Notes |
+|---|---|---|---|---|---|
+| F-UML-01 | List and view UML diagrams | `GET /uml` | /admin/uml, /app/uml | Founder, Admin |  |
+| F-UML-02 | View or download a diagram (SVG, PNG, PDF or Mermaid source) | `GET /uml/:id/:format` | /admin/uml, /app/uml | Founder, Admin |  |
+| F-UML-03 | Admin decisions log (summary for founders) | `GET /admin-log` | /app/admin-log | Founder, Admin |  |
+
+### Testing
+
+| ID | Feature | Method and endpoint | Page | Roles with access | Notes |
+|---|---|---|---|---|---|
+| F-TST-01 | Testing page: demo site and accounts, latest results | `GET /testing` | /admin/testing | Admin |  |
+| F-TST-02 | Test cases (from TEST-CASES.md) | `GET /testing/cases` | /admin/testing | Admin |  |
+| F-TST-03 | Download a test document | `GET /testing/documents/:id` | /admin/testing | Admin |  |
 
 ## 2. Pages (web app)
 
@@ -325,6 +349,9 @@ A redirect ("→") is how the web app refuses a page; the API behind it refuses 
 | F-SYS-02 | API description (OpenAPI) | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed |
 | F-AUTH-01 | Sign in with email and password (local) | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed |
 | F-AUTH-02 | Create a sign-in (local, used by Join) | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed |
+| F-AUTH-10 | Email a sign-up code (local) | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed |
+| F-AUTH-11 | Check a sign-up code (local) | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed | Allowed |
+| F-AUTH-12 | Set your own password (forced after a temporary one) | Denied | Denied | Allowed | Allowed | Allowed | Allowed | Allowed |
 | F-AUTH-03 | Who am I (account, role, company) | Denied | Denied | Allowed | Allowed | Allowed | Allowed | Allowed |
 | F-AUTH-04 | Start Google Authenticator set-up | Denied | Denied | Allowed | Allowed | Allowed | Allowed | Allowed |
 | F-AUTH-05 | Activate Google Authenticator | Denied | Denied | Allowed | Allowed | Allowed | Allowed | Allowed |
@@ -455,6 +482,17 @@ A redirect ("→") is how the web app refuses a page; the API behind it refuses 
 | F-ADM-20 | Businesses: every company with level and score | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-ADM-21 | Open one business (audited) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-ADM-22 | Security and system health | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-23 | User approvals: everyone who isn't a founder | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-24 | Open an application or account (founders refused) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-25 | Approve or reject an application (reason required) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-26 | Suspend an account (reason required; not founders, admins or yourself) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-ADM-27 | Reinstate a suspended account | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-UML-01 | List and view UML diagrams | Denied | Denied | Allowed | Denied | Denied | Denied | Allowed |
+| F-UML-02 | View or download a diagram (SVG, PNG, PDF or Mermaid source) | Denied | Denied | Allowed | Denied | Denied | Denied | Allowed |
+| F-UML-03 | Admin decisions log (summary for founders) | Denied | Denied | Allowed | Denied | Denied | Denied | Allowed |
+| F-TST-01 | Testing page: demo site and accounts, latest results | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-TST-02 | Test cases (from TEST-CASES.md) | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
+| F-TST-03 | Download a test document | Denied | Denied | Denied | Denied | Denied | Denied | Allowed |
 | F-JOB-01, F-JOB-02 | Background jobs | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable | Not applicable |
 
-**Totals:** 134 API endpoints, 13 page groups, 12 other features. Endpoints allowed per role, not counting link-only ones (9): Public 8, Joining 11, Founder 73, Funder 27, Adviser 28, Buyer 16, Admin 41.
+**Totals:** 148 API endpoints, 13 page groups, 12 other features. Endpoints allowed per role, not counting link-only ones (9): Public 10, Joining 13, Founder 79, Funder 30, Adviser 31, Buyer 19, Admin 55.
