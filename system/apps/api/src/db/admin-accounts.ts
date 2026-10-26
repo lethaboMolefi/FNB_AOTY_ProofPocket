@@ -25,7 +25,7 @@ export async function adminRows(pool: pg.Pool, emails: string[], opts: { reissue
       out.push({ email, status: "reissued" });
       continue;
     }
-    if (existing) { out.push({ email, status: "skipped", note: `already has a ${existing.role} account` }); continue; }
+    if (existing) { out.push({ email, status: "skipped", note: `already has ${existing.role === "admin" ? "an" : "a"} ${existing.role} account` }); continue; }
     const u = (await pool.query<{ id: string }>(
       `insert into users (email, display_name, role, must_change_password, temp_password_expires_at)
        values ($1, 'ProofPocket admin', 'admin', true, now() + make_interval(days => $2)) returning id`, [email, TEMP_PASSWORD_DAYS])).rows[0]!;

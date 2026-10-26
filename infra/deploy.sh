@@ -202,7 +202,7 @@ step_admins() {
   local list; list=$(IFS=,; echo "$*")
   local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
     --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest"
-    --set-env-vars "^@^ADMIN_EMAILS=${list}@DATABASE_CA_CERT_B64=$(db_ca)" --command node --args "dist/add-admins.js${reissue:+,$reissue}" --max-retries 0 --task-timeout 120)
+    --set-env-vars "^|^ADMIN_EMAILS=${list}|DATABASE_CA_CERT_B64=$(db_ca)" --command node --args "dist/add-admins.js${reissue:+,$reissue}" --max-retries 0 --task-timeout 120)
   if exists g run jobs describe proofpocket-add-admins --region "$REGION"; then g run jobs update proofpocket-add-admins "${args[@]}"
   else g run jobs create proofpocket-add-admins "${args[@]}"; fi
   local exec_name
