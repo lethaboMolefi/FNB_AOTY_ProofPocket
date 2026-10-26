@@ -249,3 +249,56 @@ No console errors and no failed requests on any page, for any role, phone or des
 | §4 #7 (Sign up live) | Checked on the live site after deploying (see the deploy notes) |
 | §4 #8 (local email code not enforced) | Local development only; production uses Firebase's verification email, and joining refuses an unverified email |
 | D1–D6 (dashborad founder screens) | dashborad's versions call endpoints that don't exist and drop features (payment details with Google Authenticator, suppliers, cash, offers, data export). The live screens use the same shadcn components and now sit in the same shell |
+
+## Rule: no repeated identity or titles (all roles)
+
+**How it's enforced**
+
+- **One header component:** `components/PageHeader.tsx` now accepts only `title` (the H1), `sub` (one-line description) and `action` (page actions, on the right). The `label` (eyebrow) and `badge` options were removed, so a page can't put the business or organisation name, a location, a role or the Starter/Verified badge in its header. The compiler rejects it.
+- **Every page, every role:** `FounderHead` passes only those three things.
+- **Tested:** the every-page browser test (`e2e/dashboard.spec.ts`, every role, phone and desktop) fails if a page header contains the top bar's name or a Starter/Verified badge, or if any table is wider than its card.
+
+**Fixes, page by page**
+
+| Page(s) | Was | Now |
+|---|---|---|
+| All 12 founder pages (Home, Registration steps, Bookkeeping, Stock, Payments, Cash flow, Profile & marketing, Funding readiness, Procurement, Fraud protection, Privacy & sharing, Business settings) | Eyebrow "Business name · Town, Province" above the title, and a Starter/Verified badge next to it, both repeating the top bar | H1 + description only |
+| Founder Home | Description listed business type, area, people and year started (the business profile, which lives in Business settings) | "Your money, your funding readiness and what to do next." |
+| Founder Home, Starter notice | "You're on a Starter account." repeated the plan badge | "Finish the registration steps to get verified, so funders and buyers can find you…" |
+| Funder: Company pipeline, Applications, Programmes & requirements, Set your requirements | Eyebrow with the funder's name (and "Grant funder") | H1 + description only |
+| Adviser: Cohort board, Needs attention, Support log, Document checks | Eyebrow with the incubator's name | H1 + description only |
+| Admin: Overview, Activity, People & companies, Security & health, Checker queue, Applications, Organisations, Reports, Feature requests, Flagged payments, Tenders & buyers | Eyebrow "ProofPocket admin" / "ProofPocket checker", repeating the top bar | H1 + description only |
+| Public directory | Eyebrow "ProofPocket directory" | H1 + description only |
+| Public business page `/b/:slug` | Eyebrow sector and town; Verified badge beside the name, repeated by the "Verified on ProofPocket" notice below it | H1 business name; sector and town as the description (the page is about this business); verification stated once, in the notice |
+| Payment page `/pay/:ref` | Eyebrow "You're paying" and the badge inside the page header | H1 business name, one-line description; Starter/Verified badge moved next to the amount (it tells the payer who they're paying) |
+| Top bar on phones | The business or organisation name was hidden below 640 px, so on a phone it showed nowhere once removed from the pages | Shown (truncated) on phones too, with the Starter/Verified badge for founders |
+
+**Tables that clipped at the right edge, now reflowed**
+Secondary columns hide on narrow widths and their key facts move under the first cell.
+
+| Table | Change |
+|---|---|
+| Bookkeeping "This month" (the "Cor…" button was cut off) | Columns follow the table's own width (container queries), not the screen's, because it sits in a narrow column on desktop. "Paid back", "Correct", "Save anyway" and "Discard" sit under the entry's details, so there's no last column to clip |
+| Stock | Status under the item name on phones |
+| Payments: payment requests | Status under the client on phones |
+| Funding readiness: programmes | Amount and what's still needed under the programme on phones; amount and Apply button stack |
+| Funder: Company pipeline | Town and "Qualifies for…" under the company; income, books and sharing from `lg` |
+| Funder: Applications | Programme and status under the company; Requested and readiness from `lg` |
+| Admin: Tenders & buyers | Closing date under the tender; documents needed from `md` |
+| Admin: Security & health, recent security actions | Time and action under the person on phones |
+| Every table | Edge shadow when there's still more to scroll (`.table-scroll`), as a fallback |
+
+**Other duplicated content checked**
+A browser sweep of 104 page visits looked for these:
+- the H1 repeated in another heading
+- a card title repeated in its first row
+- the top bar name repeated in the page
+
+None remain. Three places show the business name inside a page, and they stay because each is content rather than a label:
+- **Profile & marketing:** the preview of the public profile. That page is about the business's public identity.
+- **Payments:** the bank account holder's name in the payment details.
+- **Admin People & companies:** the admin's own account, as one row in the list of all accounts.
+
+Two things were kept on purpose:
+- **Home notices and the bell:** Home's notices also appear in the notifications bell. The bell is the cross-page summary; Home is where you act on them.
+- **The "Starter account, not yet verified" flag:** this comes from the business rules (`rules/flags.ts`), whose wording is fixed by the brief.

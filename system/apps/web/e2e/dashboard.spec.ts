@@ -25,6 +25,16 @@ async function visitAll(page: Page, base: string, paths: string[]) {
     await expect(page.getByRole("status", { name: "Loading" }), `${base}/${p} finishes loading`).toHaveCount(0);
     const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(sideways, `${base}/${p} doesn't scroll sideways`).toBeLessThanOrEqual(1);
+    // Tables reflow to fit: none is cut off at the right edge of its card.
+    const clipped = await page.locator("main .table-scroll").evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().width > 0 && e.scrollWidth > e.clientWidth + 2).length);
+    expect(clipped, `${base}/${p} has no table wider than its card`).toBe(0);
+    // One header structure: H1 and description only. The business/organisation name and the
+    // Starter/Verified badge are in the top bar, never repeated in the page header.
+    const header = page.locator("main h1").first().locator("xpath=ancestor::div[contains(@class,'flex-wrap')][1]");
+    const who = (await page.locator("header").innerText()).split("\n").map((t) => t.trim()).filter((t) => t.length > 3 && !/^(ProofPocket|Sign out|Starter|Verified|Example data|Offline|\d+)$/.test(t));
+    const headerText = await header.innerText();
+    for (const name of who) expect(headerText, `${base}/${p} header doesn't repeat "${name}"`).not.toContain(name);
+    await expect(header.locator("[class*='rounded-full']").filter({ hasText: /^(Starter|Verified)$/ }), `${base}/${p} header has no plan badge`).toHaveCount(0);
   }
   expect(problems, "no console errors or failed API calls").toEqual([]);
 }
