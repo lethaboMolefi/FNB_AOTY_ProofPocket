@@ -1,26 +1,25 @@
-// Sign-up: email + password, then email OTP confirmation. Minimal information to create an account.
+// Sign-up: email + password, then a 6-digit code ProofPocket emails to confirm the address. Or Continue with Google.
 import { zodResolver } from "@hookform/resolvers/zod";
 import { emailSchema, passwordFor } from "@proofpocket/shared";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordStrength } from "@/components/ui/password-strength";
-import { ApiError, api } from "../../lib/api";
+import { ApiError } from "../../lib/api";
 import { AUTH_MODE, useAuth } from "../../lib/auth";
 import { AuthShell, GoogleIcon } from "./AuthShell";
+import { EmailCodeConfirm } from "./EmailCode";
 
 type Step = "form" | "verify";
 
 const signUpFormSchema = z.object({ email: emailSchema, password: passwordFor() });
 type SignUpForm = z.infer<typeof signUpFormSchema>;
-
-const otpSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") });
 
 const firebaseMessage = (code: string) =>
   code === "auth/email-already-in-use" ? "There's already an account with this email. Sign in instead."
@@ -31,67 +30,26 @@ export default function SignUp() {
   const auth = useAuth();
   const nav = useNavigate();
   const [step, setStep] = useState<Step>("form");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpErr, setOtpErr] = useState("");
-  const [resendDisabled, setResendDisabled] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleErr, setGoogleErr] = useState("");
   const form = useForm<SignUpForm>({ resolver: zodResolver(signUpFormSchema) });
-  const otpForm = useForm<z.infer<typeof otpSchema>>({ resolver: zodResolver(otpSchema) });
 
-  // ---- Step 1: submit email + password, then send OTP ----
-  const submitForm = form.handleSubmit(async ({ email: e, password: p }) => {
+  // ---- Step 1: create the sign-in. Then confirm the email with the code ProofPocket emails (step 2). ----
+  const submitForm = form.handleSubmit(async ({ email, password }) => {
     setErr(""); setLoading(true);
     try {
-      setEmail(e); setPassword(p);
-      if (AUTH_MODE === "local") {
-        // Send the email OTP code for email confirmation.
-        await api("/auth/email-otp/send", { body: { email: e } });
-        setStep("verify");
-      } else {
-        // Firebase: create the account, which sends a verification email.
-        await auth.signUp(e, p);
-        setStep("verify");
-      }
+      await auth.signUp(email, password);
+      // Local sign-ins are confirmed already (development and the demo); new Firebase sign-ins get the code.
+      if (AUTH_MODE === "firebase") setStep("verify");
+      else nav("/join", { replace: true });
     } catch (x) {
       setErr(x instanceof ApiError ? x.message : firebaseMessage((x as { code?: string }).code ?? ""));
     } finally {
       setLoading(false);
     }
   });
-
-  // ---- Step 2: verify the OTP code, then create the account (local) ----
-  const verifyOtp = otpForm.handleSubmit(async ({ code }) => {
-    setOtpErr(""); setOtpLoading(true);
-    try {
-      if (AUTH_MODE === "local") {
-        // Verify the email OTP, then create the local account.
-        await api("/auth/email-otp/verify", { body: { email, code } });
-        await auth.signUp(email, password);
-        nav("/join", { replace: true });
-      }
-      // Firebase: the verification link in the email handles it; just navigate.
-      nav("/join", { replace: true });
-    } catch (x) {
-      setOtpErr(x instanceof ApiError ? x.message : "That code isn't right. Check it and try again.");
-    } finally {
-      setOtpLoading(false);
-    }
-  });
-
-  const resendCode = async () => {
-    setOtpErr(""); setResendDisabled(true);
-    try {
-      await api("/auth/email-otp/send", { body: { email } });
-    } catch {
-      // Silently retry — the first send may still be valid.
-    }
-    setTimeout(() => setResendDisabled(false), 30_000);
-  };
 
   const googleSignUp = async () => {
     setGoogleErr(""); setGoogleLoading(true);
@@ -105,72 +63,11 @@ export default function SignUp() {
     }
   };
 
-  // ---- Step 2 UI: Firebase shows "check your email", local shows OTP entry ----
-  if (step === "verify" && AUTH_MODE === "firebase") {
-    return (
-      <AuthShell>
-        <Card className="border-border shadow-lg">
-          <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-shadcn-accent">
-              <MailCheck className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Check your email</CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              We sent a verification link to <b>{email}</b>. Click it to confirm your email, then continue.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button className="w-full" onClick={() => nav("/join", { replace: true })}>
-              I've verified my email — continue
-            </Button>
-            <Button variant="ghost" className="w-full" onClick={() => setStep("form")}>
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
-          </CardContent>
-        </Card>
-      </AuthShell>
-    );
-  }
-
+  // ---- Step 2: the 6-digit code ProofPocket emailed ----
   if (step === "verify") {
     return (
       <AuthShell>
-        <Card className="border-border shadow-lg">
-          <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-shadcn-accent">
-              <MailCheck className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Confirm your email</CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              We sent a 6-digit code to <b>{email}</b>. Enter it below to verify your email.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form className="space-y-4" onSubmit={verifyOtp} noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="otp-code">6-digit code</Label>
-                <Input id="otp-code" type="text" inputMode="numeric" autoComplete="one-time-code"
-                  placeholder="000000" maxLength={6}
-                  className="text-center text-xl tracking-[.4em] font-mono"
-                  {...otpForm.register("code")} />
-                {otpForm.formState.errors.code && <p className="err">{otpForm.formState.errors.code.message}</p>}
-              </div>
-              {otpErr && <p className="err" role="alert">{otpErr}</p>}
-              <Button type="submit" className="w-full" disabled={otpLoading || otpForm.formState.isSubmitting}>
-                {otpLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</> : "Verify and create account"}
-              </Button>
-            </form>
-            <div className="flex items-center justify-between text-sm">
-              <button type="button" className="text-muted-foreground hover:text-foreground" onClick={() => setStep("form")}>
-                <ArrowLeft className="inline h-4 w-4" /> Back
-              </button>
-              <button type="button" className="font-medium text-primary hover:underline disabled:opacity-50"
-                onClick={() => void resendCode()} disabled={resendDisabled}>
-                {resendDisabled ? "Resend in 30s" : "Resend code"}
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+        <EmailCodeConfirm heading="h1" onConfirmed={() => nav("/join", { replace: true })} />
       </AuthShell>
     );
   }

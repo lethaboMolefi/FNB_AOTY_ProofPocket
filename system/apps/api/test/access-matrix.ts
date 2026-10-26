@@ -31,8 +31,8 @@ export const MATRIX: Endpoint[] = [
   // ------------------------------------------------------------------ sign-in and two-step
   { id: "F-AUTH-01", module: "Sign-in", feature: "Sign in with email and password (local)", method: "POST", path: "/auth/local/sign-in", ui: "/sign-in", allow: ALL },
   { id: "F-AUTH-02", module: "Sign-in", feature: "Create a sign-in (local, used by Join)", method: "POST", path: "/auth/local/sign-up", ui: "/join, /sign-up", allow: ALL },
-  { id: "F-AUTH-10", module: "Sign-in", feature: "Email a sign-up code (local)", method: "POST", path: "/auth/email-otp/send", ui: "/sign-up", allow: ALL },
-  { id: "F-AUTH-11", module: "Sign-in", feature: "Check a sign-up code (local)", method: "POST", path: "/auth/email-otp/verify", ui: "/sign-up", allow: ALL },
+  { id: "F-AUTH-10", module: "Sign-in", feature: "Email a code to confirm the sign-in's email", method: "POST", path: "/auth/email-code/send", ui: "/sign-up, /join", allow: SIGNED_IN, note: "Needs a sign-in, not an account; already-confirmed sign-ins get confirmed: true" },
+  { id: "F-AUTH-11", module: "Sign-in", feature: "Check the email code (marks the email confirmed)", method: "POST", path: "/auth/email-code/verify", ui: "/sign-up, /join", allow: SIGNED_IN, body: { code: "000000" } },
   { id: "F-AUTH-12", module: "Sign-in", feature: "Set your own password (forced after a temporary one)", method: "POST", path: "/auth/password", ui: "/change-password, /admin/profile", allow: USERS, body: { current: "x", password: "y" }, note: "Needs a fresh sign-in (within 15 minutes)" },
   { id: "F-AUTH-03", module: "Sign-in", feature: "Who am I (account, role, company)", method: "GET", path: "/me", ui: "every signed-in page", allow: USERS },
   { id: "F-AUTH-04", module: "Sign-in", feature: "Start Google Authenticator set-up", method: "POST", path: "/auth/totp/setup", ui: "/verify, Business settings", allow: USERS, note: "Staff who already have it get 409; founders may start it any time" },

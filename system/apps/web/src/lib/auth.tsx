@@ -12,6 +12,8 @@ type Status = "loading" | "signedOut" | "signedIn";
 interface AuthApi {
   status: Status;
   email: string | null;
+  /** The sign-in's email is confirmed (Google and local sign-ins always are; new email sign-ups after the code). */
+  emailVerified: boolean;
   signIn(email: string, password: string): Promise<void>;
   signUp(email: string, password: string): Promise<void>;
   /** Firebase only. false when the person closed the Google window; a plain-language ApiError for anything else. */
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Local sessions are read straight away; Firebase reports its state once it has loaded.
   const [status, setStatus] = useState<Status>(() => (AUTH_MODE === "local" ? (readLocal() ? "signedIn" : "signedOut") : "loading"));
   const [email, setEmail] = useState<string | null>(() => (AUTH_MODE === "local" ? emailOf(readLocal()) : null));
+  const [emailVerified, setEmailVerified] = useState(AUTH_MODE === "local");
 
   const reset = useCallback(() => { qc.clear(); clearUserCache(); }, [qc]);
   // Offline items belong to the account that saved them.
@@ -60,13 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void firebase().then((fb) => {
       setTokenGetter(fb.token);
       setUnauthorizedHandler(() => { void fb.out(); });
-      unsub = fb.watch((u) => { setEmail(u?.email ?? null); setStatus(u ? "signedIn" : "signedOut"); });
+      unsub = fb.watch((u) => { setEmail(u?.email ?? null); setEmailVerified(u?.emailVerified ?? false); setStatus(u ? "signedIn" : "signedOut"); });
     });
     return () => unsub();
   }, [reset]);
 
   const value = useMemo<AuthApi>(() => ({
-    status, email,
+    status, email, emailVerified,
     async signIn(e, p) {
       reset();
       if (AUTH_MODE === "firebase") { await (await firebase()).signIn(e, p); return; }
@@ -82,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       writeLocal(token); setEmail(emailOf(token)); setStatus("signedIn");
     },
     async refresh() {
-      if (AUTH_MODE === "firebase") await (await firebase()).reload();
+      if (AUTH_MODE === "firebase") setEmailVerified(await (await firebase()).reload());
     },
     async resetPassword(e) {
       if (AUTH_MODE !== "firebase") throw new ApiError(400, "not_available", "Password reset emails work once ProofPocket is connected to Firebase.");
@@ -105,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (AUTH_MODE === "local") { writeLocal(null); setEmail(null); setStatus("signedOut"); return; }
       await (await firebase()).out();
     },
-  }), [status, email, reset]);
+  }), [status, email, emailVerified, reset]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

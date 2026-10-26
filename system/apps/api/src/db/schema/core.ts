@@ -192,6 +192,17 @@ export const userTotp = pgTable("user_totp", {
  * Email + password accounts for local development and tests only (AUTH_MODE=local).
  * Production uses Firebase Authentication; this table stays empty there.
  */
+/** Email confirmation codes, one per sign-in being confirmed. Only a hash of the code is kept; 10 minutes, 5 tries. */
+export const emailCodes = pgTable("email_codes", {
+  firebaseUid: text("firebase_uid").primaryKey(),
+  email: text("email").notNull(),
+  /** sha256(firebase_uid:code) */
+  codeHash: text("code_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  attempts: smallint("attempts").notNull().default(0),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const localCredentials = pgTable("local_credentials", {
   id: id(),
   email: text("email").notNull(),

@@ -1,7 +1,7 @@
 // Loaded only in firebase mode, and only when needed, to keep the first download small.
 import { initializeApp } from "@firebase/app";
 import {
-  browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, onAuthStateChanged, sendEmailVerification,
+  browserLocalPersistence, createUserWithEmailAndPassword, getAuth, GoogleAuthProvider, onAuthStateChanged,
   sendPasswordResetEmail, setPersistence, signInWithEmailAndPassword, signInWithPopup, signOut, type User,
 } from "@firebase/auth";
 
@@ -17,11 +17,8 @@ void setPersistence(auth, browserLocalPersistence);
 export const watch = (cb: (user: User | null) => void) => onAuthStateChanged(auth, cb);
 export const token = async () => (auth.currentUser ? auth.currentUser.getIdToken() : null);
 export const signIn = (email: string, password: string) => signInWithEmailAndPassword(auth, email, password);
-export async function signUp(email: string, password: string) {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  await sendEmailVerification(cred.user);
-  return cred;
-}
+// The email is confirmed with a code ProofPocket emails (POST /auth/email-code/*), not Firebase's link.
+export const signUp = (email: string, password: string) => createUserWithEmailAndPassword(auth, email, password);
 
 const googleProvider = () => {
   const p = new GoogleAuthProvider();
@@ -30,10 +27,11 @@ const googleProvider = () => {
 };
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider());
 
-/** After the person opens the email confirmation link: fetch a fresh token that says the email is confirmed. */
+/** After the email code is accepted: a fresh token that says the email is confirmed. Returns whether it is. */
 export async function reload() {
   await auth.currentUser?.reload();
   await auth.currentUser?.getIdToken(true);
+  return auth.currentUser?.emailVerified ?? false;
 }
 
 export const out = () => signOut(auth);

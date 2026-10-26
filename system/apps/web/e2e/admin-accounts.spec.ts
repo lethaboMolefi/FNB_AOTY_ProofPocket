@@ -29,7 +29,7 @@ test("a new admin must change the temporary password first; it then stops workin
   test.skip(isMobile, "One run is enough.");
   const email = `e2e.admin.${info.project.name}.${Date.now()}@proofpocket.example`;
   const { table, results, out } = makeAdmins(email, "admin@proofpocket.example");
-  expect(results).toEqual([{ email, status: "created" }, { email: "admin@proofpocket.example", status: "skipped", note: "already has a admin account" }]);
+  expect(results).toEqual([{ email, status: "created" }, { email: "admin@proofpocket.example", status: "skipped", note: "already has an admin account" }]);
   const temp = table[email]!;
   expect(temp).toMatch(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{14,}$/);
   expect(out).not.toContain("admin@proofpocket.example  "); // skipped accounts get no password

@@ -1,14 +1,14 @@
-import { emailSchema, newPasswordSchema, passwordFor, PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
+import { newPasswordSchema, passwordFor, PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
 import { Router } from "express";
 import { z } from "zod";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
-import { AppError, forbidden, notFound } from "../lib/errors";
+import { AppError, forbidden, notFound, unauthenticated } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { actorOf, contextOf, otpSatisfied, requireUser, twoFactorRequired } from "../middleware/auth";
 import { handle, limits, parse } from "../middleware/http";
 import { findMe } from "../repositories/users";
-import { sendEmailOtp, verifyEmailOtp } from "../services/email-otp";
+import { sendEmailCode, verifyEmailCode } from "../services/email-code";
 import { signInLocal, signUpLocal } from "../services/local-auth";
 import { setOwnPassword } from "../lib/identity";
 import { sql } from "drizzle-orm";
@@ -28,22 +28,6 @@ export function authRoutes(deps: Deps) {
       return signUpLocal(deps.db, deps.config, email, password);
     }));
 
-    // A 6-digit code emailed to confirm the address at sign-up (Sign up page). Production uses Firebase's verification email instead.
-    r.post("/auth/email-otp/send", limits.auth(), handle(async (req) => {
-      const { email } = parse(z.object({ email: emailSchema }), req.body);
-      return sendEmailOtp(deps.mailer, email);
-    }));
-    r.post("/auth/email-otp/verify", limits.auth(), handle(async (req) => {
-      const { email, code } = parse(z.object({ email: emailSchema, code: totpCodeSchema.shape.code }), req.body);
-      const result = verifyEmailOtp(email, code);
-      if (!result.ok) {
-        const msg = result.reason === "expired" ? "That code has expired. Request a new one."
-          : result.reason === "too_many" ? "Too many wrong codes. Request a new one."
-          : "That code isn't right. Check it and try again.";
-        throw new AppError(400, "otp_wrong", msg);
-      }
-      return { ok: true };
-    }));
   }
 
   // ------------------------------------------------------------ Google Authenticator
@@ -126,6 +110,27 @@ export function authRoutes(deps: Deps) {
       await audit(tx, actorOf(req), { action: "user.password_changed", entity: "user", entityId: user!.id });
     });
     return { message: "Password changed. Sign in again with your new password." };
+  }));
+
+  // Confirm the sign-in's email with a 6-digit code (sign-up, and Join for anyone not confirmed yet). Needs a sign-in,
+  // not an account. Google sign-ins (and local ones) are already confirmed.
+  const unconfirmed = (req: import("express").Request) => {
+    const a = req.auth;
+    if (!a) throw unauthenticated();
+    if (!a.token.email) throw new AppError(400, "no_email", "Your sign-in has no email address.");
+    return { uid: a.token.uid, email: a.token.email.toLowerCase(), confirmed: a.token.emailVerified };
+  };
+  r.post("/auth/email-code/send", limits.auth(), handle(async (req) => {
+    const who = unconfirmed(req);
+    if (who.confirmed) return { sent: false, confirmed: true, message: "Your email is already confirmed." };
+    const { resend } = parse(z.object({ resend: z.boolean().default(false) }), req.body ?? {});
+    return { confirmed: false, ...(await sendEmailCode(deps.db, deps.mailer, who, { resend })) };
+  }));
+  r.post("/auth/email-code/verify", limits.auth(), handle(async (req) => {
+    const who = unconfirmed(req);
+    if (who.confirmed) return { message: "Your email is already confirmed." };
+    const { code } = parse(z.object({ code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code") }), req.body);
+    return verifyEmailCode(deps.db, deps.config, who, code);
   }));
 
   r.get("/me", requireUser(undefined, { otp: false, passwordChange: true }), handle(async (req): Promise<Me> => {

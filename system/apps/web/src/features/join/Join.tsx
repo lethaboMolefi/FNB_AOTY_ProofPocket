@@ -36,6 +36,7 @@ import { Spinner } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { AUTH_MODE, useAuth } from "../../lib/auth";
 import { HOME_FOR, meKey, useMe } from "../../lib/me";
+import { EmailCodeConfirm } from "../auth/EmailCode";
 import { AuthPageShell, PasswordField } from "../auth/SignIn";
 import type { DocumentsResponse } from "../founder/types";
 
@@ -1289,6 +1290,11 @@ export default function Join() {
   if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending) || (noAccount && mine.isPending)) return <Spinner />;
   if (me.data && !unjoined) return <Navigate to={HOME_FOR[me.data.role]} replace />;
   if (me.data?.needsOtp) return <Navigate to="/verify" replace />;
+  // A new email sign-in confirms its address with the code we email before going further (Google is confirmed already).
+  // The steps' state is kept, so the person carries on where they were.
+  if (auth.status === "signedIn" && !auth.emailVerified) {
+    return <AuthPageShell wide toSignIn><div className="mx-auto w-full max-w-lg"><EmailCodeConfirm heading="h1" onConfirmed={() => void me.refetch()} /></div></AuthPageShell>;
+  }
 
   const isReturningFounder = !signedOut && !noAccount && unjoined;
   const application = mine.data?.application ?? null;

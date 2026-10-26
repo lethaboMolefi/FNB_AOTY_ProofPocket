@@ -52,10 +52,11 @@ export function devVerifier(secretB64: string): TokenVerifier {
   const local = localVerifier(secretB64);
   return async (token) => {
     if (token.startsWith("local.")) return local(token);
-    const m = /^dev:([^:\s]+@[^:\s]+):(\d+)$/.exec(token);
+    // devu: an email that hasn't been confirmed yet (sign-up tests).
+    const m = /^(dev|devu):([^:\s]+@[^:\s]+):(\d+)$/.exec(token);
     if (!m) throw new Error("bad dev token");
-    const email = m[1]!.toLowerCase();
-    return { uid: `dev-${email}`, email, emailVerified: true, authTime: Number(m[2]) };
+    const email = m[2]!.toLowerCase();
+    return { uid: `dev-${email}`, email, emailVerified: m[1] === "dev", authTime: Number(m[3]) };
   };
 }
 

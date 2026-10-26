@@ -83,7 +83,7 @@ export async function saveDetails(tx: Tx, who: { firebaseUid: string; email: str
 /** Step 3. Checks the documents are attached, records consent and sends them for checking. */
 export async function completeJoin(tx: Tx, actor: Actor, c: CompanyRow, emailVerified: boolean) {
   if (c.joinedAt) throw new AppError(409, "already_joined", "You've already joined.");
-  if (!emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: open the link we emailed you, then sign in again.");
+  if (!emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: enter the 6-digit code we emailed you.");
   const registered = c.cipcNumber !== null;
   const states = await docStatesOf(tx, c.id);
   const missing = joinDocsFor(registered).filter((k) => states[k] !== "pending" && states[k] !== "verified");

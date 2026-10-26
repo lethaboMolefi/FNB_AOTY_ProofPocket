@@ -49,7 +49,7 @@ export function joinRoutes(deps: Deps) {
     if (!a) throw unauthenticated();
     if (a.user) throw new AppError(409, "already_joined", "This account already has a ProofPocket portal.");
     if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
-    if (!a.token.emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: open the link we emailed you, then sign in again.");
+    if (!a.token.emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: enter the 6-digit code we emailed you.");
     const input = parse(portalApplicationSchema, req.body);
     return withContext(deps.db, contextOf(req), (tx) => submitApplication(tx, deps.config, { firebaseUid: a.token.uid, email: a.token.email! }, input));
   }));

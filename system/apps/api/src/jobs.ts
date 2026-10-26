@@ -102,6 +102,8 @@ async function auditChecks(pool: pg.Pool, store: FileStore | null, today: string
 async function retention(pool: pg.Pool, store: FileStore | null, out: JobResult) {
   const r = await pool.query("delete from rate_limit_hits where reset_at < now() - interval '1 day'");
   out.rateLimitRowsPurged = r.rowCount ?? 0;
+  // Email confirmation codes last 10 minutes; nothing needs them after a day.
+  await pool.query("delete from email_codes where expires_at < now() - interval '1 day'");
   if (!store) return;
   const abandoned = await pool.query<{ id: string; bucket_path: string }>(
     `select id, bucket_path from files where sha256 is null and created_at < now() - make_interval(hours => $1)`, [ABANDONED_UPLOAD_HOURS]);

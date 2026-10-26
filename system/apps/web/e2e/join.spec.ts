@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PDF, signIn, signInWithAuthenticator, signUpCode } from "./helpers";
+import { PDF, signIn, signInWithAuthenticator } from "./helpers";
 
 /** Pick from a shadcn (Radix) select by its label. */
 async function choose(page: Page, label: string, option: string | RegExp) {
@@ -79,8 +79,7 @@ test("a funder applies, the admin approves, and the funder's portal opens", asyn
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("a lovely long passphrase");
   await page.getByRole("button", { name: "Create account" }).click();
-  await page.getByLabel("6-digit code").fill(await signUpCode(email));
-  await page.getByRole("button", { name: "Verify and create account" }).click();
+  // Local sign-ins are confirmed at once; on the live site the email code comes first (API tests: email-code.test.ts).
   await expect(page).toHaveURL(/\/join$/);
   await page.getByRole("button", { name: /Investor \/ Funder/ }).click();
   await page.getByLabel("Full name").fill("Sipho Dlamini");
