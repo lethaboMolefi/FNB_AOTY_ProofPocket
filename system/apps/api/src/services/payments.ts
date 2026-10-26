@@ -8,13 +8,13 @@ import {
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Config } from "../config";
 import type { Tx } from "../db/client";
-import { companies, ledgerEntries, messages, paymentDetails, paymentProofs, paymentRequests, profiles, supplierBankChanges, suppliers, users } from "../db/schema/index";
+import { companies, ledgerEntries, messages, paymentDetails, paymentProofs, paymentRequestItems, paymentRequests, profiles, supplierBankChanges, suppliers, users } from "../db/schema/index";
 import { addActivity, audit, type Actor } from "../lib/audit";
 import { decryptField, encryptField, last4, randomToken } from "../lib/crypto";
 import { payfastEnabled } from "./payfast";
 import { AppError, badRequest, notFound } from "../lib/errors";
 import type { CompanyRow } from "../repositories/companies";
-import { addEntry } from "./books";
+import { addEntry, priceRequestItems, takeRequestStock } from "./books";
 import { requireRegisteredFile, shaSeenElsewhere } from "./files";
 
 type RequestRow = typeof paymentRequests.$inferSelect;
@@ -27,18 +27,26 @@ const effectiveStatus = (r: RequestRow, today = todayZA()): PaymentStatus =>
   shouldExpire(r.status, r.requestedOn, today) ? "expired" : r.status;
 
 // ---------------------------------------------------------------- requests (founder)
-export async function createRequest(tx: Tx, actor: Actor, c: CompanyRow, q: { client: string; amount: number; what: string; rails: Rail[] }) {
+export async function createRequest(tx: Tx, actor: Actor, c: CompanyRow, q: { client: string; amount?: number; what: string; rails: Rail[]; items?: { stockItemId: string; qty: number }[] }) {
   const today = todayZA();
+  // From stock: priced from each item's selling price. The founder may change the total (e.g. a discount).
+  const priced = await priceRequestItems(tx, c.id, q.items ?? []);
+  const amount = q.amount ?? priced.total;
+  if (!(amount > 0)) throw badRequest("no_amount", "Add the client's name and an amount");
+  const what = q.what || priced.items.map((i) => `${i.qty} × ${i.name}`).join(", ").slice(0, 120);
   for (let attempt = 0; attempt < 8; attempt++) {
     // PP- plus 4 digits, as in the prototype; 5 digits once 4 get crowded.
     const ref = `PP-${attempt < 5 ? randomInt(1000, 10000) : randomInt(10000, 100000)}`;
     try {
       const row = await tx.transaction(async (sp) => (await sp.insert(paymentRequests).values({
-        companyId: c.id, ref, publicToken: randomToken(), clientName: q.client, amount: money(q.amount), description: q.what,
+        companyId: c.id, ref, publicToken: randomToken(), clientName: q.client, amount: money(amount), description: what,
         rails: [...new Set(q.rails)], requestedOn: today, expiresAt: new Date(`${expiresOn(today)}T23:59:59+02:00`), createdBy: actor.userId,
       }).returning())[0]!);
+      if (priced.items.length) {
+        await tx.insert(paymentRequestItems).values(priced.items.map((i) => ({ paymentRequestId: row.id, stockItemId: i.stockItemId, name: i.name, qty: money(i.qty), unitPrice: money(i.unitPrice) })));
+      }
       await addActivity(tx, c.id, `Payment request ${ref} created for ${q.client}.`, actor.userId);
-      return row;
+      return Object.assign(row, { shortfall: priced.shortfall });
     } catch (e) {
       if ((e as { cause?: { code?: string } }).cause?.code !== "23505") throw e;
     }
@@ -53,9 +61,16 @@ export async function listRequests(tx: Tx, config: Config, companyId: string) {
   const expired = rows.filter((r) => effectiveStatus(r, today) === "expired" && r.status !== "expired").map((r) => r.id);
   if (expired.length) await tx.update(paymentRequests).set({ status: "expired" }).where(inArray(paymentRequests.id, expired));
   const proofs = rows.length ? await tx.select().from(paymentProofs).where(inArray(paymentProofs.paymentRequestId, rows.map((r) => r.id))).orderBy(desc(paymentProofs.createdAt)) : [];
+  const lines = rows.length ? await tx.select().from(paymentRequestItems).where(inArray(paymentRequestItems.paymentRequestId, rows.map((r) => r.id))) : [];
   return rows.map((r) => {
     const latest = proofs.find((p) => p.paymentRequestId === r.id);
     return {
+      items: lines.filter((l) => l.paymentRequestId === r.id).map((l) => ({ name: l.name, qty: Number(l.qty), unitPrice: Number(l.unitPrice) })),
+      // Every proof the client sent, newest first, so a payment can be looked at again later.
+      proofs: proofs.filter((p) => p.paymentRequestId === r.id).map((p) => ({
+        id: p.id, payer: p.payerName, amount: Number(p.amount), paidOn: p.paidOn, method: p.method, usedReference: p.usedReference, fileId: p.fileId,
+        checks: p.checkResults as ProofCheck[], status: p.status, sentAt: p.createdAt, decidedAt: p.decidedAt,
+      })),
       id: r.id, ref: r.ref, client: r.clientName, amount: Number(r.amount), what: r.description, rails: r.rails, status: effectiveStatus(r, today),
       attempts: r.attempts, requestedOn: r.requestedOn, expiresOn: expiresOn(r.requestedOn), link: payLink(config, r),
       proof: latest && latest.status === "submitted" && r.status === "checking" ? {
@@ -86,10 +101,11 @@ export async function markCash(tx: Tx, actor: Actor, c: CompanyRow, id: string) 
   if (!r.rails.includes("cash")) throw badRequest("no_cash", "This request doesn't allow cash.");
   // Cash can settle an open request, or one whose link has expired.
   if (![...OPEN_STATUSES, "expired"].includes(effectiveStatus(r))) throw badRequest("not_open", "This request is already settled.");
-  await addEntry(tx, actor, c, {
+  const { entry } = await addEntry(tx, actor, c, {
     clientUuid: randomUUID(), direction: "in", amount: Number(r.amount), method: "cash", category: "Services", date: todayZA(),
     note: `${r.description || "Payment"} · ${r.clientName} · ${r.ref}`, isPersonal: false, confirmDuplicate: true,
   }, { source: "cash_request", paymentRequestId: r.id });
+  await takeRequestStock(tx, actor, c, r.id, entry.id);
   await tx.update(paymentRequests).set({ status: "paid", paidAt: new Date() }).where(eq(paymentRequests.id, r.id));
   await addActivity(tx, c.id, `Payment ${r.ref} received (${R(Number(r.amount))}, Cash).`, actor.userId);
   return { message: "Payment added to your books" };
@@ -113,6 +129,7 @@ export async function confirmProof(tx: Tx, actor: Actor, c: CompanyRow, proofId:
     isPersonal: false, confirmDuplicate: true,
   }, { source: "proof", paymentRequestId: r.id, paymentProofId: p.id });
   await tx.update(ledgerEntries).set({ receiptFileId: p.fileId, receiptKept: true }).where(eq(ledgerEntries.id, entry.id));
+  await takeRequestStock(tx, actor, c, r.id, entry.id);
   await tx.update(paymentProofs).set({ status: "confirmed", decidedBy: actor.userId, decidedAt: new Date() }).where(eq(paymentProofs.id, p.id));
   await tx.update(paymentRequests).set({ status: "paid", paidAt: new Date() }).where(eq(paymentRequests.id, r.id));
   await addActivity(tx, c.id, `Confirmed ${R(Number(p.amount))} from ${r.clientName} (${r.ref}) in the bank. Proof of payment attached.`, actor.userId);
@@ -252,6 +269,7 @@ export async function payPageView(tx: Tx, config: Config, requestId: string) {
   return {
     business: { name: c!.name, verified: c!.verifiedAt !== null, slug: c!.slug, whatsapp: prof?.whatsapp ?? "" },
     ref: r.ref, client: r.clientName, amount: Number(r.amount), what: r.description, requestedOn: r.requestedOn, expiresOn: expiresOn(r.requestedOn),
+    items: (await tx.select().from(paymentRequestItems).where(eq(paymentRequestItems.paymentRequestId, r.id))).map((l) => ({ name: l.name, qty: Number(l.qty), unitPrice: Number(l.unitPrice) })),
     status, attempts: r.attempts, rails: r.rails.map((x) => ({ key: x, label: RAILS[x] })), ways, canSendProof: canSendProof(status, r.rails),
   };
 }

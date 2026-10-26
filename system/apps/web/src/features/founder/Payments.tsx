@@ -1,7 +1,7 @@
 // Payments (v2/app.js vPayments). Clients pay the founder directly; ProofPocket records it and checks proofs.
-import { PAYMENT_REQUEST_DAYS, R, RAILS, RAIL_KEYS, shortDate, todayZA, type PaymentStatus, type ProofCheck, type Rail } from "@proofpocket/shared";
+import { PAYMENT_REQUEST_DAYS, R, Rc, RAILS, RAIL_KEYS, requestItemsShortfall, requestItemsTotal, shortDate, todayZA, type PaymentStatus, type ProofCheck, type Rail } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ClipboardCopy, FileText, Link2, Loader2, MessageCircle, QrCode, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardCopy, FileText, Link2, Loader2, MessageCircle, Package, Plus, QrCode, X, XCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,8 @@ import { CodeInput } from "../auth/TwoFactor";
 import { FounderHead } from "./FounderHead";
 
 interface Proof { id: string; payer: string; amount: number; paidOn: string; method: Rail; usedReference: boolean; fileId: string | null; checks: ProofCheck[] }
-interface Req { id: string; ref: string; client: string; amount: number; what: string; rails: Rail[]; status: PaymentStatus; attempts: number; requestedOn: string; expiresOn: string; link: string; proof: Proof | null }
+interface PastProof { id: string; payer: string; amount: number; paidOn: string; method: Rail; usedReference: boolean; fileId: string | null; checks: ProofCheck[]; status: "submitted" | "confirmed" | "rejected"; sentAt: string; decidedAt: string | null }
+interface Req { id: string; ref: string; client: string; amount: number; what: string; items: { name: string; qty: number; unitPrice: number }[]; proofs: PastProof[]; rails: Rail[]; status: PaymentStatus; attempts: number; requestedOn: string; expiresOn: string; link: string; proof: Proof | null }
 interface Supplier { id: string; name: string; bank: string; pending: { bank: string; since: string } | null }
 interface PayData {
   requests: Req[]; suppliers: Supplier[]; authenticatorOn: boolean; payfastEnabled: boolean; businessType: string;
@@ -51,8 +52,7 @@ function ProofBox({ r }: { r: Req }) {
   };
   const open = async () => {
     if (!p.fileId) return;
-    try { const { url } = await api<{ url: string }>(`/files/${p.fileId}/download-url`); window.open(url.startsWith("/") ? `${API_BASE}${url}` : url, "_blank", "noopener"); }
-    catch (e) { setErr((e as ApiError).message); }
+    try { await openFile(p.fileId); } catch (e) { setErr((e as ApiError).message); }
   };
   return (
     <div className={cn("popbox space-y-3 rounded-lg border p-4", failed ? "border-warn/40 bg-warn-soft/40" : "border-line bg-surface")}>
@@ -79,22 +79,65 @@ function ProofBox({ r }: { r: Req }) {
 }
 
 // ---------------------------------------------------------------- ask a client to pay
+interface StockItem { id: string; name: string; unit: string; qty: number; price: number }
+type Line = { stockItemId: string; qty: string };
+
+/** Lines from stock: pick an item and how many; "Add stock" for another line. */
+function StockLines({ stock, lines, setLines }: { stock: StockItem[]; lines: Line[]; setLines: (l: Line[]) => void }) {
+  const priced = stock.filter((s) => s.price > 0);
+  const set = (i: number, l: Partial<Line>) => setLines(lines.map((x, j) => (j === i ? { ...x, ...l } : x)));
+  return (
+    <fieldset className="space-y-2">
+      <legend className="mb-1.5 text-sm font-medium">Items from stock <span className="font-normal text-muted-foreground">(optional)</span></legend>
+      {lines.map((l, i) => {
+        const item = stock.find((s) => s.id === l.stockItemId);
+        return (
+          <div key={i} className="grid grid-cols-[minmax(0,1fr)_88px_auto] items-end gap-2">
+            <NativeSelect label={`Item ${i + 1}`} value={l.stockItemId} onChange={(e) => set(i, { stockItemId: e.target.value })}>
+              {priced.map((s) => <option key={s.id} value={s.id}>{s.name} · {Rc(s.price)} each · {s.qty} {s.unit} in stock</option>)}
+            </NativeSelect>
+            <TextField label="How many" type="number" min={1} step="1" inputMode="decimal" value={l.qty} onChange={(e) => set(i, { qty: e.target.value })} />
+            <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${item?.name ?? "item"}`} onClick={() => setLines(lines.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+          </div>
+        );
+      })}
+      {priced.length ? (
+        <Button type="button" size="sm" variant="outline" onClick={() => setLines([...lines, { stockItemId: priced[0]!.id, qty: "1" }])}><Plus className="h-4 w-4" />Add stock</Button>
+      ) : stock.length ? (
+        <p className="text-xs text-muted-foreground">Set a selling price on your items under <Link to="/app/stock" className="font-medium text-primary hover:underline">Stock</Link> to add them here.</p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 function NewRequest({ business, payfastOn }: { business: string; payfastOn: boolean }) {
   const toast = useToast();
   const refresh = useRefresh();
+  const stockQ = useQuery({ queryKey: ["founder", "stock"], queryFn: () => api<{ on: boolean; items: StockItem[] }>("/founder/stock") });
+  const stock = stockQ.data?.on ? stockQ.data.items : [];
   const [f, setF] = useState({ client: "", amount: "", what: "", rails: ["payshap", "eft", "cash"] as Rail[] });
+  const [lines, setLines] = useState<Line[]>([]);
+  // The amount follows the items until the founder types their own (e.g. a discount).
+  const [amountEdited, setAmountEdited] = useState(false);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [made, setMade] = useState<{ ref: string; link: string; client: string; amount: number; what: string } | null>(null);
+  const picked = lines.map((l) => ({ l, item: stock.find((s) => s.id === l.stockItemId) })).filter((x) => x.item && Number(x.l.qty) > 0);
+  const total = requestItemsTotal(picked.map(({ l, item }) => ({ price: item!.price, qty: Number(l.qty) })));
+  const short = requestItemsShortfall(picked.map(({ l, item }) => ({ name: item!.name, qty: Number(l.qty), inStock: item!.qty })));
+  const amount = picked.length && !amountEdited ? (total ? String(total) : "") : f.amount;
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setErr("");
-    if (!f.client.trim() || !Number(f.amount)) { setErr("Add the client's name and an amount"); return; }
+    if (!f.client.trim() || !Number(amount)) { setErr("Add the client's name and an amount"); return; }
     if (!f.rails.length) { setErr("Choose at least one way to pay"); return; }
     setBusy(true);
     try {
-      const r = await api<{ ref: string; link: string; message: string }>("/founder/payment-requests", { body: { client: f.client, amount: Number(f.amount), what: f.what, rails: f.rails } });
-      toast(r.message); setMade({ ...r, client: f.client, amount: Number(f.amount), what: f.what });
-      setF({ ...f, client: "", amount: "", what: "" }); void refresh();
+      const items = picked.map(({ l }) => ({ stockItemId: l.stockItemId, qty: Number(l.qty) }));
+      const r = await api<{ ref: string; link: string; amount: number; message: string }>("/founder/payment-requests", {
+        body: { client: f.client, what: f.what, rails: f.rails, items, ...(items.length && !amountEdited ? {} : { amount: Number(amount) }) },
+      });
+      toast(r.message); setMade({ ...r, client: f.client, amount: r.amount ?? Number(amount), what: f.what });
+      setF({ ...f, client: "", amount: "", what: "" }); setLines([]); setAmountEdited(false); void refresh();
     } catch (x) { setErr((x as ApiError).message); }
     finally { setBusy(false); }
   };
@@ -107,11 +150,16 @@ function NewRequest({ business, payfastOn }: { business: string; payfastOn: bool
           <CardDescription>The link works for {PAYMENT_REQUEST_DAYS} days and shows only your saved payment details.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <TextField label="Client" value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} placeholder="e.g. Thandi Mokoena" />
+          {stock.length > 0 && <StockLines stock={stock} lines={lines} setLines={setLines} />}
+          {short.length > 0 && <Callout tone="warn">You don't have enough {short.join(", ")}. You can still send the request.</Callout>}
           <div className="grid gap-3 sm:grid-cols-2">
-            <TextField label="Client" value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} placeholder="e.g. Thandi Mokoena" />
-            <TextField label="Amount (R)" type="number" min={1} inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
-            <TextField label="For" className="sm:col-span-2" placeholder="e.g. Lash fill" value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} />
+            <TextField label="Amount (R)" type="number" min={1} inputMode="decimal" value={amount}
+              hint={picked.length ? (amountEdited ? `Items add up to ${Rc(total)}.` : "Worked out from your selling prices. You can change it, e.g. for a discount.") : undefined}
+              onChange={(e) => { setAmountEdited(true); setF({ ...f, amount: e.target.value }); }} />
+            <TextField label="For" placeholder={picked.length ? "Optional: the items are listed for the client" : "e.g. Lash fill"} value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} />
           </div>
+          {picked.length > 0 && amountEdited && <Button type="button" size="sm" variant="ghost" onClick={() => setAmountEdited(false)}><Package className="h-4 w-4" />Use the items' total ({Rc(total)})</Button>}
           <fieldset>
             <legend className="mb-1.5 text-sm font-medium">Ways the client can pay</legend>
             <div className="flex flex-wrap gap-2">{RAIL_KEYS.map((k) => {
@@ -163,11 +211,51 @@ function Share({ req, business }: { req: { client: string; amount: number; what:
   );
 }
 
+// ---------------------------------------------------------------- a payment, looked at again later
+const PROOF_STATE: Record<PastProof["status"], [Variant, string]> = { submitted: ["warning", "Waiting for you to check"], confirmed: ["success", "You confirmed the money came in"], rejected: ["destructive", "You said it wasn't received"] };
+
+/** Opens a stored proof of payment in a new tab (a short-lived link from the API). */
+async function openFile(fileId: string) {
+  const { url } = await api<{ url: string }>(`/files/${fileId}/download-url`);
+  window.open(url.startsWith("/") ? `${API_BASE}${url}` : url, "_blank", "noopener");
+}
+
+function PaymentDetails({ r }: { r: Req }) {
+  const toast = useToast();
+  return (
+    <div role="region" aria-label={`Details of ${r.ref}`} className="space-y-3 rounded-lg border border-border bg-surface-2 p-3 text-sm">
+      {r.items.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Items</p>
+          <ul>{r.items.map((i) => <li key={i.name} className="flex justify-between gap-3"><span>{i.qty} × {i.name} @ {Rc(i.unitPrice)}</span><span className="tabular-nums">{Rc(Math.round(i.qty * i.unitPrice * 100) / 100)}</span></li>)}</ul>
+        </div>
+      )}
+      <div>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Proof of payment</p>
+        {r.proofs.length ? <ul className="space-y-3">{r.proofs.map((p) => (
+          <li key={p.id} className="space-y-1.5 rounded-md border border-border bg-background p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <b>{p.payer} · {R(p.amount)}</b>
+              <Badge variant={PROOF_STATE[p.status][0]}>{PROOF_STATE[p.status][1]}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{RAILS[p.method]} on {shortDate(p.paidOn)} · {p.usedReference ? "used" : "didn't use"} reference <span className="font-mono">{r.ref}</span> · sent {shortDate(String(p.sentAt).slice(0, 10))}</p>
+            <ul className="space-y-1">{p.checks.map((c) => (
+              <li key={c.code} className="flex items-start gap-2 text-xs">{c.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-good" aria-label="Passed" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-bad" aria-label="Failed" />}<span>{c.text}</span></li>
+            ))}</ul>
+            {p.fileId && <Button size="sm" variant="outline" onClick={() => void openFile(p.fileId!).catch((e) => toast((e as ApiError).message))}><FileText className="h-4 w-4" />Open proof</Button>}
+          </li>
+        ))}</ul> : <p className="text-muted-foreground">{r.status === "paid" ? "Paid without a proof (cash or card machine)." : "No proof of payment yet."}</p>}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- payment requests list
 function Requests({ data, business }: { data: PayData; business: string }) {
   const toast = useToast();
   const refresh = useRefresh();
   const [open, setOpen] = useState<string | null>(null);
+  const [details, setDetails] = useState<string | null>(null);
   const act = async (r: Req, kind: "cash" | "cancel") => {
     if (kind === "cancel" && !window.confirm(`Cancel ${r.ref}? The link will stop working.`)) return;
     try { toast((await api<{ message: string }>(`/founder/payment-requests/${r.id}/${kind}`, { body: {} })).message); void refresh(); }
@@ -195,6 +283,7 @@ function Requests({ data, business }: { data: PayData; business: string }) {
                   <TableCell>
                     <div className="font-medium">{r.client}</div>
                     <Badge variant={STATUS[r.status][0]} className="mt-1 sm:hidden">{STATUS[r.status][1]}</Badge>
+                    {r.items.length > 0 && <div className="text-xs">{r.items.map((i) => `${i.qty} × ${i.name} @ ${Rc(i.unitPrice)}`).join(" · ")}</div>}
                     <div className="text-xs text-muted-foreground"><span className="font-mono">{r.ref}</span> · {r.what || "Payment"} · {live ? `link works until ${shortDate(r.expiresOn)}` : shortDate(r.requestedOn)}</div>
                     {r.status === "not_received" && <div className="mt-1 text-xs text-bad">You said the money didn't arrive. The client can upload proof once more.</div>}
                   </TableCell>
@@ -208,12 +297,18 @@ function Requests({ data, business }: { data: PayData; business: string }) {
                       {live && <Button size="sm" variant="outline" onClick={() => setOpen(open === r.id ? null : r.id)}><Link2 className="h-4 w-4" />{open === r.id ? "Hide link" : "Link & QR"}</Button>}
                       {r.rails.includes("cash") && (live || r.status === "expired") && <Button size="sm" variant="outline" onClick={() => void act(r, "cash")}>Paid me cash</Button>}
                       {live && <Button size="sm" variant="ghost" onClick={() => void act(r, "cancel")}>Cancel</Button>}
+                      <Button size="sm" variant="ghost" aria-expanded={details === r.id} onClick={() => setDetails(details === r.id ? null : r.id)}>{details === r.id ? "Hide details" : "Details"}</Button>
                     </div>
                   </TableCell>
                 </TableRow>,
                 open === r.id && (
                   <TableRow key={`${r.id}-share`} className="hover:bg-transparent">
                     <TableCell colSpan={5}><Share req={r} business={business} /></TableCell>
+                  </TableRow>
+                ),
+                details === r.id && (
+                  <TableRow key={`${r.id}-details`} className="hover:bg-transparent">
+                    <TableCell colSpan={5}><PaymentDetails r={r} /></TableCell>
                   </TableRow>
                 ),
               ];

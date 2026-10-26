@@ -91,6 +91,12 @@ describe("payment requests and the public payment page", () => {
     const books = (await get(F, "/founder/books")).body.entries;
     expect(books.find((e: { note: string }) => e.note.includes(created.body.ref))).toMatchObject({ amount: 250, direction: "in", receipt: true, source: "proof" });
     expect((await payGet(created.body.link)).body.status).toBe("paid");
+    // Later, the founder can look at the payment again and open the proof.
+    const paid = (await get(F, "/founder/payments")).body.requests.find((r: { ref: string }) => r.ref === created.body.ref);
+    expect(paid.proof).toBeNull();
+    expect(paid.proofs).toHaveLength(1);
+    expect(paid.proofs[0]).toMatchObject({ payer: "Naledi M.", amount: 250, status: "confirmed", fileId });
+    expect((await get(F, `/files/${fileId}/download-url`)).body.url).toBeTruthy();
   });
 
   it("“Paid me cash” and cancelling", async () => {

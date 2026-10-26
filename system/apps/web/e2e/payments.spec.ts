@@ -57,6 +57,14 @@ test("full payment flow: request → client proof → not received twice → fla
   await page.goto("/app/protection");
   await expect(page.getByText(`${client.split(" ")[0]} ${client.split(" ")[1]} ${client.split(" ")[2]} (client)`)).toBeVisible();
   await expect(page.getByText("Possible fake proof of payment").first()).toBeVisible();
+
+  // 5. Later: the founder opens the payment again and sees both proofs, and can open them.
+  await page.goto("/app/payments");
+  const reqRow = page.getByRole("row").filter({ hasText: client }).first();
+  await reqRow.getByRole("button", { name: "Details" }).click();
+  const details = page.getByRole("region", { name: /^Details of PP-/ });
+  await expect(details.getByText("You said it wasn't received")).toHaveCount(2);
+  await expect(details.getByRole("button", { name: "Open proof" })).toHaveCount(2);
 });
 
 test("a wrong payment link shows nothing about the business", async ({ page }) => {
@@ -73,4 +81,25 @@ test("supplier on hold blocks recording a payment", async ({ page }) => {
   await page.locator("form", { hasText: "Record a supplier payment" }).getByLabel("Amount (R)").fill("500");
   await page.getByRole("button", { name: "Record payment" }).click();
   await expect(page.getByText("Payment blocked: Glam Supplies's bank details changed.")).toBeVisible();
+});
+
+test("ask a client to pay for stock: the amount comes from the selling prices", async ({ page }) => {
+  await signIn(page, "zanele@proofpocket.example");
+  await page.goto("/app/stock");
+  const row = page.getByRole("row").filter({ has: page.getByRole("button", { name: /^Selling price of / }) }).first();
+  const name = (await row.getByRole("button", { name: /^Selling price of / }).getAttribute("aria-label"))!.replace("Selling price of ", "");
+  page.once("dialog", (d) => void d.accept("45.50"));
+  await row.getByRole("button", { name: `Selling price of ${name}` }).click();
+  await expect(row.getByRole("button", { name: `Selling price of ${name}` })).toHaveText("R45.50");
+
+  await page.goto("/app/payments");
+  const ask = page.locator("form").filter({ has: page.getByRole("heading", { name: "Ask a client to pay" }) });
+  await ask.getByLabel("Client").fill("Stock client");
+  await ask.getByRole("button", { name: "Add stock" }).click();
+  const value = await ask.getByLabel("Item 1").locator("option", { hasText: `${name} ·` }).first().getAttribute("value");
+  await ask.getByLabel("Item 1").selectOption(value!);
+  await ask.getByLabel("How many").fill("2");
+  await expect(ask.getByLabel("Amount (R)")).toHaveValue("91");
+  await ask.getByRole("button", { name: "Create payment request" }).click();
+  await expect(page.getByText(`2 × ${name} @ R45.50`).first()).toBeVisible();
 });
