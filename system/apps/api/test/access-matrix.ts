@@ -30,7 +30,9 @@ export const MATRIX: Endpoint[] = [
 
   // ------------------------------------------------------------------ sign-in and two-step
   { id: "F-AUTH-01", module: "Sign-in", feature: "Sign in with email and password (local)", method: "POST", path: "/auth/local/sign-in", ui: "/sign-in", allow: ALL },
-  { id: "F-AUTH-02", module: "Sign-in", feature: "Create a sign-in (local, used by Join)", method: "POST", path: "/auth/local/sign-up", ui: "/join", allow: ALL },
+  { id: "F-AUTH-02", module: "Sign-in", feature: "Create a sign-in (local, used by Join)", method: "POST", path: "/auth/local/sign-up", ui: "/join, /sign-up", allow: ALL },
+  { id: "F-AUTH-10", module: "Sign-in", feature: "Email a sign-up code (local)", method: "POST", path: "/auth/email-otp/send", ui: "/sign-up", allow: ALL },
+  { id: "F-AUTH-11", module: "Sign-in", feature: "Check a sign-up code (local)", method: "POST", path: "/auth/email-otp/verify", ui: "/sign-up", allow: ALL },
   { id: "F-AUTH-03", module: "Sign-in", feature: "Who am I (account, role, company)", method: "GET", path: "/me", ui: "every signed-in page", allow: USERS },
   { id: "F-AUTH-04", module: "Sign-in", feature: "Start Google Authenticator set-up", method: "POST", path: "/auth/totp/setup", ui: "/verify, Business settings", allow: USERS, note: "Staff who already have it get 409; founders may start it any time" },
   { id: "F-AUTH-05", module: "Sign-in", feature: "Activate Google Authenticator", method: "POST", path: "/auth/totp/activate", ui: "/verify, Business settings", allow: USERS, body: { code: "000000" } },

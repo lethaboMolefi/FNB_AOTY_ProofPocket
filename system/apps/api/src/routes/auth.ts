@@ -1,5 +1,6 @@
-import { PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
+import { emailSchema, PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
 import { Router } from "express";
+import { z } from "zod";
 import type { Deps } from "../app";
 import { withContext } from "../db/client";
 import { AppError, forbidden, notFound } from "../lib/errors";
@@ -7,6 +8,7 @@ import { audit } from "../lib/audit";
 import { actorOf, contextOf, otpSatisfied, requireUser, twoFactorRequired } from "../middleware/auth";
 import { handle, limits, parse } from "../middleware/http";
 import { findMe } from "../repositories/users";
+import { sendEmailOtp, verifyEmailOtp } from "../services/email-otp";
 import { signInLocal, signUpLocal } from "../services/local-auth";
 import { adminReset, checkCode, codeError, markSignInVerified, startSetup, turnOff } from "../services/two-factor";
 
@@ -22,6 +24,23 @@ export function authRoutes(deps: Deps) {
     r.post("/auth/local/sign-up", limits.auth(), handle(async (req) => {
       const { email, password } = parse(signUpSchema, req.body);
       return signUpLocal(deps.db, deps.config, email, password);
+    }));
+
+    // A 6-digit code emailed to confirm the address at sign-up (Sign up page). Production uses Firebase's verification email instead.
+    r.post("/auth/email-otp/send", limits.auth(), handle(async (req) => {
+      const { email } = parse(z.object({ email: emailSchema }), req.body);
+      return sendEmailOtp(deps.mailer, email);
+    }));
+    r.post("/auth/email-otp/verify", limits.auth(), handle(async (req) => {
+      const { email, code } = parse(z.object({ email: emailSchema, code: totpCodeSchema.shape.code }), req.body);
+      const result = verifyEmailOtp(email, code);
+      if (!result.ok) {
+        const msg = result.reason === "expired" ? "That code has expired. Request a new one."
+          : result.reason === "too_many" ? "Too many wrong codes. Request a new one."
+          : "That code isn't right. Check it and try again.";
+        throw new AppError(400, "otp_wrong", msg);
+      }
+      return { ok: true };
     }));
   }
 
