@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 
 /** "A new version is ready. Refresh" when the service worker updates. */
 export function UpdatePrompt() {
@@ -7,9 +9,9 @@ export function UpdatePrompt() {
   if (!needRefresh) return null;
   return (
     <div role="status" className="fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+12px)] z-[70] mx-auto flex max-w-md items-center gap-3 rounded-card border border-line bg-surface p-3 shadow-[0_8px_24px_rgba(24,28,39,.08)]">
-      <span className="flex-1 small font-semibold">A new version is ready.</span>
-      <button className="btn sm" onClick={() => setNeedRefresh(false)}>Later</button>
-      <button className="btn sm primary" onClick={() => void updateServiceWorker(true)}>Refresh</button>
+      <span className="flex-1 text-sm font-semibold">A new version is ready.</span>
+      <Button size="sm" variant="outline" onClick={() => setNeedRefresh(false)}>Later</Button>
+      <Button size="sm" onClick={() => void updateServiceWorker(true)}>Refresh</Button>
     </div>
   );
 }
@@ -54,14 +56,12 @@ export function InstallHint() {
 
   const dismiss = () => { setDismissed(true); safe(() => localStorage.setItem(DISMISSED, "1"), undefined); };
   return (
-    <div className="notice info">
-      <span className="ico" aria-hidden="true">+</span>
-      <div className="flex-1 small">
-        <b>Add ProofPocket to your home screen.</b>{" "}
-        {prompt ? "It opens like an app and works when your data runs out." : "Tap the Share button, then Add to Home Screen."}
-      </div>
-      {prompt && <button className="btn sm primary" onClick={() => { void prompt.prompt(); setPrompt(null); }}>Add</button>}
-      <button className="btn sm" onClick={dismiss} aria-label="Dismiss">Not now</button>
-    </div>
+    <Callout tone="info" action={<div className="flex shrink-0 gap-2">
+      {prompt && <Button size="sm" onClick={() => { void prompt.prompt(); setPrompt(null); }}>Add</Button>}
+      <Button size="sm" variant="outline" onClick={dismiss}>Not now</Button>
+    </div>}>
+      <b>Add ProofPocket to your home screen.</b>{" "}
+      {prompt ? "It opens like an app and works when your data runs out." : "Tap the Share button, then Add to Home Screen."}
+    </Callout>
   );
 }

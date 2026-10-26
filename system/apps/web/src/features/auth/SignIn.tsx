@@ -24,7 +24,7 @@ export function AuthPageShell({ children, wide, toSignIn }: { children: ReactNod
   };
   return (
     <main id="main" className={`mx-auto flex min-h-screen flex-col gap-5 px-4 pb-10 pt-[calc(env(safe-area-inset-top,0px)+32px)] ${wide ? "max-w-[1100px]" : "max-w-md"}`}>
-      <Link to={toSignIn ? "/sign-in" : "/"} onClick={toSignIn ? (e) => void leave(e) : undefined} aria-label={toSignIn ? "ProofPocket: go to sign in" : "ProofPocket"} className="flex items-center gap-2.5 self-start text-ink no-underline"><BrandMark /><span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span></Link>
+      <Link to={toSignIn ? "/sign-in" : "/"} onClick={toSignIn ? (e) => void leave(e) : undefined} aria-label={toSignIn ? "ProofPocket: go to sign in" : "ProofPocket"} className="flex min-h-11 items-center gap-2.5 self-start text-ink no-underline"><BrandMark /><span className="font-display text-xl font-[750] tracking-tight">ProofPocket</span></Link>
       {children}
     </main>
   );
@@ -41,12 +41,10 @@ export const PasswordField = forwardRef<
   const [show, setShow] = useState(false);
   const id = useId();
   return (
-    <div className="field">
-      <label htmlFor={id}>
-        <span className="text-[.82rem] font-semibold text-muted">{label}</span>
-      </label>
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
       <div className="flex gap-2">
-        <input
+        <Input
           id={id}
           ref={ref}
           {...props}
@@ -54,18 +52,14 @@ export const PasswordField = forwardRef<
           spellCheck={false}
           autoCapitalize="none"
           aria-invalid={!!error || undefined}
+          aria-describedby={error ? `${id}-err` : undefined}
         />
-        <button
-          type="button"
-          className="btn shrink-0"
-          onClick={() => setShow((v) => !v)}
-          aria-pressed={show}
-          aria-label={show ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-        >
+        <Button type="button" variant="outline" className="shrink-0" onClick={() => setShow((v) => !v)} aria-pressed={show}
+          aria-label={show ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}>
           {show ? "Hide" : "Show"}
-        </button>
+        </Button>
       </div>
-      {error && <p className="err">{error}</p>}
+      {error && <p id={`${id}-err`} className="text-xs text-bad">{error}</p>}
     </div>
   );
 });
@@ -162,7 +156,7 @@ export default function SignIn() {
     <AuthShell>
       <Card className="border-border shadow-lg">
         <CardHeader className="space-y-3 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight"><h1>Sign in</h1></CardTitle>
+          <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Sign in</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
             Your books, payments and proof, in one place.
           </CardDescription>

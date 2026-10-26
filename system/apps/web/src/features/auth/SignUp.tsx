@@ -114,7 +114,7 @@ export default function SignUp() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-shadcn-accent">
               <MailCheck className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight">Check your email</CardTitle>
+            <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Check your email</CardTitle>
             <CardDescription className="text-base text-muted-foreground">
               We sent a verification link to <b>{email}</b>. Click it to confirm your email, then continue.
             </CardDescription>
@@ -140,7 +140,7 @@ export default function SignUp() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-shadcn-accent">
               <MailCheck className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight">Confirm your email</CardTitle>
+            <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Confirm your email</CardTitle>
             <CardDescription className="text-base text-muted-foreground">
               We sent a 6-digit code to <b>{email}</b>. Enter it below to verify your email.
             </CardDescription>
@@ -180,7 +180,7 @@ export default function SignUp() {
     <AuthShell>
       <Card className="border-border shadow-lg">
         <CardHeader className="space-y-3 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Create your account</CardTitle>
+          <CardTitle as="h1" className="text-2xl font-bold tracking-tight">Create your account</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
             Join ProofPocket and start building proof that funders and buyers trust.
           </CardDescription>

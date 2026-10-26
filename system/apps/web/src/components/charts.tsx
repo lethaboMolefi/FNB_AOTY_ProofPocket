@@ -1,6 +1,5 @@
 // Charts and score widgets ported from v2/app.js (barChart, ring, spark, checklist).
 import { R } from "@proofpocket/shared";
-import type { ReactNode } from "react";
 
 export interface Point { label: string; moneyIn: number; moneyOut: number }
 
@@ -99,11 +98,3 @@ export function Checklist({ items }: { items: CheckItem[] }) {
     </div>
   );
 }
-
-export const Stat = ({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: "in" | "bad" }) => (
-  <div className="panel stat">
-    <span className="label">{label}</span>
-    <span className={`v ${tone === "in" ? "in" : ""}`} style={tone === "bad" ? { color: "var(--bad)" } : undefined}>{value}</span>
-    {sub && <span className="small muted">{sub}</span>}
-  </div>
-);

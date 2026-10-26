@@ -138,7 +138,7 @@ export default function Start() {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-sm text-foreground">{s.title}</h3>
+                      <h2 className="font-semibold text-sm text-foreground">{s.title}</h2>
                       <Badge variant={s.neededToVerify ? "default" : "outline"} className="text-[10px]">
                         {s.neededToVerify ? "Needed to verify" : s.key === "tax" ? "Needed for funding" : "Needed for tenders"}
                       </Badge>

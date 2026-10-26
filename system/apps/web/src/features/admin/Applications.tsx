@@ -10,7 +10,8 @@ import { Callout } from "@/components/ui/callout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { PageHead, Spinner, useToast } from "../../components/ui";
+import { PageHeader } from "../../components/PageHeader";
+import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 
 interface Application {
@@ -68,12 +69,12 @@ function Decide({ a }: { a: Application }) {
 export default function Applications() {
   const q = useQuery({ queryKey: ["admin", "applications"], queryFn: () => api<{ applications: Application[] }>("/admin/applications") });
   const sub = "Funders and support organisations asking for a portal. Call the contact person and check the registration before you approve.";
-  if (!q.data) return <><PageHead label="ProofPocket admin" title="Applications" sub={sub} /><Spinner /></>;
+  if (!q.data) return <><PageHeader label="ProofPocket admin" title="Applications" sub={sub} /><Spinner /></>;
   const pending = q.data.applications.filter((a) => a.status === "pending");
   const decided = q.data.applications.filter((a) => a.status !== "pending");
   return (
     <>
-      <PageHead label="ProofPocket admin" title="Applications" sub={sub} />
+      <PageHeader label="ProofPocket admin" title="Applications" sub={sub} />
       {!pending.length && <Callout tone="good">No applications waiting.</Callout>}
       {pending.map((a) => (
         <Card key={a.id} role="group" aria-label={a.orgName}>

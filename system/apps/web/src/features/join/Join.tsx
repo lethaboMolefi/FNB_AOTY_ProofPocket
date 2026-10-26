@@ -197,7 +197,7 @@ function RoleSelector({ onSelect }: { onSelect: (r: Role) => void }) {
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Who are you joining as?</h1>
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Who are you joining as?</h2>
         <p className="text-muted-foreground text-sm max-w-sm mx-auto">
           Choose the option that best describes you. Each path collects what's relevant to your role.
         </p>
@@ -1173,7 +1173,7 @@ function JoinSidebar({ role, founderStep }: { role: Role | null; founderStep: nu
           <h3 className="font-semibold text-foreground">How funder verification works</h3>
           <ol className="space-y-2 text-sm text-muted-foreground list-decimal list-inside">
             <li>Submit your application with organisation and mandate details</li>
-            <li>We verify your CIPC registration, FSCA status and representative ID</li>
+            <li>We check the representative's ID and your organisation's registration, and call to confirm</li>
             <li>Our team contacts you within 2–3 business days</li>
             <li>Once approved, your funder portal is activated</li>
           </ol>
@@ -1298,7 +1298,7 @@ export default function Join() {
     <AuthPageShell wide toSignIn>
       {/* Header */}
       <div className="text-center space-y-1 py-2">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground font-display">ProofPocket</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Join ProofPocket</h1>
         <p className="text-muted-foreground text-sm">One business record. Trusted by funders, buyers and the public.</p>
       </div>
 
