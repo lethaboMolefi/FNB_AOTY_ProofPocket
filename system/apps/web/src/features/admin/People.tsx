@@ -50,16 +50,16 @@ function PeopleTable() {
         </form>
         {!q.data ? <Spinner /> : !q.data.people.length ? <EmptyState icon={Users}>No one matches.</EmptyState> : <>
           <div className="overflow-x-auto"><Table>
-            <TableHeader><TableRow><TableHead>Person</TableHead><TableHead>Role</TableHead><TableHead>Google Authenticator</TableHead><TableHead>Last seen</TableHead><TableHead>Joined</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Person</TableHead><TableHead className="hidden md:table-cell">Role</TableHead><TableHead>Two-step</TableHead><TableHead className="hidden md:table-cell">Last seen</TableHead><TableHead className="hidden md:table-cell">Joined</TableHead></TableRow></TableHeader>
             <TableBody>{q.data.people.map((p) => {
               const [tone, label] = TWO_FACTOR[p.twoFactor];
               return (
                 <TableRow key={p.id}>
-                  <TableCell><span className="block font-medium">{p.name}</span><span className="text-xs text-muted-foreground">{p.email}</span>{p.example && <> <ToneBadge tone="plain">Example</ToneBadge></>}</TableCell>
-                  <TableCell>{p.role}{p.organisation && <span className="block text-xs text-muted-foreground">{p.organisation}</span>}</TableCell>
+                  <TableCell className="break-all"><span className="block font-medium">{p.name}</span><span className="text-xs text-muted-foreground">{p.email}</span>{p.example && <> <ToneBadge tone="plain">Example</ToneBadge></>}<span className="block text-xs text-muted-foreground md:hidden">{p.role} · last seen {when(p.lastSeenAt)}</span></TableCell>
+                  <TableCell className="hidden md:table-cell">{p.role}{p.organisation && <span className="block text-xs text-muted-foreground">{p.organisation}</span>}</TableCell>
                   <TableCell><ToneBadge tone={tone}>{label}</ToneBadge></TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">{when(p.lastSeenAt)}</TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">{when(p.createdAt)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap tabular-nums md:table-cell">{when(p.lastSeenAt)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap tabular-nums md:table-cell">{when(p.createdAt)}</TableCell>
                 </TableRow>
               );
             })}</TableBody>
@@ -90,15 +90,15 @@ function CompaniesTable({ openCompany }: { openCompany: (id: string) => void }) 
         </form>
         {!q.data ? <Spinner /> : !q.data.companies.length ? <EmptyState icon={Building2}>No businesses match.</EmptyState> : <>
           <div className="overflow-x-auto"><Table>
-            <TableHeader><TableRow><TableHead>Business</TableHead><TableHead>Level</TableHead><TableHead className="text-right">Score</TableHead><TableHead className="text-right">Months</TableHead><TableHead className="text-right">Documents</TableHead><TableHead>Sharing</TableHead><TableHead><span className="sr-only">Open</span></TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Business</TableHead><TableHead>Level</TableHead><TableHead className="text-right">Score</TableHead><TableHead className="hidden text-right md:table-cell">Months</TableHead><TableHead className="hidden text-right md:table-cell">Documents</TableHead><TableHead className="hidden md:table-cell">Sharing</TableHead><TableHead><span className="sr-only">Open</span></TableHead></TableRow></TableHeader>
             <TableBody>{q.data.companies.map((c) => (
               <TableRow key={c.id}>
-                <TableCell><span className="block font-medium">{c.name}</span><span className="text-xs text-muted-foreground">{c.owner}{c.incubator && ` · ${c.incubator}`}</span>{c.example && <> <ToneBadge tone="plain">Example</ToneBadge></>}</TableCell>
+                <TableCell className="break-all"><span className="block font-medium">{c.name}</span><span className="text-xs text-muted-foreground">{c.owner}{c.incubator && ` · ${c.incubator}`}</span>{c.example && <> <ToneBadge tone="plain">Example</ToneBadge></>}</TableCell>
                 <TableCell>{c.status === "unfinished" ? <ToneBadge tone="plain">Not finished</ToneBadge> : <LevelBadge verified={c.status === "verified"} />}</TableCell>
                 <TableCell className="text-right tabular-nums">{c.score ?? "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{c.recordMonths ?? "—"}</TableCell>
-                <TableCell className="text-right tabular-nums">{c.documentsChecked}</TableCell>
-                <TableCell>{c.sharing}</TableCell>
+                <TableCell className="hidden text-right tabular-nums md:table-cell">{c.recordMonths ?? "—"}</TableCell>
+                <TableCell className="hidden text-right tabular-nums md:table-cell">{c.documentsChecked}</TableCell>
+                <TableCell className="hidden md:table-cell">{c.sharing}</TableCell>
                 <TableCell className="text-right">{c.status !== "unfinished" && <Button size="sm" variant="outline" onClick={() => openCompany(c.id)}>Open</Button>}</TableCell>
               </TableRow>
             ))}</TableBody>

@@ -56,14 +56,14 @@ export default function Activity() {
         <Card>
           <CardContent className="overflow-x-auto p-0">
             <Table>
-              <TableHeader><TableRow><TableHead>When</TableHead><TableHead>Who</TableHead><TableHead>Action</TableHead><TableHead>Company</TableHead><TableHead><span className="sr-only">Details</span></TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead className="hidden md:table-cell">When</TableHead><TableHead>Who</TableHead><TableHead>Action</TableHead><TableHead className="hidden md:table-cell">Company</TableHead><TableHead><span className="sr-only">Details</span></TableHead></TableRow></TableHeader>
               <TableBody>{q.data.entries.map((e) => (
                 <Fragment key={e.id}>
                   <TableRow>
-                    <TableCell className="whitespace-nowrap tabular-nums">{when(e.at)}</TableCell>
-                    <TableCell><span className="block">{e.person ?? "ProofPocket"}</span>{e.role && <span className="text-xs text-muted-foreground">{e.role}</span>}</TableCell>
-                    <TableCell><ToneBadge tone={e.action.startsWith("email.failed") || e.action.includes("mismatch") ? "bad" : "plain"}>{e.action}</ToneBadge><span className="block text-xs text-muted-foreground">{e.entity}</span></TableCell>
-                    <TableCell>{e.company ?? "—"}</TableCell>
+                    <TableCell className="hidden whitespace-nowrap tabular-nums md:table-cell">{when(e.at)}</TableCell>
+                    <TableCell className="break-all"><span className="block">{e.person ?? "ProofPocket"}</span>{e.role && <span className="text-xs text-muted-foreground">{e.role}</span>}<span className="block text-xs text-muted-foreground md:hidden">{when(e.at)}</span></TableCell>
+                    <TableCell><ToneBadge tone={e.action.startsWith("email.failed") || e.action.includes("mismatch") ? "bad" : "plain"}>{e.action}</ToneBadge><span className="block text-xs text-muted-foreground">{e.entity}{e.company && <span className="md:hidden"> · {e.company}</span>}</span></TableCell>
+                    <TableCell className="hidden md:table-cell">{e.company ?? "—"}</TableCell>
                     <TableCell className="text-right">{(e.before != null || e.after != null) &&
                       <Button size="sm" variant="ghost" aria-expanded={open === e.id} onClick={() => setOpen(open === e.id ? null : e.id)}>{open === e.id ? "Hide" : "Details"}</Button>}</TableCell>
                   </TableRow>
