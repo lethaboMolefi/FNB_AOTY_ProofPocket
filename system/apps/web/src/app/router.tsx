@@ -2,12 +2,13 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router-dom";
 import { Spinner } from "../components/ui";
 import { NotFound, Placeholder } from "../features/common/Placeholder";
-import { ADMIN_NAV, ADVISER_NAV, FOUNDER_NAV, FUNDER_NAV, FUNDER_SETUP, type NavPage } from "./nav";
+import { ADMIN_NAV, ADMIN_TABS, ADVISER_NAV, ADVISER_TABS, FOUNDER_NAV, FUNDER_NAV, FUNDER_SETUP, FUNDER_TABS, type NavPage } from "./nav";
 import { RequireFunderSetup, RequireRole, RoleHome } from "./guards";
 
 // Each portal is its own chunk, so a founder on a phone never downloads the funder or admin code.
 const FounderShell = lazy(() => import("../components/layout/FounderShell").then((m) => ({ default: m.FounderShell })));
 const PortalShell = lazy(() => import("../components/layout/PortalShell").then((m) => ({ default: m.PortalShell })));
+const MorePage = lazy(() => import("../components/layout/MorePage").then((m) => ({ default: m.MorePage })));
 const More = lazy(() => import("../features/founder/More"));
 const SignIn = lazy(() => import("../features/auth/SignIn"));
 const SignUp = lazy(() => import("../features/auth/SignUp"));
@@ -88,6 +89,15 @@ const BUILT: Record<string, ReactNode> = {
 const pages = (portal: string, list: NavPage[]): RouteObject[] =>
   list.map((p) => ({ path: p.path, element: BUILT[`${portal}/${p.path}`] ?? <Placeholder page={p} /> }));
 
+/** The line at the foot of each portal's sidebar. */
+const NOTE = {
+  funder: "ProofPocket never holds or moves money. Founders choose what funders see.",
+  adviser: "ProofPocket never holds or moves money. Every check and support log is recorded.",
+  admin: "ProofPocket never holds or moves money. What you open here is recorded in Activity.",
+};
+const more = (base: string, title: string, list: NavPage[], tabs: string[]): RouteObject =>
+  ({ path: "more", element: <MorePage base={base} groups={[{ group: title, pages: list }]} tabs={tabs} /> });
+
 export const routes: RouteObject[] = [
   { path: "/", element: <RoleHome /> },
   { path: "/sign-in", element: s(<SignIn />) },
@@ -110,18 +120,18 @@ export const routes: RouteObject[] = [
   },
   {
     path: "/funder",
-    element: <RequireRole roles={["funder"]}><RequireFunderSetup>{s(<PortalShell base="/funder" title="Funder portal" pages={FUNDER_NAV} />)}</RequireFunderSetup></RequireRole>,
-    children: [{ index: true, element: <Navigate to="pipeline" replace /> }, ...pages("funder", [...FUNDER_NAV, FUNDER_SETUP])],
+    element: <RequireRole roles={["funder"]}><RequireFunderSetup>{s(<PortalShell base="/funder" title="Funder portal" pages={FUNDER_NAV} tabs={FUNDER_TABS} note={NOTE.funder} />)}</RequireFunderSetup></RequireRole>,
+    children: [{ index: true, element: <Navigate to="pipeline" replace /> }, ...pages("funder", [...FUNDER_NAV, FUNDER_SETUP]), more("/funder", "Funder portal", FUNDER_NAV, FUNDER_TABS)],
   },
   {
     path: "/adviser",
-    element: <RequireRole roles={["adviser"]}>{s(<PortalShell base="/adviser" title="Support portal" pages={ADVISER_NAV} />)}</RequireRole>,
-    children: [{ index: true, element: <Navigate to="cohort" replace /> }, ...pages("adviser", ADVISER_NAV)],
+    element: <RequireRole roles={["adviser"]}>{s(<PortalShell base="/adviser" title="Support portal" pages={ADVISER_NAV} tabs={ADVISER_TABS} note={NOTE.adviser} />)}</RequireRole>,
+    children: [{ index: true, element: <Navigate to="cohort" replace /> }, ...pages("adviser", ADVISER_NAV), more("/adviser", "Support portal", ADVISER_NAV, ADVISER_TABS)],
   },
   {
     path: "/admin",
-    element: <RequireRole roles={["admin"]}>{s(<PortalShell base="/admin" title="ProofPocket admin" pages={ADMIN_NAV} />)}</RequireRole>,
-    children: [{ index: true, element: <Navigate to="overview" replace /> }, ...pages("admin", ADMIN_NAV)],
+    element: <RequireRole roles={["admin"]}>{s(<PortalShell base="/admin" title="ProofPocket admin" pages={ADMIN_NAV} tabs={ADMIN_TABS} note={NOTE.admin} />)}</RequireRole>,
+    children: [{ index: true, element: <Navigate to="overview" replace /> }, ...pages("admin", ADMIN_NAV), more("/admin", "ProofPocket admin", ADMIN_NAV, ADMIN_TABS)],
   },
   { path: "*", element: <NotFound /> },
 ];
