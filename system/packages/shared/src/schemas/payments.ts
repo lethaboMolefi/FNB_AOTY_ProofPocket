@@ -7,12 +7,17 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a date like 2026-10-24"
 const railEnum = z.enum(RAIL_KEYS as [Rail, ...Rail[]]);
 const text = (max: number, msg: string) => z.string().trim().min(1, msg).max(max);
 
+/** A line from stock: which item and how many. The server prices it from the item's selling price. */
+export const requestItemSchema = z.object({ stockItemId: z.string().uuid(), qty: z.number().positive("Enter a quantity").max(100_000).multipleOf(0.01) });
+
 export const paymentRequestSchema = z.object({
   client: text(60, "Add the client's name and an amount"),
-  amount: rand,
+  /** Optional when items are given: then it defaults to their total (it can be changed, e.g. for a discount). */
+  amount: rand.optional(),
   what: z.string().trim().max(120).default(""),
   rails: z.array(railEnum).min(1, "Choose at least one way to pay"),
-});
+  items: z.array(requestItemSchema).max(30).default([]),
+}).refine((q) => q.amount !== undefined || q.items.length > 0, { message: "Add the client's name and an amount", path: ["amount"] });
 
 export const paymentDetailsSchema = z.object({
   bank: text(60, "Add your bank"),

@@ -113,6 +113,13 @@
       "when": 1793034798674,
       "tag": "0015_password_later",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793036508632,
+      "tag": "0016_stock_requests",
+      "breakpoints": true
     }
   ]
 }

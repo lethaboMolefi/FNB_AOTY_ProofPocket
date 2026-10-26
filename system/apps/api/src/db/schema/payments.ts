@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { boolean, check, date, index, jsonb, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { id, isExample, messageKind, messageStatus, money, paymentStatus, proofStatus, rail, timestamps, watchStatus } from "./common";
 import { companies, files, organisations, users } from "./core";
+import { stockItems } from "./books";
 
 /** One row per version; the latest row is the current set of details. */
 export const paymentDetails = pgTable("payment_details", {
@@ -92,3 +93,14 @@ export const senderWatchlist = pgTable("sender_watchlist", {
   lastReportedAt: timestamp("last_reported_at", { withTimezone: true }).notNull().defaultNow(),
   ...timestamps,
 });
+
+/** The stock lines a payment request was built from. Taken off stock once the money is confirmed. */
+export const paymentRequestItems = pgTable("payment_request_items", {
+  id: id(),
+  paymentRequestId: uuid("payment_request_id").notNull().references(() => paymentRequests.id, { onDelete: "cascade" }),
+  stockItemId: uuid("stock_item_id").notNull().references(() => stockItems.id),
+  /** The item's name and price when the request was made (the client sees these). */
+  name: text("name").notNull(),
+  qty: money("qty").notNull(),
+  unitPrice: money("unit_price").notNull(),
+}, (t) => [index("payment_request_items_request_idx").on(t.paymentRequestId)]);

@@ -35,6 +35,8 @@ export const stockItemSchema = z.object({
   qty: qty.default(0),
   reorderAt: qty.default(0),
   cost: z.number().min(0).max(10_000_000).multipleOf(0.01).default(0),
+  /** What a client pays for one (used when asking a client to pay for stock). */
+  price: z.number().min(0).max(10_000_000).multipleOf(0.01).default(0),
 });
 export const stockEditSchema = stockItemSchema.partial().omit({ qty: true });
 export const clientUuidSchema = z.object({ clientUuid: z.string().uuid() });

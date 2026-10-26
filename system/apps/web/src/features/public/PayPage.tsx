@@ -1,5 +1,5 @@
 // The public payment page (v2/app.js payPageHTML). No account. The link is /pay/PP-4821-{token}.
-import { R, RAILS, shortDate, todayZA, type PaymentStatus, type Rail } from "@proofpocket/shared";
+import { R, Rc, RAILS, shortDate, todayZA, type PaymentStatus, type Rail } from "@proofpocket/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { ClipboardCopy, Flag, Loader2 } from "lucide-react";
@@ -22,7 +22,7 @@ const Way = ({ title, children }: { title: string; children: ReactNode }) => (
 
 interface Page {
   business: { name: string; verified: boolean; slug: string; whatsapp: string };
-  ref: string; client: string; amount: number; what: string; requestedOn: string; expiresOn: string; status: PaymentStatus; attempts: number;
+  ref: string; client: string; amount: number; what: string; requestedOn: string; items: { name: string; qty: number; unitPrice: number }[]; expiresOn: string; status: PaymentStatus; attempts: number;
   rails: { key: Rail; label: string }[]; canSendProof: boolean;
   ways: { payshap?: { shapId: string }; eft?: { bank: string; accountName: string; accountNumber: string }; cash?: true; card_machine?: true; payfast?: true };
 }
@@ -136,6 +136,13 @@ export default function PayPage() {
                 <p className="text-3xl font-bold tabular-nums">{R(p.amount)}</p>
                 <LevelBadge verified={p.business.verified} />
               </div>
+              {p.items.length > 0 && (
+                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                  {p.items.map((i) => (
+                    <li key={i.name} className="flex justify-between gap-3 px-3 py-2"><span>{i.qty} × {i.name} <span className="text-muted-foreground">@ {Rc(i.unitPrice)}</span></span><span className="tabular-nums">{Rc(Math.round(i.qty * i.unitPrice * 100) / 100)}</span></li>
+                  ))}
+                </ul>
+              )}
               <p className="text-sm text-muted-foreground">{p.what || "Payment"} · reference <b className="font-mono text-foreground">{p.ref}</b> · requested {shortDate(p.requestedOn)}</p>
             </CardContent>
           </Card>

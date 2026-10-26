@@ -1,10 +1,18 @@
 // Display formatting, same output as the prototype's R(), shortDate() and slug().
 
 const rand = new Intl.NumberFormat("en-ZA", { maximumFractionDigits: 0 });
+const cents = new Intl.NumberFormat("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** "R12 450"; negatives use a true minus sign: "−R300". */
 export function R(n: number): string {
   return (n < 0 ? "−" : "") + "R" + rand.format(Math.round(Math.abs(n)));
+}
+
+/** Prices: "R45.50" when there are cents, otherwise the same as R(). */
+export function Rc(n: number): string {
+  const v = Math.round(Math.abs(n) * 100) / 100;
+  if (Number.isInteger(v)) return R(n);
+  return (n < 0 ? "−" : "") + "R" + cents.format(v).replace(",", ".");
 }
 
 /** "12 Oct" from a YYYY-MM-DD date. */

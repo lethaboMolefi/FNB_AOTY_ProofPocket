@@ -2,11 +2,11 @@
 import { randomUUID } from "node:crypto";
 import {
   addDays, clampQty, duplicateWarning, findDuplicate, matchExisting, methodFromDescription, monthOf, R, restockQuantity,
-  sameLine, stockDelta, todayZA, velocityFlag, type EntryInput, type StatementLine,
+  sameLine, stockDelta, todayZA, velocityFlag, type EntryInput, type StatementLine, requestItemsShortfall, requestItemsTotal,
 } from "@proofpocket/shared";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
-import { companies, files, ledgerEntries, monthlyHistory, statementImports, statementLines, stockItems, stockMovements } from "../db/schema/index";
+import { companies, files, ledgerEntries, monthlyHistory, paymentRequestItems, statementImports, statementLines, stockItems, stockMovements } from "../db/schema/index";
 import { addActivity, audit, type Actor } from "../lib/audit";
 import { AppError, badRequest, notFound } from "../lib/errors";
 import type { FileStore } from "../lib/storage";
@@ -29,17 +29,40 @@ export function entryView(e: Entry) {
 // ---------------------------------------------------------------- stock
 export async function stockList(tx: Tx, companyId: string) {
   const rows = await tx.select({
-    id: stockItems.id, name: stockItems.name, unit: stockItems.unit, reorderAt: stockItems.reorderAt, cost: stockItems.cost,
+    id: stockItems.id, name: stockItems.name, unit: stockItems.unit, reorderAt: stockItems.reorderAt, cost: stockItems.cost, price: stockItems.price,
     // Qualified explicitly: an unqualified "id" here would resolve to stock_movements.id.
     qty: sql<string>`coalesce((select sum(m.delta) from stock_movements m where m.stock_item_id = "stock_items"."id"), 0)`,
   }).from(stockItems).where(and(eq(stockItems.companyId, companyId), isNull(stockItems.archivedAt))).orderBy(asc(stockItems.name));
-  return rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit, qty: Number(r.qty), reorderAt: Number(r.reorderAt), cost: Number(r.cost), low: Number(r.qty) <= Number(r.reorderAt) }));
+  return rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit, qty: Number(r.qty), reorderAt: Number(r.reorderAt), cost: Number(r.cost), price: Number(r.price), low: Number(r.qty) <= Number(r.reorderAt) }));
 }
 
 async function stockItem(tx: Tx, companyId: string, id: string) {
   const item = (await stockList(tx, companyId)).find((s) => s.id === id);
   if (!item) throw notFound("That stock item");
   return item;
+}
+
+/** A payment request's stock lines, priced from each item's selling price (the founder's own, current stock only). */
+export async function priceRequestItems(tx: Tx, companyId: string, lines: { stockItemId: string; qty: number }[]) {
+  if (!lines.length) return { items: [], total: 0, shortfall: [] as string[] };
+  const stock = await stockList(tx, companyId);
+  const items = lines.map((l) => {
+    const s = stock.find((x) => x.id === l.stockItemId);
+    if (!s) throw notFound("That stock item");
+    return { stockItemId: s.id, name: s.name, qty: l.qty, unitPrice: s.price, inStock: s.qty };
+  });
+  if (items.some((i) => i.unitPrice <= 0)) throw badRequest("no_price", `Add a selling price for ${items.find((i) => i.unitPrice <= 0)!.name} under Stock first.`);
+  return {
+    items,
+    total: requestItemsTotal(items.map((i) => ({ price: i.unitPrice, qty: i.qty }))),
+    shortfall: requestItemsShortfall(items.map((i) => ({ name: i.name, qty: i.qty, inStock: i.inStock }))),
+  };
+}
+
+/** When a request built from stock is paid: its lines come off stock, linked to the income entry. */
+export async function takeRequestStock(tx: Tx, actor: Actor, c: CompanyRow, paymentRequestId: string, ledgerEntryId: string) {
+  const lines = await tx.select().from(paymentRequestItems).where(eq(paymentRequestItems.paymentRequestId, paymentRequestId));
+  for (const l of lines) await move(tx, c, l.stockItemId, -Number(l.qty), "sale", randomUUID(), actor, ledgerEntryId);
 }
 
 /** Adds a stock movement, never taking the quantity below zero. Idempotent by client UUID. */
@@ -52,8 +75,8 @@ async function move(tx: Tx, c: CompanyRow, itemId: string, delta: number, reason
   return applied;
 }
 
-export async function addStockItem(tx: Tx, actor: Actor, c: CompanyRow, s: { name: string; unit: string; qty: number; reorderAt: number; cost: number }) {
-  const [item] = await tx.insert(stockItems).values({ companyId: c.id, name: s.name, unit: s.unit || "units", reorderAt: money(s.reorderAt), cost: money(s.cost) }).returning();
+export async function addStockItem(tx: Tx, actor: Actor, c: CompanyRow, s: { name: string; unit: string; qty: number; reorderAt: number; cost: number; price: number }) {
+  const [item] = await tx.insert(stockItems).values({ companyId: c.id, name: s.name, unit: s.unit || "units", reorderAt: money(s.reorderAt), cost: money(s.cost), price: money(s.price) }).returning();
   if (s.qty > 0) await tx.insert(stockMovements).values({ companyId: c.id, stockItemId: item!.id, clientUuid: randomUUID(), delta: money(s.qty), reason: "opening", createdBy: actor.userId });
   return item!;
 }

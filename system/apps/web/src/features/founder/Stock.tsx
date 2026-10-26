@@ -1,5 +1,5 @@
 // Stock (v2/app.js vStock) — rebuilt with shadcn. Use 1 and Restock work offline via outbox.
-import { R, restockQuantity } from "@proofpocket/shared";
+import { R, Rc, restockQuantity } from "@proofpocket/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { AlertCircle, Package, RefreshCw, Minus, Plus, Trash2, WifiOff } from "lucide-react";
@@ -19,7 +19,7 @@ import { FounderHead } from "./FounderHead";
 
 interface Item {
   id: string; name: string; unit: string; qty: number;
-  reorderAt: number; cost: number; low: boolean;
+  reorderAt: number; cost: number; price: number; low: boolean;
 }
 interface StockData { on: boolean; typeLabel: string; items: Item[]; value: number; low: number }
 
@@ -30,7 +30,7 @@ export default function Stock() {
   const toast = useToast();
   const waiting = useOutbox("stock");
   const q = useQuery({ queryKey: ["founder", "stock"], queryFn: () => api<StockData>("/founder/stock") });
-  const [n, setN] = useState({ name: "", unit: "", qty: "", reorderAt: "", cost: "" });
+  const [n, setN] = useState({ name: "", unit: "", qty: "", reorderAt: "", cost: "", price: "" });
   const [addErr, setAddErr] = useState("");
 
   if (!q.data) return <><FounderHead title="Stock" sub={SUB} /><Spinner /></>;
@@ -84,14 +84,25 @@ export default function Stock() {
           qty: Number(n.qty) || 0,
           reorderAt: Number(n.reorderAt) || 0,
           cost: Number(n.cost) || 0,
+          price: Number(n.price) || 0,
         },
       });
       toast("Item added");
-      setN({ name: "", unit: "", qty: "", reorderAt: "", cost: "" });
+      setN({ name: "", unit: "", qty: "", reorderAt: "", cost: "", price: "" });
       void qc.invalidateQueries({ queryKey: ["founder"] });
     } catch (x) {
       setAddErr(x instanceof ApiError ? x.message : "Try again.");
     }
+  };
+
+  /** The selling price: what a client pays for one (used on "Ask a client to pay"). */
+  const setPrice = async (it: Item) => {
+    const raw = window.prompt(`Selling price for one ${it.name} (R)`, it.price ? String(it.price) : "");
+    if (raw === null) return;
+    const price = Math.round(Number(raw.replace(",", ".")) * 100) / 100;
+    if (!(price >= 0)) { toast("Enter a price in rand, e.g. 45.50"); return; }
+    try { await api(`/founder/stock/${it.id}`, { method: "PATCH", body: { price } }); toast(`${it.name}: ${Rc(price)} each`); void qc.invalidateQueries({ queryKey: ["founder"] }); }
+    catch (x) { toast(x instanceof ApiError ? x.message : "Try again."); }
   };
 
   const archive = async (it: Item) => {
@@ -139,6 +150,7 @@ export default function Stock() {
                 <TableHead className="text-right">In stock</TableHead>
                 <TableHead className="text-right hidden sm:table-cell">Reorder at</TableHead>
                 <TableHead className="text-right hidden sm:table-cell">Cost each</TableHead>
+                <TableHead className="text-right">Selling price</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="text-right">Update</TableHead>
               </TableRow>
@@ -169,6 +181,11 @@ export default function Stock() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground hidden sm:table-cell">
                       {R(it.cost)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="ghost" className="tabular-nums" aria-label={`Selling price of ${it.name}`} onClick={() => void setPrice(it)}>
+                        {it.price ? Rc(it.price) : "Set price"}
+                      </Button>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {qty <= it.reorderAt
@@ -207,7 +224,7 @@ export default function Stock() {
               })}
               {!d.items.length && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     <Package className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     No items yet. Add your first item below.
                   </TableCell>
@@ -222,11 +239,11 @@ export default function Stock() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Add an item</CardTitle>
-          <CardDescription>Restock records the cost as an expense in your books.</CardDescription>
+          <CardDescription>Restock records the cost as an expense in your books. The selling price is used when you ask a client to pay for stock.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={add} noValidate>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <div className="col-span-2 sm:col-span-1 lg:col-span-1">
                 <Label htmlFor="s-name">Item name</Label>
                 <Input id="s-name" placeholder="e.g. Lash glue" value={n.name}
@@ -251,6 +268,11 @@ export default function Stock() {
                 <Label htmlFor="s-cost">Cost each (R)</Label>
                 <Input id="s-cost" type="number" min={0} placeholder="0" value={n.cost}
                   onChange={(e) => setN({ ...n, cost: e.target.value })} className="mt-1.5" />
+              </div>
+              <div>
+                <Label htmlFor="s-price">Selling price (R)</Label>
+                <Input id="s-price" type="number" min={0} step="0.01" placeholder="0" value={n.price}
+                  onChange={(e) => setN({ ...n, price: e.target.value })} className="mt-1.5" />
               </div>
             </div>
 

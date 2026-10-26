@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DOC_TYPES } from "../constants";
-import { R, shortDate, slug } from "../format";
+import { R, Rc, shortDate, slug } from "../format";
 import { duplicateWarning, findDuplicate, restockCost, restockQuantity, stockDelta, cashPayoutCategory } from "./bookkeeping";
 import { cashflowSummary } from "./cashflow";
 import { canApply, funderVisible, programmeGaps, tenderAction } from "./eligibility";
@@ -17,6 +17,10 @@ describe("format", () => {
     expect(R(12450)).toBe("R12 450");
     expect(R(-300.4)).toBe("−R300");
     expect(R(0)).toBe("R0");
+    // Unit prices keep their cents; whole amounts look the same as R().
+    expect(Rc(45.5)).toBe("R45.50");
+    expect(Rc(1234.05)).toBe("R1\u00a0234.05");
+    expect(Rc(60)).toBe("R60");
   });
   it("short dates and slugs", () => {
     expect(shortDate("2026-10-12")).toBe("12 Oct");

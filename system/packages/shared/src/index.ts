@@ -13,6 +13,7 @@ export * from "./rules/bookkeeping";
 export * from "./rules/cashflow";
 export * from "./rules/identity";
 export * from "./rules/accounts";
+export * from "./rules/request-items";
 export * from "./schemas/common";
 export * from "./schemas/auth";
 export * from "./schemas/join";

@@ -22,7 +22,7 @@ import type { Tx } from "../db/client";
 import { companies, paymentRequests } from "../db/schema/index";
 import { addActivity, audit, type Actor } from "../lib/audit";
 import { AppError, badRequest, notFound } from "../lib/errors";
-import { addEntry } from "./books";
+import { addEntry, takeRequestStock } from "./books";
 
 // ---------------------------------------------------------------- config helpers
 
@@ -200,7 +200,7 @@ export async function processItn(
 
   const today = todayZA();
 
-  await addEntry(
+  const { entry } = await addEntry(
     tx,
     actor,
     company,
@@ -217,6 +217,7 @@ export async function processItn(
     },
     { source: "payfast_itn", paymentRequestId: r.id },
   );
+  await takeRequestStock(tx, actor, company, r.id, entry.id);
 
   await tx.update(paymentRequests)
     .set({ status: "paid", paidAt: new Date() })

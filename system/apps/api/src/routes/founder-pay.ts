@@ -40,7 +40,8 @@ export function founderPayRoutes(deps: Deps) {
     if (q.rails.includes("payfast") && !payfastEnabled(deps.config)) throw badRequest("payfast_off", "Card payments through PayFast aren't available yet. Choose another way to pay.");
     return asFounder(req, async (tx, c) => {
       const row = await createRequest(tx, actorOf(req), c, q);
-      return { ref: row.ref, link: payLink(deps.config, row), message: `Request ${row.ref} created. Send the link on WhatsApp or show the QR code.` };
+      const short = row.shortfall.length ? ` Note: you don't have enough ${row.shortfall.join(", ")}.` : "";
+      return { ref: row.ref, link: payLink(deps.config, row), amount: Number(row.amount), message: `Request ${row.ref} created. Send the link on WhatsApp or show the QR code.${short}` };
     });
   }));
   r.post("/founder/payment-requests/:id/cancel", founder, handle((req) => asFounder(req, (tx, c) => cancelRequest(tx, actorOf(req), c, id(req)))));

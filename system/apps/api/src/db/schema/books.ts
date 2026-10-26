@@ -11,6 +11,8 @@ export const stockItems = pgTable("stock_items", {
   unit: text("unit").notNull().default("units"),
   reorderAt: money("reorder_at").notNull().default("0"),
   cost: money("cost").notNull().default("0"),
+  /** Selling price for one, used when a payment request is built from stock. */
+  price: money("price").notNull().default("0"),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
   isExample: isExample(),
   ...timestamps,

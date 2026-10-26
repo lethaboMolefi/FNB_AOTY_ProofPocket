@@ -108,7 +108,7 @@ export function founderBookRoutes(deps: Deps) {
     return asFounder(req, async (tx, c) => {
       const rows = await tx.update(stockItems).set({
         ...(s.name ? { name: s.name } : {}), ...(s.unit ? { unit: s.unit } : {}),
-        ...(s.reorderAt !== undefined ? { reorderAt: s.reorderAt.toFixed(2) } : {}), ...(s.cost !== undefined ? { cost: s.cost.toFixed(2) } : {}),
+        ...(s.reorderAt !== undefined ? { reorderAt: s.reorderAt.toFixed(2) } : {}), ...(s.cost !== undefined ? { cost: s.cost.toFixed(2) } : {}), ...(s.price !== undefined ? { price: s.price.toFixed(2) } : {}),
       }).where(and(eq(stockItems.id, String(req.params.id)), eq(stockItems.companyId, c.id), isNull(stockItems.archivedAt))).returning({ id: stockItems.id });
       if (!rows.length) throw notFound("That item");
       return { message: "Item updated" };
