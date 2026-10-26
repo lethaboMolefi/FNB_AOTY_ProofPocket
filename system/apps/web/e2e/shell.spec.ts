@@ -31,7 +31,8 @@ test("a founder lands on Home with the founder navigation", async ({ page, isMob
   await expect(page.locator("main").getByText("Starter", { exact: true })).toBeVisible();
   if (isMobile) {
     const tabs = page.getByRole("navigation", { name: "Main" });
-    await expect(tabs.getByRole("link")).toHaveText(["Home", "Books", "Get paid", "Markets", "More"]);
+    // A tab may also show a count of things waiting (as in the sidebar).
+    await expect(tabs.getByRole("link")).toHaveText([/^Home\d*$/, /^Books\d*$/, /^Get paid\d*$/, /^Markets\d*$/, /^More$/]);
     await tabs.getByRole("link", { name: "More" }).click();
     await expect(page.getByRole("link", { name: "Registration steps" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Stock" })).toBeVisible();

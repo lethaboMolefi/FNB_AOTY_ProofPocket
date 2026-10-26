@@ -48,7 +48,8 @@ test("incubator: cohort board, drawer and stage move", async ({ page, isMobile }
   await move.click();
   await expect(page.getByText(`Moved to ${label}`)).toBeVisible();
   await drawer.getByRole("button", { name: "Close" }).click();
-  await page.getByRole("link", { name: "Needs attention" }).click();
+  // Sidebar on desktop says "Needs attention"; the phone tab says "Attention".
+  await page.getByRole("link", { name: /^(Needs attention|Attention)/ }).first().click();
   await expect(page.getByText("Act now").first()).toBeVisible();
 });
 

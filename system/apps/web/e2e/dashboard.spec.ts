@@ -65,8 +65,7 @@ test("adviser: every page loads cleanly", async ({ page, isMobile }) => {
   await expect(page).toHaveURL(/\/adviser\/cohort$/);
 });
 
-test("admin: every page loads cleanly", async ({ page, isMobile }) => {
-  test.skip(isMobile, "Admin desktop flow.");
+test("admin: every page loads cleanly", async ({ page }) => {
   await signInWithAuthenticator(page, "admin@proofpocket.example");
   await visitAll(page, "/admin", ADMIN_NAV.map((p) => p.path));
   await page.goto("/app/home");
@@ -94,3 +93,31 @@ test("admin: opening a business is recorded in Activity", async ({ page, isMobil
   await expect(page.getByText("admin.company_viewed").first()).toBeVisible();
   await expect(page.getByText(/Audit log intact/)).toBeVisible();
 });
+
+// One system: every role gets the same shell. Desktop: a sidebar where every link has an icon.
+// Phone: the same bottom tab bar with icons (More when there are other pages), one h1 per page, no sideways scroll.
+for (const [role, email, base, home] of [
+  ["founder", "tumelo@proofpocket.example", "/app", "home"],
+  ["funder", "lesedi@proofpocket.example", "/funder", "pipeline"],
+  ["adviser", "n.mokoena@proofpocket.example", "/adviser", "cohort"],
+  ["admin", "admin@proofpocket.example", "/admin", "overview"],
+] as const) {
+  test(`${role}: the shared shell (icons in every nav link, one heading)`, async ({ page, isMobile }) => {
+    if (role === "founder") await signIn(page, email); else await signInWithAuthenticator(page, email);
+    await page.goto(`${base}/${home}`);
+    await expect(page.locator("main h1")).toHaveCount(1);
+    const nav = page.getByRole("navigation", { name: isMobile ? "Main navigation" : "Sections" });
+    await expect(nav).toBeVisible();
+    const links = nav.getByRole("link");
+    const n = await links.count();
+    expect(n).toBeGreaterThan(2);
+    for (let i = 0; i < n; i++) await expect(links.nth(i).locator("svg")).toHaveCount(1);
+    if (isMobile && role === "admin") {
+      await nav.getByRole("link", { name: "More" }).click();
+      await expect(page.getByRole("heading", { name: "More", level: 1 })).toBeVisible();
+      await page.getByRole("link", { name: /Organisations/ }).click();
+      await expect(page).toHaveURL(/\/admin\/organisations$/);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  });
+}
