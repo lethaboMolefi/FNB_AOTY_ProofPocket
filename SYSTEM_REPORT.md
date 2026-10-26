@@ -201,6 +201,50 @@ These were kept.
 
 No console errors and no failed requests on any page, for any role, phone or desktop, apart from the expected 404 for a made-up payment link. No placeholder ("not built yet") pages remain.
 
-## Step 4: fixes made in this branch
+## Step 3: what changed to make it one system
 
-Filled in after the fixes; see the end of this file.
+- **One layout for every role:** `components/layout/AppShell.tsx`. Founder, funder, adviser and admin all get:
+  - the same top bar
+  - the same grouped sidebar with an icon on every link and a note at its foot
+  - on phones, the same bottom tab bar (up to four pages + **More**)
+- **Thin role wrappers:** `FounderShell` and `PortalShell` now only supply content. The founder adds the bell, the privacy and two-step prompts, and the business name; the portals add the organisation name.
+- **One nav link style:** `NavItem`/`TabItem`. **One icon per page:** `app/nav-icons.ts`, lucide everywhere. The hand-drawn tab icons (`components/icons.tsx`) are gone.
+- **One More page:** `MorePage`, for every role.
+- **Shared building blocks:** `PageHeader` (one `h1`, 24 px), `Card`/`CardTitle` (`h2`), `Table`, `TextField`/`NativeSelect`, `Callout`, `EmptyState`, `StatCard`, `ToneBadge`.
+  - **Public pages** (directory, business page, payment page, privacy notice, not found) moved off the old classes onto these.
+  - **Sign-in pieces moved too:** two-step sign-in, the password field and the install/update hints.
+- **Tap targets:** buttons, inputs and selects are at least 44 px on touch screens.
+
+**Checked again after the changes** (same browser walk, 108 page visits on phone and desktop):
+- one `h1` on every page, all 24 px
+- no skipped heading levels
+- no sideways scroll
+- no old CSS classes in any page
+- every nav link has an icon, for every role
+- no console errors or failed requests apart from the expected 404 for a made-up payment link
+
+## Step 4: fixed, and still open
+
+**Fixed in this branch**
+
+| From | Fix |
+|---|---|
+| §4 #1 | Admin Activity and People fit a phone (minor columns move under the name below `md`, as founder tables do) |
+| §4 #2, #3, #4 | One `h1` on Sign up, Join, a bad payment link, and an unknown business page; Sign in's `h1` was nested inside another heading |
+| §4 #5 | Join funder panel: "We check the representative's ID and your organisation's registration, and call to confirm" |
+| §4 #6 | 44 px tap targets on touch screens |
+| §4 #13 | e2e now walks admin pages on phones, and checks the shared shell for every role on phone and desktop |
+| §5 | Every row in the inconsistency table (see Step 3) |
+| D7–D12 | As described above |
+
+**Not fixed, and why**
+
+| Item | Why not |
+|---|---|
+| BUG-04 (CIPC number after Verified) | Changes when a company counts as Verified, which is a business rule. Needs your decision |
+| BUG-05 (no Invite form for buyers) | Small, but goes with BUG-06: whether buyers get accounts at all is a product decision |
+| BUG-06 (no buyer portal) | Product decision (build a small buyer portal, or keep buyers as organisations only) |
+| BUG-07 (PayFast) | PayFast is switched off by your decision; the fixes need PayFast's keys to test |
+| §4 #7 (Sign up live) | Checked on the live site after deploying (see the deploy notes) |
+| §4 #8 (local email code not enforced) | Local development only; production uses Firebase's verification email, and joining refuses an unverified email |
+| D1–D6 (dashborad founder screens) | dashborad's versions call endpoints that don't exist and drop features (payment details with Google Authenticator, suppliers, cash, offers, data export). The live screens use the same shadcn components and now sit in the same shell |
