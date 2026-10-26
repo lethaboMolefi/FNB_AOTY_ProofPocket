@@ -1,12 +1,24 @@
 // The public payment page (v2/app.js payPageHTML). No account. The link is /pay/PP-4821-{token}.
 import { R, RAILS, shortDate, todayZA, type PaymentStatus, type Rail } from "@proofpocket/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { ClipboardCopy, Flag, Loader2 } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { NativeSelect, TextField } from "@/components/ui/field";
 import { FilePick } from "../../components/FilePick";
-import { TopBar } from "../../components/layout/TopBar";
-import { LevelPill, Notice, Spinner, useToast } from "../../components/ui";
+import { PageHeader } from "../../components/PageHeader";
+import { LevelBadge } from "../../components/ToneBadge";
+import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
+import { PublicShell } from "./Directory";
+
+/** One way to pay: a heading and its details, in the same box style everywhere. */
+const Way = ({ title, children }: { title: string; children: ReactNode }) => (
+  <div className="space-y-2 rounded-lg border border-border p-4"><b className="block text-sm">{title}</b>{children}</div>
+);
 
 interface Page {
   business: { name: string; verified: boolean; slug: string; whatsapp: string };
@@ -31,12 +43,11 @@ function PayFastSection({ path, headers }: { path: string; headers: Record<strin
     } catch (e) { setErr(e instanceof ApiError ? e.message : "PayFast didn't open. Try again, or use another way to pay."); setBusy(false); }
   };
   return (
-    <div className="way">
-      <b>Card or instant EFT (PayFast)</b>
-      <span className="small">You'll pay on PayFast's secure page. The business is told once PayFast confirms the payment.</span>
-      {err && <p className="err" role="alert">{err}</p>}
-      <button className="btn primary self-start" disabled={busy} onClick={() => void pay()}>{busy ? "Opening PayFast…" : "Pay by card or EFT"}</button>
-    </div>
+    <Way title="Card or instant EFT (PayFast)">
+      <p className="text-sm text-muted-foreground">You'll pay on PayFast's secure page. The business is told once PayFast confirms the payment.</p>
+      {err && <Callout tone="bad" role="alert">{err}</Callout>}
+      <Button disabled={busy} onClick={() => void pay()}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Opening PayFast…" : "Pay by card or EFT"}</Button>
+    </Way>
   );
 }
 
@@ -44,9 +55,9 @@ function CopyRow({ label, value }: { label: string; value: string }) {
   const toast = useToast();
   const copy = async () => { try { await navigator.clipboard.writeText(value); toast("Copied"); } catch { toast(value); } };
   return (
-    <div className="copyrow">
-      <span className="hint">{label}</span><span className="mono">{value}</span>
-      <button type="button" className="btn sm" onClick={() => void copy()} aria-label={`Copy ${label.toLowerCase()}`}>Copy</button>
+    <div className="flex items-center gap-3 text-sm">
+      <span className="w-28 shrink-0 text-muted-foreground">{label}</span><span className="min-w-0 flex-1 break-all font-mono">{value}</span>
+      <Button type="button" size="sm" variant="outline" onClick={() => void copy()} aria-label={`Copy ${label.toLowerCase()}`}><ClipboardCopy className="h-4 w-4" />Copy</Button>
     </div>
   );
 }
@@ -67,23 +78,29 @@ function ProofForm({ page, path, headers, onSent }: { page: Page; path: string; 
     finally { setBusy(false); }
   };
   return (
-    <form className="panel stack" onSubmit={submit} noValidate>
-      <h2>Paid? Send your proof of payment</h2>
-      <p className="small muted">{page.business.name} checks it against their bank and confirms when the money is in.</p>
-      <div className="form-grid">
-        <label className="field"><span>Your name</span><input type="text" value={f.payer} onChange={(e) => setF({ ...f, payer: e.target.value })} /></label>
-        <label className="field"><span>Amount you paid (R)</span><input type="number" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></label>
-        <label className="field"><span>Date you paid</span><input type="date" max={todayZA()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></label>
-        <label className="field"><span>Paid by</span><select value={f.method} onChange={(e) => setF({ ...f, method: e.target.value as Rail })}>{digital.map((r) => <option key={r.key} value={r.key}>{RAILS[r.key]}</option>)}</select></label>
-      </div>
-      <label className="check"><input type="checkbox" checked={f.usedReference} onChange={(e) => setF({ ...f, usedReference: e.target.checked })} />I used reference <span className="mono">{page.ref}</span></label>
-      <div className="row">
-        <FilePick label={file ? "Replace proof" : "Attach proof"} purpose="proof" base={path} headers={headers} primary={!file} onUploaded={(u) => setFile({ fileId: u.fileId, name: u.name })} onError={setErr} />
-        {file && <span className="small">{file.name}</span>}
-      </div>
-      {err && <p className="err" role="alert">{err}</p>}
-      <button className="btn primary self-start" type="submit" disabled={busy}>{busy ? "Sending…" : "Send proof of payment"}</button>
-    </form>
+    <Card>
+      <form onSubmit={submit} noValidate>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Paid? Send your proof of payment</CardTitle>
+          <CardDescription>{page.business.name} checks it against their bank and confirms when the money is in.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField label="Your name" value={f.payer} onChange={(e) => setF({ ...f, payer: e.target.value })} />
+            <TextField label="Amount you paid (R)" type="number" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
+            <TextField label="Date you paid" type="date" max={todayZA()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} />
+            <NativeSelect label="Paid by" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value as Rail })}>{digital.map((r) => <option key={r.key} value={r.key}>{RAILS[r.key]}</option>)}</NativeSelect>
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4" checked={f.usedReference} onChange={(e) => setF({ ...f, usedReference: e.target.checked })} />I used reference <span className="font-mono">{page.ref}</span></label>
+          <div className="flex flex-wrap items-center gap-3">
+            <FilePick label={file ? "Replace proof" : "Attach proof"} purpose="proof" base={path} headers={headers} primary={!file} onUploaded={(u) => setFile({ fileId: u.fileId, name: u.name })} onError={setErr} />
+            {file && <span className="text-sm">{file.name}</span>}
+          </div>
+          {err && <Callout tone="bad" role="alert">{err}</Callout>}
+          <Button type="submit" disabled={busy}>{busy && <Loader2 className="h-4 w-4 animate-spin" />}{busy ? "Sending…" : "Send proof of payment"}</Button>
+        </CardContent>
+      </form>
+    </Card>
   );
 }
 
@@ -102,60 +119,52 @@ export default function PayPage() {
   };
 
   return (
-    <>
-      <TopBar home="/directory" />
-      <main id="main" className="mx-auto flex max-w-[640px] flex-col gap-4 px-4 pb-12 pt-5">
-        {payfastResult === "success" && (
-          <Notice tone="good" icon="✓">
-            <span className="small"><b>Payment submitted to PayFast.</b> The business will be notified automatically once your payment is confirmed.</span>
-          </Notice>
-        )}
-        {payfastResult === "cancelled" && (
-          <Notice tone="warn" icon="!">
-            <span className="small"><b>Payment cancelled.</b> You can try again below.</span>
-          </Notice>
-        )}
-        {!m || q.isError ? (
-          <Notice tone="bad" icon="!"><span className="small"><b>This payment link isn't valid.</b> Check that you copied the whole link, or ask the business to send it again.</span></Notice>
-        ) : !q.data ? <Spinner /> : (() => {
-          const p = q.data;
-          const closed = ["paid", "cancelled", "expired", "flagged"].includes(p.status);
-          return <>
-            <section className="panel stack">
-              <span className="label">You're paying</span>
-              <div className="row between"><h1>{p.business.name}</h1><LevelPill verified={p.business.verified} /></div>
-              <span className="num payamt">{R(p.amount)}</span>
-              <span className="small">{p.what || "Payment"} · reference <b className="mono">{p.ref}</b> · requested {shortDate(p.requestedOn)}</span>
-            </section>
-            {p.status === "paid" && <Notice tone="good" icon="✓"><span className="small"><b>Paid. Thank you.</b> {p.business.name} confirmed the money is in their account.</span></Notice>}
-            {p.status === "checking" && <Notice tone="info" icon="i"><span className="small"><b>Proof of payment sent.</b> {p.business.name} will confirm once the money shows in their bank. Open this link again to see when it's confirmed.</span></Notice>}
-            {p.status === "not_received" && <Notice tone="warn" icon="!"><span className="small">{p.business.name} hasn't received this payment yet. Check your bank, then upload your proof again.</span></Notice>}
-            {p.status === "expired" && <Notice tone="warn" icon="!"><span className="small">This request has expired. Ask {p.business.name} for a new link.</span></Notice>}
-            {p.status === "cancelled" && <Notice tone="warn" icon="!"><span className="small">{p.business.name} cancelled this request. Don't pay it.</span></Notice>}
-            {p.status === "flagged" && <Notice tone="bad" icon="!"><span className="small">This request is closed. Contact {p.business.name} directly.</span></Notice>}
-            {!closed && (
-              <section className="panel stack">
-                <h2>How to pay</h2>
+    <PublicShell narrow>
+      {payfastResult === "success" && <Callout tone="good"><b>Payment submitted to PayFast.</b> The business will be notified automatically once your payment is confirmed.</Callout>}
+      {payfastResult === "cancelled" && <Callout tone="warn"><b>Payment cancelled.</b> You can try again below.</Callout>}
+      {!m || q.isError ? <>
+        <PageHeader title="Payment link not valid" />
+        <Callout tone="bad" role="alert"><b>This payment link isn't valid.</b> Check that you copied the whole link, or ask the business to send it again.</Callout>
+      </> : !q.data ? <Spinner /> : (() => {
+        const p = q.data;
+        const closed = ["paid", "cancelled", "expired", "flagged"].includes(p.status);
+        return <>
+          <Card>
+            <CardContent className="space-y-2 pt-6">
+              <PageHeader label="You're paying" title={p.business.name} badge={<LevelBadge verified={p.business.verified} />} />
+              <p className="text-3xl font-bold tabular-nums">{R(p.amount)}</p>
+              <p className="text-sm text-muted-foreground">{p.what || "Payment"} · reference <b className="font-mono text-foreground">{p.ref}</b> · requested {shortDate(p.requestedOn)}</p>
+            </CardContent>
+          </Card>
+          {p.status === "paid" && <Callout tone="good"><b>Paid. Thank you.</b> {p.business.name} confirmed the money is in their account.</Callout>}
+          {p.status === "checking" && <Callout tone="info"><b>Proof of payment sent.</b> {p.business.name} will confirm once the money shows in their bank. Open this link again to see when it's confirmed.</Callout>}
+          {p.status === "not_received" && <Callout tone="warn">{p.business.name} hasn't received this payment yet. Check your bank, then upload your proof again.</Callout>}
+          {p.status === "expired" && <Callout tone="warn">This request has expired. Ask {p.business.name} for a new link.</Callout>}
+          {p.status === "cancelled" && <Callout tone="warn">{p.business.name} cancelled this request. Don't pay it.</Callout>}
+          {p.status === "flagged" && <Callout tone="bad">This request is closed. Contact {p.business.name} directly.</Callout>}
+          {!closed && (
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">How to pay</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
                 {/* PayFast card/EFT — shown when the rail is included on this request */}
                 {p.ways.payfast && <PayFastSection path={path} headers={headers} />}
-                {p.ways.payshap && <div className="way"><b>PayShap</b><CopyRow label="ShapID" value={p.ways.payshap.shapId} /><CopyRow label="Reference" value={p.ref} /></div>}
-                {p.ways.eft && <div className="way"><b>Bank EFT</b>
+                {p.ways.payshap && <Way title="PayShap"><CopyRow label="ShapID" value={p.ways.payshap.shapId} /><CopyRow label="Reference" value={p.ref} /></Way>}
+                {p.ways.eft && <Way title="Bank EFT">
                   <CopyRow label="Bank" value={p.ways.eft.bank} /><CopyRow label="Account name" value={p.ways.eft.accountName} />
-                  <CopyRow label="Account number" value={p.ways.eft.accountNumber} /><CopyRow label="Reference" value={p.ref} /></div>}
-                {p.ways.cash && <div className="way"><b>Cash</b><span className="small">Pay {p.business.name} in person and quote reference <span className="mono">{p.ref}</span>. They will mark it paid.</span></div>}
-                {p.ways.card_machine && <div className="way"><b>Card machine</b><span className="small">Tap or insert your card on {p.business.name}'s card machine.</span></div>}
-                <Notice tone="warn" icon="!"><span className="small"><b>Only pay to the details on this page.</b> If anyone sends you different bank details for {p.business.name}, don't pay. Check with the business first.</span></Notice>
-              </section>
-            )}
-            {p.canSendProof && <ProofForm page={p} path={path} headers={headers} onSent={() => { toast("Proof sent to the business. They'll confirm once the money is in."); void qc.invalidateQueries({ queryKey: ["pay", param] }); }} />}
-            <section className="panel stack">
-              <span className="label">Something wrong?</span>
-              <p className="small">If this business asked you to pay in a way that felt unsafe, tell us.</p>
-              <button className="btn sm danger self-start" onClick={() => void report()}>Report this request</button>
-            </section>
-          </>;
-        })()}
-      </main>
-    </>
+                  <CopyRow label="Account number" value={p.ways.eft.accountNumber} /><CopyRow label="Reference" value={p.ref} /></Way>}
+                {p.ways.cash && <Way title="Cash"><p className="text-sm text-muted-foreground">Pay {p.business.name} in person and quote reference <span className="font-mono text-foreground">{p.ref}</span>. They will mark it paid.</p></Way>}
+                {p.ways.card_machine && <Way title="Card machine"><p className="text-sm text-muted-foreground">Tap or insert your card on {p.business.name}'s card machine.</p></Way>}
+                <Callout tone="warn"><b>Only pay to the details on this page.</b> If anyone sends you different bank details for {p.business.name}, don't pay. Check with the business first.</Callout>
+              </CardContent>
+            </Card>
+          )}
+          {p.canSendProof && <ProofForm page={p} path={path} headers={headers} onSent={() => { toast("Proof sent to the business. They'll confirm once the money is in."); void qc.invalidateQueries({ queryKey: ["pay", param] }); }} />}
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-base">Something wrong?</CardTitle><CardDescription>If this business asked you to pay in a way that felt unsafe, tell us.</CardDescription></CardHeader>
+            <CardContent className="pt-0"><Button variant="destructive" onClick={() => void report()}><Flag className="h-4 w-4" />Report this request</Button></CardContent>
+          </Card>
+        </>;
+      })()}
+    </PublicShell>
   );
 }

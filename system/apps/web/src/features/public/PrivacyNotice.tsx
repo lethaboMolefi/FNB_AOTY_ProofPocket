@@ -1,6 +1,8 @@
 // The privacy notice founders agree to when they join (POPIA s18). Source: docs/security/popia/privacy-notice.md.
 import { DATA_REQUEST_DAYS, PRIVACY_NOTICE_VERSION, shortDate } from "@proofpocket/shared";
 import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "../../components/PageHeader";
 import { AuthPageShell } from "../auth/SignIn";
 
 const SECTIONS: [string, string[]][] = [
@@ -41,14 +43,16 @@ const SECTIONS: [string, string[]][] = [
 export default function PrivacyNotice() {
   return (
     <AuthPageShell>
-      <div><h1>Privacy notice</h1><p className="muted mt-1.5">Version of {shortDate(PRIVACY_NOTICE_VERSION)}. How ProofPocket uses your information, in plain language.</p></div>
+      <PageHeader title="Privacy notice" sub={`Version of ${shortDate(PRIVACY_NOTICE_VERSION)}. How ProofPocket uses your information, in plain language.`} />
       {SECTIONS.map(([title, items]) => (
-        <section key={title} className="panel stack" aria-labelledby={`pn-${title}`}>
-          <h2 id={`pn-${title}`} className="!mb-0">{title}</h2>
-          <ul className="small stack" style={{ gap: 6, paddingLeft: 18, listStyle: "disc" }}>{items.map((i) => <li key={i}>{i}</li>)}</ul>
-        </section>
+        <Card key={title}>
+          <CardHeader className="pb-2"><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed">{items.map((i) => <li key={i}>{i}</li>)}</ul>
+          </CardContent>
+        </Card>
       ))}
-      <p className="small"><Link to="/">Back to ProofPocket</Link></p>
+      <p className="text-sm"><Link to="/" className="font-medium text-primary hover:underline">Back to ProofPocket</Link></p>
     </AuthPageShell>
   );
 }
