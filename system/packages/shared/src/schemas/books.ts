@@ -57,6 +57,8 @@ export const settingsSchema = z.object({
 
 export const statementImportSchema = z.object({
   fileId: z.string().uuid(),
+  /** A password-protected PDF statement's password. Used once to open the file; never stored or logged. */
+  password: z.string().max(100).optional(),
   /** When the columns couldn't be recognised, the founder picks them. Zero-based column numbers. */
   mapping: z.object({
     date: z.number().int().min(0),

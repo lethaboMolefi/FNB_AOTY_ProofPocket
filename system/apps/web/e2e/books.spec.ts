@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./helpers";
+import { makePdf, signIn } from "./helpers";
 
 test("Home shows the founder's journey, figures and things to watch", async ({ page }) => {
   await signIn(page, "zanele@proofpocket.example");
@@ -51,4 +51,15 @@ test("the same amount paid out twice in a week needs a second Save", async ({ pa
   await expect(page.getByText(/^Possible duplicate: you paid R4/)).toBeVisible();
   await page.getByRole("button", { name: "Save again" }).click();
   await expect(page.locator("tr", { hasText: "Bakkie service again" })).toHaveCount(1);
+});
+
+test("import a bank statement PDF: its lines appear to sort", async ({ page }, info) => {
+  await signIn(page, "zanele@proofpocket.example");
+  await page.goto("/app/books");
+  const d = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10).split("-").reverse().join("/");
+  const who = `PDF client ${info.project.name}`;
+  const card = page.locator("div.rounded-lg, div.rounded-xl").filter({ has: page.getByRole("heading", { name: "From your bank statement" }) }).first();
+  await card.locator('input[type="file"]').setInputFiles({ name: "statement.pdf", mimeType: "application/pdf",
+    buffer: makePdf(["Capitec Bank", "Opening balance 1 000.00", `${d} Payment Received: ${who} 450.00 1 450.00`]) });
+  await expect(page.getByText(`Payment Received: ${who}`)).toBeVisible();
 });

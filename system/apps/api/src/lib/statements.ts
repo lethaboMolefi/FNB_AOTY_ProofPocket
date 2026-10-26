@@ -101,3 +101,64 @@ export function parseStatement(text: string, mapping?: Mapping): ParseResult {
   }
   return { ok: true, lines, skipped, bank: guessBank(text) };
 }
+
+// ---------------------------------------------------------------- PDF statements
+// Each transaction row starts with a date and ends with money amounts; the last is the running balance. Money in or out
+// is read from how the balance moved (works whatever the bank's layout); Cr, Dr or a minus sign are used when there's no
+// balance to go by.
+const MONEY = /(?<![\d.,])-?(?:R\s?)?\d{1,3}(?:[ ,\u00a0]\d{3})*[.,]\d{2}(?:\s?(?:Cr|Dr|CR|DR))?(?![\d])/g;
+const LEAD_DATE = /^(\d{4}[-/]\d{2}[-/]\d{2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{1,2} [A-Za-z]{3,9} \d{4}|\d{1,2} [A-Za-z]{3,9})(?=\s)/;
+const OPENING = /opening balance|balance brought forward|brought forward/i;
+
+/** "1,200.00Cr" → 1200; "350.00" → 350 with no marker; "-500.00" or "500.00 Dr" → -500. */
+function money(token: string): { value: number; marked: boolean } {
+  const t = token.replace(/\s?(Cr|Dr|CR|DR)$/, (m) => ` ${m.trim()}`);
+  const v = parseAmount(t) ?? 0;
+  return { value: v, marked: /-|\bDR\b|\bCR\b/i.test(t) };
+}
+
+export function parsePdfStatement(lines: string[]): { lines: StatementLine[]; skipped: number; bank: string | null } {
+  const text = lines.join("\n");
+  const bank = guessBank(text);
+  // Dates printed without a year (FNB) take the statement's year.
+  const year = /\b(20\d{2})\b/.exec(text)?.[1] ?? todayYear();
+  const out: StatementLine[] = [];
+  let skipped = 0;
+  let prev: number | null = null;
+  for (const raw of lines) {
+    const line = raw.replace(/\u00a0/g, " ").trim();
+    const tokens = [...line.matchAll(MONEY)];
+    if (OPENING.test(line) && tokens.length) { prev = money(tokens.at(-1)![0]).value; continue; }
+    const d = LEAD_DATE.exec(line);
+    if (!d || !tokens.length) { if (d) skipped++; continue; }
+    const date = parseDate(/[A-Za-z]{3,9}$/.test(d[1]!) ? `${d[1]} ${year}` : d[1]!);
+    const description = line.slice(d[0].length, tokens[0]!.index).replace(/\s+/g, " ").trim().slice(0, 200);
+    if (!date || !description) { skipped++; continue; }
+    const amounts = tokens.map((t) => money(t[0]));
+    let amount: number, inbound: boolean;
+    if (amounts.length >= 2) {
+      const balance = amounts.at(-1)!.value;
+      const others = amounts.slice(0, -1);
+      if (prev !== null) {
+        const delta = Math.round((balance - prev) * 100) / 100;
+        inbound = delta >= 0;
+        amount = Math.abs((others.find((o) => Math.abs(o.value) === Math.abs(delta)) ?? others[0]!).value);
+      } else {
+        const first = others[0]!;
+        inbound = first.marked ? first.value > 0 : bank !== "FNB";
+        amount = Math.abs(first.value);
+      }
+      prev = balance;
+    } else {
+      const only = amounts[0]!;
+      inbound = only.marked ? only.value > 0 : bank !== "FNB";
+      amount = Math.abs(only.value);
+    }
+    if (!amount) { skipped++; continue; }
+    out.push({ date, description, amount, direction: inbound ? "in" : "out" });
+    if (out.length >= MAX_LINES) break;
+  }
+  return { lines: out, skipped, bank };
+}
+
+const todayYear = () => new Date().toISOString().slice(0, 4);

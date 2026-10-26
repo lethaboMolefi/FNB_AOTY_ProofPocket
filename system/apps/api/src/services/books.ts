@@ -10,7 +10,8 @@ import { companies, files, ledgerEntries, monthlyHistory, paymentRequestItems, s
 import { addActivity, audit, type Actor } from "../lib/audit";
 import { AppError, badRequest, notFound } from "../lib/errors";
 import type { FileStore } from "../lib/storage";
-import { parseStatement, type Mapping } from "../lib/statements";
+import { parsePdfStatement, parseStatement, type Mapping } from "../lib/statements";
+import { pdfTextLines } from "../lib/statement-pdf";
 import type { CompanyRow } from "../repositories/companies";
 import { requireRegisteredFile } from "./files";
 
@@ -191,18 +192,22 @@ export async function monthEntries(tx: Tx, companyId: string, month: string) {
 }
 
 // ---------------------------------------------------------------- statements
-export async function importStatement(tx: Tx, store: FileStore, actor: Actor, c: CompanyRow, fileId: string, mapping?: Mapping) {
+export async function importStatement(tx: Tx, store: FileStore, actor: Actor, c: CompanyRow, fileId: string, mapping?: Mapping, password?: string) {
   const file = await requireRegisteredFile(tx, fileId, c.id, "statement");
-  const parsed = parseStatement((await store.read(file.bucketPath)).toString("utf8"), mapping);
+  const data = await store.read(file.bucketPath);
+  const pdf = file.mime === "application/pdf";
+  const parsed = pdf ? { ok: true as const, ...parsePdfStatement(await pdfTextLines(data, password)) } : parseStatement(data.toString("utf8"), mapping);
   if (!parsed.ok) return parsed;
-  if (!parsed.lines.length) throw badRequest("no_lines", "We couldn't find any transactions in that file.");
+  if (!parsed.lines.length) throw badRequest("no_lines", pdf
+    ? "We couldn't find any transactions in that PDF. If it's from a bank other than FNB, Capitec, Absa, Standard Bank, Nedbank or TymeBank, add the entries in Bookkeeping instead."
+    : "We couldn't find any transactions in that file.");
   const from = parsed.lines.map((l) => l.date).sort()[0]!;
   const entries = (await tx.select().from(ledgerEntries).where(and(eq(ledgerEntries.companyId, c.id), isNull(ledgerEntries.voidedAt), gte(ledgerEntries.entryDate, addDays(from, -3)))))
     .map((e) => ({ id: e.id, date: e.entryDate, amount: Number(e.amount), direction: e.direction, note: e.note }));
   const earlier = (await tx.select().from(statementLines).where(and(eq(statementLines.companyId, c.id), gte(statementLines.lineDate, from))))
     .map((l): StatementLine => ({ date: l.lineDate, description: l.description, amount: Number(l.amount), direction: l.direction }));
   const fresh = parsed.lines.filter((l) => !earlier.some((x) => sameLine(x, l)));
-  const [imp] = await tx.insert(statementImports).values({ companyId: c.id, fileId, bank: parsed.bank, format: "csv", lineCount: fresh.length, importedBy: actor.userId }).returning();
+  const [imp] = await tx.insert(statementImports).values({ companyId: c.id, fileId, bank: parsed.bank, format: pdf ? "pdf" : "csv", lineCount: fresh.length, importedBy: actor.userId }).returning();
   let already = 0;
   if (fresh.length) {
     await tx.insert(statementLines).values(fresh.map((l) => {

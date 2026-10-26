@@ -21,6 +21,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { FilePick } from "../../components/FilePick";
+import { PasswordField } from "../auth/SignIn";
 import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 import { useOnline } from "../../lib/pwa";
@@ -54,14 +55,18 @@ function Statement({ lines, onChange }: { lines: Line[]; onChange: () => void })
   const [mapping, setMapping] = useState<{ fileId: string; preview: string[][]; columnCount: number } | null>(null);
   const [cols, setCols] = useState({ date: 0, description: 1, amount: 2, moneyIn: -1, moneyOut: -1 });
   const [cats, setCats] = useState<Record<string, string>>({});
+  // A password-protected PDF: ask for its password, then read the same file again.
+  const [locked, setLocked] = useState<{ fileId: string; wrong: boolean } | null>(null);
+  const [password, setPassword] = useState("");
 
-  const importFile = async (fileId: string, map?: object) => {
+  const importFile = async (fileId: string, map?: object, pw?: string) => {
     setErr("");
     try {
       const r = await api<
         | { ok: true; added: number; alreadyInBooks: number; repeated: number }
         | { ok: false; needsMapping: true; preview: string[][]; columnCount: number }
-      >("/founder/statements", { body: { fileId, ...(map ? { mapping: map } : {}) } });
+      >("/founder/statements", { body: { fileId, ...(map ? { mapping: map } : {}), ...(pw ? { password: pw } : {}) } });
+      setLocked(null); setPassword("");
       if (!r.ok) {
         setMapping({ fileId, preview: r.preview, columnCount: r.columnCount });
         return;
@@ -70,6 +75,7 @@ function Statement({ lines, onChange }: { lines: Line[]; onChange: () => void })
       toast(`${r.added} new ${r.added === 1 ? "line" : "lines"} to sort${r.alreadyInBooks ? `, ${r.alreadyInBooks} already in your books` : ""}${r.repeated ? `, ${r.repeated} imported before` : ""}.`);
       onChange();
     } catch (e) {
+      if (e instanceof ApiError && (e.code === "pdf_password" || e.code === "pdf_password_wrong")) { setLocked({ fileId, wrong: e.code === "pdf_password_wrong" }); return; }
       setErr(e instanceof ApiError ? e.message : "Try again.");
     }
   };
@@ -101,10 +107,10 @@ function Statement({ lines, onChange }: { lines: Line[]; onChange: () => void })
           <div>
             <CardTitle className="text-base">From your bank statement</CardTitle>
             <CardDescription className="mt-1">
-              Download the CSV from your banking app and import it here. ProofPocket never connects to your bank.
+              Download your statement as a PDF from your banking app (FNB, Capitec, Absa, Standard Bank, Nedbank or TymeBank) and import it here. ProofPocket never connects to your bank.
             </CardDescription>
           </div>
-          <FilePick label="Import CSV" purpose="statement" accept=".csv,text/csv"
+          <FilePick label="Import PDF statement" purpose="statement" accept=".pdf,application/pdf"
             onUploaded={(f) => importFile(f.fileId)} onError={setErr} />
         </div>
       </CardHeader>
@@ -113,6 +119,19 @@ function Statement({ lines, onChange }: { lines: Line[]; onChange: () => void })
           <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive" role="alert">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />{err}
           </div>
+        )}
+        {locked && (
+          <form className="space-y-3 rounded-lg border border-border bg-surface-2 p-4" noValidate
+            onSubmit={(e) => { e.preventDefault(); void importFile(locked.fileId, undefined, password); }}>
+            <p className="text-sm">{locked.wrong
+              ? "That password isn't right. Banks often use your ID number or account number; check the email that came with the statement."
+              : "This statement PDF has a password. Enter it to import the statement. It's used once to open the file and isn't saved."}</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <PasswordField label="Statement password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Button type="submit" disabled={!password}>Open statement</Button>
+              <Button type="button" variant="ghost" onClick={() => { setLocked(null); setPassword(""); }}>Cancel</Button>
+            </div>
+          </form>
         )}
         {mapping && (
           <div className="rounded-lg border border-border bg-surface-2 p-4 space-y-3">

@@ -14,7 +14,7 @@ const ALLOWED: Record<Purpose, DetectedType[]> = {
   document: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
   receipt: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
   proof: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
-  statement: ["text/csv"],
+  statement: ["application/pdf", "text/csv"],
 };
 
 const safeName = (n: string) => n.replace(/[\\/\0]/g, "_").slice(0, 160);
@@ -43,7 +43,7 @@ export async function completeUpload(tx: Tx, store: FileStore, fileId: string) {
     await store.remove(f.bucketPath);
     await tx.delete(files).where(eq(files.id, f.id));
     throw new AppError(400, "file_type", f.purpose === "statement"
-      ? "That isn't a CSV statement. Download the CSV from your banking app and try again."
+      ? "That isn't a bank statement we can read. Download the PDF statement from your banking app and try again."
       : "That file isn't a PDF or photo we can open. Upload a PDF, JPG, PNG or WebP of 5 MB or less.");
   }
   const sha256 = createHash("sha256").update(data).digest("hex");

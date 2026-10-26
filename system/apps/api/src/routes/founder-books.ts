@@ -80,8 +80,8 @@ export function founderBookRoutes(deps: Deps) {
   }));
 
   r.post("/founder/statements", founder, handle((req) => {
-    const { fileId, mapping } = parse(statementImportSchema, req.body);
-    return asFounder(req, (tx, c) => importStatement(tx, deps.store, actorOf(req), c, fileId, mapping));
+    const { fileId, mapping, password } = parse(statementImportSchema, req.body);
+    return asFounder(req, (tx, c) => importStatement(tx, deps.store, actorOf(req), c, fileId, mapping, password));
   }));
   r.post("/founder/statement-lines/:id", founder, handle((req) => {
     const { action, category } = parse(statementLineActionSchema, req.body);
