@@ -63,6 +63,13 @@ describe("email confirmation code", () => {
     expect((await verify(unconfirmed(newEmail("bad")), "12ab")).status).toBe(400);
   });
 
+  it("no account or business is created before the email is confirmed", async () => {
+    const email = newEmail("join");
+    const r = await request(app).post("/api/v1/join").set("Authorization", unconfirmed(email)).send({});
+    expect(r.body.error.code).toBe("verify_email");
+    expect((await owner.query("select count(*)::int as n from users where lower(email) = $1", [email])).rows[0].n).toBe(0);
+  });
+
   it("joining stays blocked until the email is confirmed", async () => {
     const tok = unconfirmed(newEmail("apply"));
     const r = await request(app).post("/api/v1/join/applications").set("Authorization", tok).send({ kind: "funder", details: {} });

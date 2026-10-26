@@ -242,7 +242,10 @@ const accountSchema = z.object({
 
 type FounderForm = JoinDetails & { account?: z.infer<typeof accountSchema> };
 
-function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () => void }) {
+/** The founder's details, held in memory (never stored) while a new sign-in confirms its email. */
+type PendingJoin = Omit<FounderForm, "account">;
+
+function FounderDetails({ signedOut, onDone, onConfirmFirst }: { signedOut: boolean; onDone: () => void; onConfirmFirst: (d: PendingJoin) => void }) {
   const auth = useAuth();
   const qc = useQueryClient();
   const [err, setErr] = useState("");
@@ -269,7 +272,11 @@ function FounderDetails({ signedOut, onDone }: { signedOut: boolean; onDone: () 
   const submit = form.handleSubmit(async ({ account, ...d }) => {
     setErr("");
     try {
-      if (account) await auth.signUp(account.email, account.password);
+      if (account) {
+        await auth.signUp(account.email, account.password);
+        // A new email sign-in confirms its address before anything is saved; the details wait until then.
+        if (AUTH_MODE === "firebase") { onConfirmFirst(d); return; }
+      }
       await api("/join", { body: { ...d, incubatorId: d.incubatorId || null } });
       await qc.invalidateQueries({ queryKey: meKey });
       onDone();
@@ -1285,15 +1292,27 @@ export default function Join() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [founderStep, setFounderStep] = useState<FounderStep>(unjoined ? 2 : 1);
   const [joined, setJoined] = useState(false);
+  const [pending, setPending] = useState<PendingJoin | null>(null);
+  const [pendingErr, setPendingErr] = useState("");
 
   if (joined) return <Navigate to="/app/start" replace />;
   if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending) || (noAccount && mine.isPending)) return <Spinner />;
   if (me.data && !unjoined) return <Navigate to={HOME_FOR[me.data.role]} replace />;
   if (me.data?.needsOtp) return <Navigate to="/verify" replace />;
+  // Details typed before the email was confirmed are saved now, then the person carries on at Documents.
+  const saveAfterConfirm = async () => {
+    if (pending) {
+      try {
+        await api("/join", { body: { ...pending, incubatorId: pending.incubatorId || null } });
+        setPending(null); setFounderStep(2);
+      } catch (x) { setPendingErr(x instanceof ApiError ? x.message : "Couldn't save your details. Check them and try again."); }
+    }
+    await me.refetch();
+  };
   // A new email sign-in confirms its address with the code we email before going further (Google is confirmed already).
   // The steps' state is kept, so the person carries on where they were.
   if (auth.status === "signedIn" && !auth.emailVerified) {
-    return <AuthPageShell wide toSignIn><div className="mx-auto w-full max-w-lg"><EmailCodeConfirm heading="h1" onConfirmed={() => void me.refetch()} /></div></AuthPageShell>;
+    return <AuthPageShell wide toSignIn><div className="mx-auto w-full max-w-lg"><EmailCodeConfirm heading="h1" onConfirmed={() => void saveAfterConfirm()} /></div></AuthPageShell>;
   }
 
   const isReturningFounder = !signedOut && !noAccount && unjoined;
@@ -1325,7 +1344,10 @@ export default function Join() {
           {(selectedRole === "founder" || isReturningFounder) && (
             <>
               {founderStep === 1 && (
-                <FounderDetails signedOut={signedOut} onDone={() => setFounderStep(2)} />
+                <>
+                  {pendingErr && <Callout tone="bad" role="alert" className="mb-4">{pendingErr}</Callout>}
+                  <FounderDetails signedOut={signedOut} onDone={() => setFounderStep(2)} onConfirmFirst={setPending} />
+                </>
               )}
               {founderStep === 2 && docs.data && (
                 <FounderDocuments data={docs.data} onBack={() => setFounderStep(1)} onNext={() => setFounderStep(3)} />

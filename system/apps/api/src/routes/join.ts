@@ -28,6 +28,8 @@ export function joinRoutes(deps: Deps) {
     if (!a) throw unauthenticated();
     if (a.user && a.user.role !== "founder") throw new AppError(409, "already_joined", "This account already has a ProofPocket portal.");
     if (!a.token.email) throw new AppError(400, "no_email", "Your account needs an email address.");
+    // Nothing is created for a sign-in whose email isn't confirmed yet (Google and local sign-ins already are).
+    if (!a.token.emailVerified) throw new AppError(403, "verify_email", "Confirm your email address first: enter the 6-digit code we emailed you.");
     const d = parse(joinDetailsSchema, req.body);
     const { company } = await withContext(deps.db, contextOf(req), (tx) =>
       saveDetails(tx, { firebaseUid: a.token.uid, email: a.token.email!, existingUserId: a.user?.id ?? null }, d, deps.config.ACCOUNT_NUMBER_KEY));
