@@ -150,7 +150,7 @@ export default function Stock() {
                 <TableHead className="text-right">In stock</TableHead>
                 <TableHead className="text-right hidden sm:table-cell">Reorder at</TableHead>
                 <TableHead className="text-right hidden sm:table-cell">Cost each</TableHead>
-                <TableHead className="text-right">Selling price</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Selling price</TableHead>
                 <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="text-right">Update</TableHead>
               </TableRow>
@@ -164,6 +164,9 @@ export default function Stock() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{it.name}</p>
+                        <Button size="sm" variant="link" className="h-auto p-0 tabular-nums sm:hidden" aria-label={`Selling price of ${it.name}`} onClick={() => void setPrice(it)}>
+                          {it.price ? `${Rc(it.price)} each` : "Set selling price"}
+                        </Button>
                         {qty <= it.reorderAt && <Badge variant="destructive" className="mt-1 sm:hidden">Reorder</Badge>}
                         {syncing && (
                           <div className="flex items-center gap-1 mt-0.5">
@@ -182,7 +185,7 @@ export default function Stock() {
                     <TableCell className="text-right tabular-nums text-muted-foreground hidden sm:table-cell">
                       {R(it.cost)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="hidden text-right sm:table-cell">
                       <Button size="sm" variant="ghost" className="tabular-nums" aria-label={`Selling price of ${it.name}`} onClick={() => void setPrice(it)}>
                         {it.price ? Rc(it.price) : "Set price"}
                       </Button>

@@ -86,11 +86,12 @@ test("supplier on hold blocks recording a payment", async ({ page }) => {
 test("ask a client to pay for stock: the amount comes from the selling prices", async ({ page }) => {
   await signIn(page, "zanele@proofpocket.example");
   await page.goto("/app/stock");
-  const row = page.getByRole("row").filter({ has: page.getByRole("button", { name: /^Selling price of / }) }).first();
-  const name = (await row.getByRole("button", { name: /^Selling price of / }).getAttribute("aria-label"))!.replace("Selling price of ", "");
+  // One price button shows per screen size (beside the name on phones, in its own column on wider screens).
+  const priceBtn = page.getByRole("button", { name: /^Selling price of / }).filter({ visible: true }).first();
+  const name = (await priceBtn.getAttribute("aria-label"))!.replace("Selling price of ", "");
   page.once("dialog", (d) => void d.accept("45.50"));
-  await row.getByRole("button", { name: `Selling price of ${name}` }).click();
-  await expect(row.getByRole("button", { name: `Selling price of ${name}` })).toHaveText("R45.50");
+  await priceBtn.click();
+  await expect(page.getByRole("button", { name: `Selling price of ${name}` }).filter({ visible: true })).toHaveText(/R45\.50/);
 
   await page.goto("/app/payments");
   const ask = page.locator("form").filter({ has: page.getByRole("heading", { name: "Ask a client to pay" }) });
