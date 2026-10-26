@@ -57,7 +57,7 @@ export default function Support() {
   };
   return (
     <>
-      <PageHeader label={d.incubator} title="Support log" sub={SUB} />
+      <PageHeader title="Support log" sub={SUB} />
       <Card>
         <form onSubmit={submit} noValidate>
           <CardHeader className="pb-3">

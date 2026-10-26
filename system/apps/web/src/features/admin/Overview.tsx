@@ -25,7 +25,6 @@ interface Data {
 }
 
 const SUB = "How ProofPocket is doing today: who's joining, what's waiting, and money recorded across all businesses.";
-const LABEL = "ProofPocket admin";
 const nice = (s: string) => s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
 function Trend({ data }: { data: Data["trend"] }) {
@@ -50,7 +49,7 @@ function Trend({ data }: { data: Data["trend"] }) {
 
 export default function Overview() {
   const q = useQuery({ queryKey: ["admin", "overview"], queryFn: () => api<Data>("/admin/overview") });
-  const head = <PageHeader label={LABEL} title="Overview" sub={SUB} />;
+  const head = <PageHeader title="Overview" sub={SUB} />;
   if (!q.data) return <>{head}<Spinner /></>;
   const d = q.data;
   const attention = [

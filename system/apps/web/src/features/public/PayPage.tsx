@@ -129,10 +129,13 @@ export default function PayPage() {
         const p = q.data;
         const closed = ["paid", "cancelled", "expired", "flagged"].includes(p.status);
         return <>
+          <PageHeader title={p.business.name} sub="You're paying this business directly. ProofPocket never holds your money." />
           <Card>
             <CardContent className="space-y-2 pt-6">
-              <PageHeader label="You're paying" title={p.business.name} badge={<LevelBadge verified={p.business.verified} />} />
-              <p className="text-3xl font-bold tabular-nums">{R(p.amount)}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-3xl font-bold tabular-nums">{R(p.amount)}</p>
+                <LevelBadge verified={p.business.verified} />
+              </div>
               <p className="text-sm text-muted-foreground">{p.what || "Payment"} · reference <b className="font-mono text-foreground">{p.ref}</b> · requested {shortDate(p.requestedOn)}</p>
             </CardContent>
           </Card>

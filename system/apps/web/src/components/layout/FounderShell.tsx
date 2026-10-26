@@ -43,8 +43,8 @@ export function FounderShell() {
       tabs={FOUNDER_TABS}
       right={<NotificationPanel notifications={notifications} />}
       who={me?.company && (
-        <div className="hidden items-center gap-2 sm:flex">
-          <span className="max-w-[180px] truncate text-sm font-semibold text-foreground">{me.company.name}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 max-w-[180px] truncate text-sm font-semibold text-foreground">{me.company.name}</span>
           {me.company.verified
             ? <Badge variant="success" className="shrink-0 text-[10px]">Verified</Badge>
             : <Badge variant="secondary" className="shrink-0 text-[10px]">Starter</Badge>}

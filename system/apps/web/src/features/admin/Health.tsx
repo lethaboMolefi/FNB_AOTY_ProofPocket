@@ -45,7 +45,7 @@ const None = ({ children }: { children: ReactNode }) => <p className="py-3 text-
 
 export default function Health() {
   const q = useQuery({ queryKey: ["admin", "health"], queryFn: () => api<Data>("/admin/health"), refetchInterval: 60_000 });
-  const head = <PageHeader label="ProofPocket admin" title="Security & health" sub={SUB} />;
+  const head = <PageHeader title="Security & health" sub={SUB} />;
   if (!q.data) return <>{head}<Spinner /></>;
   const d = q.data;
   const daily = d.jobs.find((j) => j.kind === "daily");
@@ -94,8 +94,8 @@ export default function Health() {
       </div>
       <Section icon={ShieldCheck} title="Recent security actions">
         {d.recentSecurity.length ? <div className="overflow-x-auto"><Table>
-          <TableHeader><TableRow><TableHead>When</TableHead><TableHead>Who</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
-          <TableBody>{d.recentSecurity.map((r, i) => <TableRow key={i}><TableCell className="whitespace-nowrap tabular-nums">{when(r.at)}</TableCell><TableCell>{r.person ?? "ProofPocket"}{r.role && <span className="block text-xs text-muted-foreground">{r.role}</span>}</TableCell><TableCell><ToneBadge tone="plain">{r.action}</ToneBadge></TableCell></TableRow>)}</TableBody>
+          <TableHeader><TableRow><TableHead className="hidden sm:table-cell">When</TableHead><TableHead>Who</TableHead><TableHead className="hidden sm:table-cell">Action</TableHead></TableRow></TableHeader>
+          <TableBody>{d.recentSecurity.map((r, i) => <TableRow key={i}><TableCell className="hidden whitespace-nowrap tabular-nums sm:table-cell">{when(r.at)}</TableCell><TableCell className="break-all">{r.person ?? "ProofPocket"}{r.role && <span className="block text-xs text-muted-foreground">{r.role}</span>}<span className="mt-1 block text-xs text-muted-foreground sm:hidden">{when(r.at)} · {r.action}</span></TableCell><TableCell className="hidden sm:table-cell"><ToneBadge tone="plain">{r.action}</ToneBadge></TableCell></TableRow>)}</TableBody>
         </Table></div> : <None>None yet.</None>}
       </Section>
       <Section icon={Server} title="System">

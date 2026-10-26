@@ -1,5 +1,5 @@
 // Home dashboard — rebuilt with shadcn, skeleton loading, proper empty states.
-import { AREAS, R, plural, scoreTone, type Flag, type JourneyStep, type ReadinessItem, type Tone } from "@proofpocket/shared";
+import { R, plural, scoreTone, type Flag, type JourneyStep, type ReadinessItem, type Tone } from "@proofpocket/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -116,7 +116,6 @@ export default function Home() {
   }
 
   const d = q.data;
-  const c = d.company;
   const t = d.tiles;
   const tone = scoreTone(t.score);
 
@@ -126,14 +125,14 @@ export default function Home() {
       {/* ── Page header ── */}
       <FounderHead
         title="Home"
-        sub={`${c.typeLabel} · ${AREAS[c.area as keyof typeof AREAS] ?? c.area} · ${c.employees} ${plural(c.employees, "person", "people")} · trading since ${c.foundedYear}`}
+        sub="Your money, your funding readiness and what to do next."
         action={<Button size="sm" variant="outline" asChild><Link to="/app/books">Add entry <ArrowRight className="h-3.5 w-3.5" /></Link></Button>}
       />
 
       {/* ── Notices ── */}
       {d.notices.starter && (
         <Callout tone="info" action={<Button size="sm" asChild className="shrink-0"><Link to="/app/start">Continue</Link></Button>}>
-          <b>You're on a Starter account.</b> You can keep books, take payments and build your profile now. Finish the registration steps to get verified, so funders and buyers can find you.
+          <b>Finish the registration steps to get verified</b>, so funders and buyers can find you. You can keep books, take payments and build your profile now.
         </Callout>
       )}
       {d.notices.proofsToCheck > 0 && (

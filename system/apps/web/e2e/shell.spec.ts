@@ -27,8 +27,10 @@ test("a founder lands on Home with the founder navigation", async ({ page, isMob
   await signIn(page, NALA);
   await expect(page).toHaveURL(/\/app\/home$/);
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
-  await expect(page.getByText("Nala Nails & Lashes · Soweto, Gauteng")).toBeVisible();
-  await expect(page.locator("main").getByText("Starter", { exact: true })).toBeVisible();
+  // The business name and plan are in the top bar only, on phones too; never repeated in the page.
+  await expect(page.locator("header").getByText("Nala Nails & Lashes")).toBeVisible();
+  await expect(page.locator("header").getByText("Starter", { exact: true })).toBeVisible();
+  await expect(page.locator("main").getByText("Nala Nails & Lashes · Soweto, Gauteng")).toHaveCount(0);
   if (isMobile) {
     const tabs = page.getByRole("navigation", { name: "Main" });
     // A tab may also show a count of things waiting (as in the sidebar).
@@ -86,6 +88,6 @@ test("the app shell opens offline", async ({ page, context }) => {
   await page.reload();
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
   await expect(page.getByText("Offline", { exact: true })).toBeVisible();
-  await expect(page.getByText("Nala Nails & Lashes · Soweto, Gauteng")).toBeVisible();
+  await expect(page.locator("header").getByText("Nala Nails & Lashes")).toBeVisible();
   await context.setOffline(false);
 });

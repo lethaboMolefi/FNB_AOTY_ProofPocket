@@ -6,7 +6,7 @@ test("Home shows the founder's journey, figures and things to watch", async ({ p
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
   const journey = page.getByRole("navigation", { name: "Your journey" });
   await expect(journey.getByRole("link")).toHaveCount(5);
-  await expect(page.getByText("You're on a Starter account.")).toBeVisible();
+  await expect(page.getByText("Finish the registration steps to get verified")).toBeVisible();
   await expect(page.getByText(/^\d+ possible scams need your attention\.$/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Things to watch" })).toBeVisible();
   await expect(page.getByText("Starter account, not yet verified")).toBeVisible();

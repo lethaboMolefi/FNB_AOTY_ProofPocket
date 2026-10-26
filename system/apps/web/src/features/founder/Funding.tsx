@@ -101,7 +101,7 @@ export default function Funding() {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow><TableHead>Programme</TableHead><TableHead>Amount</TableHead><TableHead className="hidden md:table-cell">Funds left</TableHead><TableHead>What you still need</TableHead><TableHead>Apply</TableHead></TableRow>
+              <TableRow><TableHead>Programme</TableHead><TableHead className="hidden sm:table-cell">Amount</TableHead><TableHead className="hidden md:table-cell">Funds left</TableHead><TableHead className="hidden sm:table-cell">What you still need</TableHead><TableHead>Apply</TableHead></TableRow>
             </TableHeader>
             <TableBody>
               {d.programmes.map((p) => (
@@ -109,14 +109,18 @@ export default function Funding() {
                   <TableCell>
                     <div className="font-medium">{p.name}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{p.funder}{p.kind && <> · {p.kind}</>}<Badge variant="success" className="text-[10px]">Verified funder</Badge></div>
+                    <div className="mt-1 space-y-1 sm:hidden">
+                      <p className="text-xs tabular-nums">{R(p.min)}–{R(p.max)}</p>
+                      {p.gaps.length ? <div className="flex flex-wrap gap-1">{p.gaps.map((g) => <Badge key={g} variant="outline" className="font-normal">× {g}</Badge>)}</div> : <Badge variant="success">Nothing, you qualify</Badge>}
+                    </div>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap tabular-nums">{R(p.min)}–{R(p.max)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap tabular-nums sm:table-cell">{R(p.min)}–{R(p.max)}</TableCell>
                   <TableCell className="hidden tabular-nums md:table-cell">{R(p.left)}</TableCell>
-                  <TableCell>{p.gaps.length
+                  <TableCell className="hidden sm:table-cell">{p.gaps.length
                     ? <div className="flex flex-wrap gap-1">{p.gaps.map((g) => <Badge key={g} variant="outline" className="font-normal">× {g}</Badge>)}</div>
                     : <Badge variant="success">Nothing, you qualify</Badge>}</TableCell>
                   <TableCell>{p.applied ? <Badge>Applied</Badge> : p.gaps.length ? <span className="text-sm text-muted-foreground">—</span> : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                       <Input type="number" className="w-28" aria-label={`Amount to request from ${p.name}`} min={p.min} max={p.max} value={amounts[p.id] ?? String(p.max)} onChange={(e) => setAmounts({ ...amounts, [p.id]: e.target.value })} />
                       <Button size="sm" onClick={() => void act("/founder/applications", { programmeId: p.id, amount: Number(amounts[p.id] ?? p.max) })}>Apply</Button>
                     </div>)}</TableCell>

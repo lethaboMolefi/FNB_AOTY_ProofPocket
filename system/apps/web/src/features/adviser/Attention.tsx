@@ -21,7 +21,7 @@ export default function Attention() {
   if (!q.data) return <><PageHeader title="Needs attention" sub={SUB} /><Spinner /></>;
   return (
     <>
-      <PageHeader label={q.data.incubator} title="Needs attention" sub={SUB} />
+      <PageHeader title="Needs attention" sub={SUB} />
       <Card><CardContent className="pt-2">
         {q.data.items.length ? <ul>{q.data.items.map((f, i) => (
           <ListRow key={i} side={<Button size="sm" variant="outline" onClick={() => setOpen(f.companyId)}><PanelRightOpen className="h-4 w-4" />Open</Button>}>

@@ -56,10 +56,10 @@ export default function Organisations() {
     try { toast((await api<{ message: string }>("/admin/organisations", { body: n })).message); setN({ ...n, name: "", kind: "", wants: "", sectors: [] }); refresh(); }
     catch (x) { setErr((x as ApiError).message); }
   };
-  if (!q.data) return <><PageHeader label="ProofPocket admin" title="Organisations" sub={SUB} /><Spinner /></>;
+  if (!q.data) return <><PageHeader title="Organisations" sub={SUB} /><Spinner /></>;
   return (
     <>
-      <PageHeader label="ProofPocket admin" title="Organisations" sub={SUB} />
+      <PageHeader title="Organisations" sub={SUB} />
       <Card>
         <form onSubmit={create} noValidate>
           <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Plus className="h-4 w-4 text-primary" aria-hidden="true" />Add an organisation</CardTitle></CardHeader>

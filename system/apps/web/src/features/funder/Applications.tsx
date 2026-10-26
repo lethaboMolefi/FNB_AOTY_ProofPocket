@@ -23,22 +23,23 @@ export default function Applications() {
   if (!q.data) return <><PageHeader title="Applications" sub={SUB} /><Spinner /></>;
   return (
     <>
-      <PageHeader label={q.data.funder.name} title="Applications" sub={SUB} />
+      <PageHeader title="Applications" sub={SUB} />
       <Card><CardContent className="p-0">
         {q.data.applications.length ? (
           <Table>
-            <TableHeader><TableRow><TableHead>Company</TableHead><TableHead>Programme</TableHead><TableHead className="text-right">Requested</TableHead><TableHead className="text-right">Current offer</TableHead><TableHead>Status</TableHead><TableHead>Readiness</TableHead><TableHead className="relative"><span className="sr-only">Open</span></TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Company</TableHead><TableHead className="hidden md:table-cell">Programme</TableHead><TableHead className="hidden text-right lg:table-cell">Requested</TableHead><TableHead className="text-right">Current offer</TableHead><TableHead className="hidden sm:table-cell">Status</TableHead><TableHead className="hidden lg:table-cell">Readiness</TableHead><TableHead className="relative"><span className="sr-only">Open</span></TableHead></TableRow></TableHeader>
             <TableBody>{q.data.applications.map((a) => (
               <TableRow key={a.id}>
-                <TableCell><div className="font-medium">{a.company}</div><div className="text-xs text-muted-foreground">{shortDate(a.appliedOn)}</div></TableCell>
-                <TableCell>{a.programme}</TableCell>
-                <TableCell className="text-right tabular-nums">{R(a.requested)}</TableCell>
+                <TableCell><div className="font-medium">{a.company}</div><div className="text-xs text-muted-foreground">{shortDate(a.appliedOn)}<span className="md:hidden"> · {a.programme}</span></div>
+                  <div className="mt-1 sm:hidden"><ToneBadge tone={a.statusTone}>{a.statusLabel}</ToneBadge></div></TableCell>
+                <TableCell className="hidden md:table-cell">{a.programme}</TableCell>
+                <TableCell className="hidden text-right tabular-nums lg:table-cell">{R(a.requested)}</TableCell>
                 <TableCell className="text-right tabular-nums">{R(a.currentOffer)}
                   {a.changedWithoutReason && <div className="text-xs text-bad">No reason given</div>}
                   {a.reasonRequested && <div className="text-xs text-warn">Founder asked why</div>}</TableCell>
-                <TableCell><ToneBadge tone={a.statusTone}>{a.statusLabel}</ToneBadge></TableCell>
-                <TableCell>{a.score !== null ? <ScoreCell score={a.score} /> : "—"}</TableCell>
-                <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setOpen(a.companyId)}><PanelRightOpen className="h-4 w-4" />Open</Button></TableCell>
+                <TableCell className="hidden sm:table-cell"><ToneBadge tone={a.statusTone}>{a.statusLabel}</ToneBadge></TableCell>
+                <TableCell className="hidden lg:table-cell">{a.score !== null ? <ScoreCell score={a.score} /> : "—"}</TableCell>
+                <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setOpen(a.companyId)}><PanelRightOpen className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Open</span></Button></TableCell>
               </TableRow>
             ))}</TableBody>
           </Table>

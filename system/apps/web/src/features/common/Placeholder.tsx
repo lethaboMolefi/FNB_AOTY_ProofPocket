@@ -4,8 +4,6 @@ import type { NavPage } from "../../app/nav";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "../../components/PageHeader";
 import { Callout } from "@/components/ui/callout";
-import { LevelBadge } from "../../components/ToneBadge";
-import { useMe } from "../../lib/me";
 
 const PHASES: Record<number, string> = {
   2: "Join and Start",
@@ -15,15 +13,13 @@ const PHASES: Record<number, string> = {
 };
 
 export function Placeholder({ page }: { page: NavPage }) {
-  const { data: me } = useMe();
-  const c = me?.company;
   return (
     <>
       <PageHeader
-        label={c ? `${c.name} · ${c.town}, ${c.province}` : me?.org?.name}
+       
         title={page.title}
         sub={page.sub}
-        badge={c && <LevelBadge verified={c.verified} />}
+       
       />
       <Callout tone="info"><b>Being built.</b> This screen arrives in phase {page.phase}: {PHASES[page.phase]}.</Callout>
     </>

@@ -435,17 +435,16 @@ function Entries({ data, month, setMonth }: { data: BooksData; month: string; se
           </p>
         </div>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="@container p-0">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Details</TableHead>
-              <TableHead className="hidden sm:table-cell">Category</TableHead>
-              <TableHead className="hidden md:table-cell">Paid by</TableHead>
-              <TableHead className="hidden sm:table-cell">Receipt</TableHead>
+              <TableHead className="hidden @lg:table-cell">Category</TableHead>
+              <TableHead className="hidden @2xl:table-cell">Paid by</TableHead>
+              <TableHead className="hidden @lg:table-cell">Receipt</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -461,16 +460,8 @@ function Entries({ data, month, setMonth }: { data: BooksData; month: string; se
                       : <><WifiOff className="h-3 w-3 text-warn" /><span className="text-[11px] text-warn">Waiting to sync</span></>
                     }
                   </div>
-                </TableCell>
-                <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{String(w.body.category)}</TableCell>
-                <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{PAY_METHODS[w.body.method as PayMethod]}</TableCell>
-                <TableCell className="hidden sm:table-cell" />
-                <TableCell className={`text-right tabular-nums font-medium ${w.body.direction === "in" ? "text-good" : ""}`}>
-                  {sign(w.body.direction as "in" | "out")}{R(Number(w.body.amount))}
-                </TableCell>
-                <TableCell className="text-right">
                   {w.error && (
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1">
                       {w.errorCode === "possible_duplicate" && (
                         <Button size="sm" variant="outline" onClick={() => void retry(w.id, { confirmDuplicate: true })}>
                           <RotateCcw className="h-3 w-3" />Save anyway
@@ -482,6 +473,12 @@ function Entries({ data, month, setMonth }: { data: BooksData; month: string; se
                     </div>
                   )}
                 </TableCell>
+                <TableCell className="hidden @lg:table-cell text-sm text-muted-foreground">{String(w.body.category)}</TableCell>
+                <TableCell className="hidden @2xl:table-cell text-sm text-muted-foreground">{PAY_METHODS[w.body.method as PayMethod]}</TableCell>
+                <TableCell className="hidden @lg:table-cell" />
+                <TableCell className={`text-right tabular-nums font-medium ${w.body.direction === "in" ? "text-good" : ""}`}>
+                  {sign(w.body.direction as "in" | "out")}{R(Number(w.body.amount))}
+                </TableCell>
               </TableRow>
             ))}
             {/* Saved entries */}
@@ -492,10 +489,20 @@ function Entries({ data, month, setMonth }: { data: BooksData; month: string; se
                   {e.voided ? <s className="text-sm">{e.note || "—"}</s> : <span className="text-sm">{e.note || "—"}</span>}
                   {e.isPersonal && <Badge variant="warning" className="ml-1.5 text-[10px]">Personal</Badge>}
                   {e.voided && e.voidReason && <p className="text-[11px] text-muted-foreground mt-0.5">Removed: {e.voidReason}</p>}
+                  {((e.isPersonal && !e.paidBack) || (!e.voided && e.source !== "proof")) && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {e.isPersonal && !e.paidBack && (
+                        <Button size="sm" variant="outline" onClick={() => paidBack.mutate(e.id)}>Paid back</Button>
+                      )}
+                      {!e.voided && e.source !== "proof" && (
+                        <Button size="sm" variant="ghost" className="-ml-2" onClick={() => void correct(e)}>Correct</Button>
+                      )}
+                    </div>
+                  )}
                 </TableCell>
-                <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{e.category}</TableCell>
-                <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{PAY_METHODS[e.method]}</TableCell>
-                <TableCell className="hidden sm:table-cell">
+                <TableCell className="hidden @lg:table-cell text-sm text-muted-foreground">{e.category}</TableCell>
+                <TableCell className="hidden @2xl:table-cell text-sm text-muted-foreground">{PAY_METHODS[e.method]}</TableCell>
+                <TableCell className="hidden @lg:table-cell">
                   {e.receipt
                     ? <Badge variant="success" className="text-[10px]">Kept</Badge>
                     : <Badge variant="outline" className="text-[10px]">None</Badge>
@@ -504,21 +511,11 @@ function Entries({ data, month, setMonth }: { data: BooksData; month: string; se
                 <TableCell className={`text-right tabular-nums font-semibold ${e.direction === "in" ? "text-good" : ""}`}>
                   {sign(e.direction)}{R(e.amount)}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    {e.isPersonal && !e.paidBack && (
-                      <Button size="sm" variant="outline" onClick={() => paidBack.mutate(e.id)}>Paid back</Button>
-                    )}
-                    {!e.voided && e.source !== "proof" && (
-                      <Button size="sm" variant="ghost" onClick={() => void correct(e)}>Correct</Button>
-                    )}
-                  </div>
-                </TableCell>
               </TableRow>
             ))}
             {!data.entries.length && !(current && waiting.length) && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   <BookOpen className="h-7 w-7 mx-auto mb-2 opacity-30" />
                   No entries {current ? "this month yet" : "in this month"}.
                 </TableCell>

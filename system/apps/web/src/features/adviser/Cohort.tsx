@@ -37,7 +37,7 @@ export default function Cohort() {
   };
   return (
     <>
-      <PageHeader label={d.incubator} title="Cohort board" sub={SUB} />
+      <PageHeader title="Cohort board" sub={SUB} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Companies" value={d.tiles.companies} sub={`${d.tiles.starters} Starter`} icon={Building2} />
         <StatCard label="Average readiness" value={d.tiles.avgReadiness} icon={Gauge} />

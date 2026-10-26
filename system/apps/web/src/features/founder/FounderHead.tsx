@@ -1,29 +1,8 @@
-// Page header for founder screens. Shows title, optional subtitle, and Starter/Verified badge.
-import { BadgeCheck } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "../../components/PageHeader";
-import { useMe } from "../../lib/me";
+// Page header for founder screens: the shared PageHeader. The business name and Starter/Verified badge
+// are in the top bar, not here.
 import type { ReactNode } from "react";
+import { PageHeader } from "../../components/PageHeader";
 
-interface FounderHeadProps {
-  title: string;
-  sub?: string;
-  action?: ReactNode;
-}
-
-export function FounderHead({ title, sub, action }: FounderHeadProps) {
-  const c = useMe().data?.company;
-  const badge = c ? (
-    c.verified
-      ? (
-        <Badge variant="success" className="gap-1 text-xs">
-          <BadgeCheck className="h-3 w-3" />Verified
-        </Badge>
-      )
-      : (
-        <Badge variant="secondary" className="text-xs">Starter</Badge>
-      )
-  ) : undefined;
-
-  return <PageHeader label={c ? `${c.name} · ${c.town}, ${c.province}` : undefined} title={title} sub={sub} badge={badge} action={action} />;
+export function FounderHead({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
+  return <PageHeader title={title} sub={sub} action={action} />;
 }

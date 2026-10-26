@@ -30,7 +30,7 @@ export default function Programmes() {
   };
   return (
     <>
-      <PageHeader label={q.data.funder.name} title="Programmes & requirements" sub={SUB}
+      <PageHeader title="Programmes & requirements" sub={SUB}
         action={!adding && <Button variant="outline" onClick={() => setAdding(true)}><Plus className="h-4 w-4" />Add a programme</Button>} />
       {adding && <ProgrammeForm onDone={() => { setAdding(false); void qc.invalidateQueries({ queryKey: ["funder"] }); }} onCancel={() => setAdding(false)} />}
       {q.data.programmes.length ? q.data.programmes.map((p) => (

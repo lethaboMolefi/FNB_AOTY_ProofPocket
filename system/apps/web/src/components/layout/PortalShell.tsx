@@ -10,7 +10,7 @@ export function PortalShell({ base, title, pages, tabs, note }: { base: string; 
       base={base}
       groups={[{ group: title, pages }]}
       tabs={tabs}
-      who={me && <span className="hidden max-w-[180px] truncate text-sm font-semibold text-foreground sm:block">{me.org?.name ?? me.displayName}</span>}
+      who={me && <span className="min-w-0 max-w-[180px] truncate text-sm font-semibold text-foreground">{me.org?.name ?? me.displayName}</span>}
       note={note}
     />
   );

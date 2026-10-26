@@ -34,7 +34,7 @@ export default function Pipeline() {
   const books = (n: number | null) => n === null ? <ToneBadge tone="bad">None</ToneBadge> : n <= 7 ? <ToneBadge tone="good">Up to date</ToneBadge> : n <= 14 ? <ToneBadge tone="warn">{n} days</ToneBadge> : <ToneBadge tone="bad">{n} days</ToneBadge>;
   return (
     <>
-      <PageHeader label={`${d.funder.name} · ${d.funder.kind ?? ""} funder`} title="Company pipeline" sub={SUB} />
+      <PageHeader title="Company pipeline" sub={SUB} />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Verified and sharing" value={d.tiles.visible} sub={`${d.tiles.hidden} Starter or private`} icon={BadgeCheck} />
         <StatCard label="Meet your requirements" value={d.tiles.qualify} sub="For at least one programme" icon={Target} />
@@ -54,15 +54,16 @@ export default function Pipeline() {
       </CardContent></Card>
       <Card><CardContent className="p-0">
         <Table>
-          <TableHeader><TableRow><TableHead>Company</TableHead><TableHead>Area</TableHead><TableHead>Readiness</TableHead><TableHead>Your programmes</TableHead><TableHead>Income, 5 months</TableHead><TableHead>Books</TableHead><TableHead>Sharing</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Company</TableHead><TableHead className="hidden sm:table-cell">Area</TableHead><TableHead>Readiness</TableHead><TableHead className="hidden md:table-cell">Your programmes</TableHead><TableHead className="hidden lg:table-cell">Income, 5 months</TableHead><TableHead className="hidden lg:table-cell">Books</TableHead><TableHead className="hidden lg:table-cell">Sharing</TableHead></TableRow></TableHeader>
           <TableBody>{rows.map((r) => (
             <TableRow key={r.id} className="cursor-pointer" tabIndex={0} onClick={() => setOpen(r.id)} onKeyDown={(e) => { if (e.key === "Enter") setOpen(r.id); }}>
-              <TableCell><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground">{r.sector} · {r.stage}</div></TableCell>
-              <TableCell>{r.town}<div className="text-xs text-muted-foreground">{AREAS[r.area]}</div></TableCell>
+              <TableCell><div className="font-medium">{r.name}</div><div className="text-xs text-muted-foreground">{r.sector} · {r.stage}<span className="sm:hidden"> · {r.town}</span></div>
+                <div className="mt-1 md:hidden">{r.qualifies ? <ToneBadge tone="good">Qualifies for {r.qualifies}</ToneBadge> : <ToneBadge tone="plain">Not yet</ToneBadge>}</div></TableCell>
+              <TableCell className="hidden sm:table-cell">{r.town}<div className="text-xs text-muted-foreground">{AREAS[r.area]}</div></TableCell>
               <TableCell><ScoreCell score={r.score} /></TableCell>
-              <TableCell>{r.qualifies ? <ToneBadge tone="good">Qualifies for {r.qualifies}</ToneBadge> : <ToneBadge tone="plain">Not yet</ToneBadge>}</TableCell>
-              <TableCell><Spark values={r.spark} /></TableCell><TableCell>{books(r.lastEntryDays)}</TableCell>
-              <TableCell className="text-sm">{r.sharing === "full" ? "Full books" : "Summary"}</TableCell>
+              <TableCell className="hidden md:table-cell">{r.qualifies ? <ToneBadge tone="good">Qualifies for {r.qualifies}</ToneBadge> : <ToneBadge tone="plain">Not yet</ToneBadge>}</TableCell>
+              <TableCell className="hidden lg:table-cell"><Spark values={r.spark} /></TableCell><TableCell className="hidden lg:table-cell">{books(r.lastEntryDays)}</TableCell>
+              <TableCell className="hidden text-sm lg:table-cell">{r.sharing === "full" ? "Full books" : "Summary"}</TableCell>
             </TableRow>
           ))}{!rows.length && <TableRow className="hover:bg-transparent"><TableCell colSpan={7}><EmptyState icon={SearchX}>No companies match these filters.</EmptyState></TableCell></TableRow>}</TableBody>
         </Table>

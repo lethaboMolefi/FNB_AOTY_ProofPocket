@@ -27,12 +27,11 @@ function useCall() {
   };
 }
 const day = (iso: string) => shortDate(iso.slice(0, 10));
-const LABEL = "ProofPocket admin";
 
 export function Reports() {
   const call = useCall();
   const q = useQuery({ queryKey: ["admin", "reports"], queryFn: () => api<{ reports: { id: string; target: string; company: string | null; reason: string; status: string; note: string | null; date: string }[] }>("/admin/reports") });
-  const head = <PageHeader label={LABEL} title="Reports" sub="Businesses and payment requests reported by the public and founders. ProofPocket promises a review within two working days." />;
+  const head = <PageHeader title="Reports" sub="Businesses and payment requests reported by the public and founders. ProofPocket promises a review within two working days." />;
   if (!q.data) return <>{head}<Spinner /></>;
   return (
     <>
@@ -54,7 +53,7 @@ export function Reports() {
 export function Features() {
   const call = useCall();
   const q = useQuery({ queryKey: ["admin", "features"], queryFn: () => api<{ posts: { id: string; company: string; verified: boolean; text: string; date: string; feature: string; featuredUntil: string | null }[] }>("/admin/features") });
-  const head = <PageHeader label={LABEL} title="Feature requests" sub="Posts Verified businesses asked to feature in the directory. Featured posts show for 7 days. Reject anything misleading or harmful." />;
+  const head = <PageHeader title="Feature requests" sub="Posts Verified businesses asked to feature in the directory. Featured posts show for 7 days. Reject anything misleading or harmful." />;
   if (!q.data) return <>{head}<Spinner /></>;
   return (
     <>
@@ -76,7 +75,7 @@ export function Features() {
 export function Flagged() {
   const call = useCall();
   const q = useQuery({ queryKey: ["admin", "flagged"], queryFn: () => api<{ payments: { id: string; ref: string; company: string; client: string; amount: number; attempts: number; date: string }[]; watchlist: { id: string; sender: string; reports: number; status: string; last: string }[] }>("/admin/flagged") });
-  const head = <PageHeader label={LABEL} title="Flagged payments" sub="Payment requests where a founder rejected the proof of payment twice, and senders founders reported." />;
+  const head = <PageHeader title="Flagged payments" sub="Payment requests where a founder rejected the proof of payment twice, and senders founders reported." />;
   if (!q.data) return <>{head}<Spinner /></>;
   return (
     <>
@@ -119,7 +118,7 @@ export function Tenders() {
     try { toast((await api<{ message: string }>("/admin/tenders", { body: { ...f, value: Number(f.value), minMonths: Number(f.minMonths) } })).message); setF({ ...f, title: "", buyerName: "", value: "" }); void qc.invalidateQueries({ queryKey: ["admin"] }); }
     catch (x) { setErr((x as ApiError).message); }
   };
-  const head = <PageHeader label={LABEL} title="Tenders & buyers" sub="Opportunities founders can express interest in. Buyers are organisations; add them under Organisations." />;
+  const head = <PageHeader title="Tenders & buyers" sub="Opportunities founders can express interest in. Buyers are organisations; add them under Organisations." />;
   if (!q.data) return <>{head}<Spinner /></>;
   return (
     <>
@@ -154,13 +153,13 @@ export function Tenders() {
         <CardContent className="p-0">
           {q.data.tenders.length ? (
             <Table>
-              <TableHeader><TableRow><TableHead>Tender</TableHead><TableHead className="text-right">Value</TableHead><TableHead>Closes</TableHead><TableHead>Needs</TableHead><TableHead className="text-right">Interested</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Tender</TableHead><TableHead className="text-right">Value</TableHead><TableHead className="hidden sm:table-cell">Closes</TableHead><TableHead className="hidden md:table-cell">Needs</TableHead><TableHead className="text-right">Interested</TableHead></TableRow></TableHeader>
               <TableBody>{q.data.tenders.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell><div className="font-medium">{t.title}</div><div className="text-xs text-muted-foreground">{t.buyer} · {t.sectors.join(", ")}</div></TableCell>
+                  <TableCell><div className="font-medium">{t.title}</div><div className="text-xs text-muted-foreground">{t.buyer} · {t.sectors.join(", ")}</div><div className="text-xs text-muted-foreground sm:hidden">Closes {shortDate(t.closesOn)}</div></TableCell>
                   <TableCell className="text-right tabular-nums">{R(t.value)}</TableCell>
-                  <TableCell className="tabular-nums">{shortDate(t.closesOn)}{t.closesOn < todayZA() && <div className="text-xs text-muted-foreground">Closed</div>}</TableCell>
-                  <TableCell className="text-sm">{t.requiredDocs.map((k) => DOCS[k].short).join(", ")} · {t.minMonths} months</TableCell>
+                  <TableCell className="hidden tabular-nums sm:table-cell">{shortDate(t.closesOn)}{t.closesOn < todayZA() && <div className="text-xs text-muted-foreground">Closed</div>}</TableCell>
+                  <TableCell className="hidden text-sm md:table-cell">{t.requiredDocs.map((k) => DOCS[k].short).join(", ")} · {t.minMonths} months</TableCell>
                   <TableCell className="text-right tabular-nums">{t.interested}</TableCell>
                 </TableRow>
               ))}</TableBody>

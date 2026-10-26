@@ -139,7 +139,7 @@ export default function Stock() {
                 <TableHead className="text-right">In stock</TableHead>
                 <TableHead className="text-right hidden sm:table-cell">Reorder at</TableHead>
                 <TableHead className="text-right hidden sm:table-cell">Cost each</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="text-right">Update</TableHead>
               </TableRow>
             </TableHeader>
@@ -152,6 +152,7 @@ export default function Stock() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{it.name}</p>
+                        {qty <= it.reorderAt && <Badge variant="destructive" className="mt-1 sm:hidden">Reorder</Badge>}
                         {syncing && (
                           <div className="flex items-center gap-1 mt-0.5">
                             <WifiOff className="h-3 w-3 text-warn" />
@@ -169,7 +170,7 @@ export default function Stock() {
                     <TableCell className="text-right tabular-nums text-muted-foreground hidden sm:table-cell">
                       {R(it.cost)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {qty <= it.reorderAt
                         ? <Badge variant="destructive">Reorder</Badge>
                         : <Badge variant="success">OK</Badge>

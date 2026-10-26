@@ -183,7 +183,7 @@ function Requests({ data, business }: { data: PayData; business: string }) {
               <TableHead>Client</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead className="hidden md:table-cell">Methods</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="hidden sm:table-cell">Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -194,6 +194,7 @@ function Requests({ data, business }: { data: PayData; business: string }) {
                 <TableRow key={r.id}>
                   <TableCell>
                     <div className="font-medium">{r.client}</div>
+                    <Badge variant={STATUS[r.status][0]} className="mt-1 sm:hidden">{STATUS[r.status][1]}</Badge>
                     <div className="text-xs text-muted-foreground"><span className="font-mono">{r.ref}</span> · {r.what || "Payment"} · {live ? `link works until ${shortDate(r.expiresOn)}` : shortDate(r.requestedOn)}</div>
                     {r.status === "not_received" && <div className="mt-1 text-xs text-bad">You said the money didn't arrive. The client can upload proof once more.</div>}
                   </TableCell>
@@ -201,7 +202,7 @@ function Requests({ data, business }: { data: PayData; business: string }) {
                   <TableCell className="hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">{r.rails.map((x) => <Badge key={x} variant="outline" className="text-[10px]">{RAILS[x]}</Badge>)}</div>
                   </TableCell>
-                  <TableCell><Badge variant={STATUS[r.status][0]}>{STATUS[r.status][1]}</Badge></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Badge variant={STATUS[r.status][0]}>{STATUS[r.status][1]}</Badge></TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-1.5">
                       {live && <Button size="sm" variant="outline" onClick={() => setOpen(open === r.id ? null : r.id)}><Link2 className="h-4 w-4" />{open === r.id ? "Hide link" : "Link & QR"}</Button>}

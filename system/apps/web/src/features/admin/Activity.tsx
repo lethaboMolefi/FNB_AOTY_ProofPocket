@@ -31,7 +31,7 @@ export default function Activity() {
   const c = chainQ.data;
   return (
     <>
-      <PageHeader label="ProofPocket admin" title="Activity" sub={SUB} />
+      <PageHeader title="Activity" sub={SUB} />
       {c && (c.intact
         ? <Callout tone="good" role="status">Audit log intact: {c.rowsChecked} rows checked.</Callout>
         : <Callout tone="bad" role="alert">Audit log chain broken at row {c.firstBroken}. Rows may have been changed or removed outside ProofPocket.</Callout>)}

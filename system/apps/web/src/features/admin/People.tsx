@@ -115,7 +115,7 @@ export default function People() {
   const close = useCallback(() => setOpen(null), []);
   return (
     <>
-      <PageHeader label="ProofPocket admin" title="People & companies" sub={SUB} />
+      <PageHeader title="People & companies" sub={SUB} />
       <PeopleTable />
       <CompaniesTable openCompany={setOpen} />
       {open && <CompanyDrawer path={`/admin/companies/${open}`} onClose={close} />}

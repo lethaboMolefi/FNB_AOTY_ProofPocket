@@ -12,7 +12,6 @@ import { PageHeader } from "../../components/PageHeader";
 import { LevelBadge } from "../../components/ToneBadge";
 import { Spinner, useToast } from "../../components/ui";
 import { API_BASE, ApiError, api } from "../../lib/api";
-import { useMe } from "../../lib/me";
 
 interface Item { id: string; docType: string; docName: string; companyName: string; cipcNumber: string | null; verified: boolean; fileId: string | null; fileName: string | null; sha256: string | null }
 
@@ -54,11 +53,10 @@ function Row({ item, scope }: { item: Item; scope: "adviser" | "admin" }) {
 }
 
 export default function Checks({ scope }: { scope: "adviser" | "admin" }) {
-  const { data: me } = useMe();
   const q = useQuery({ queryKey: ["checks", scope], queryFn: () => api<{ queue: Item[] }>(`/${scope}/checks`) });
   return (
     <>
-      <PageHeader label={scope === "admin" ? "ProofPocket checker" : me?.org?.name} title={scope === "admin" ? "Checker queue" : "Document checks"}
+      <PageHeader title={scope === "admin" ? "Checker queue" : "Document checks"}
         sub={scope === "admin"
           ? "Documents from companies without an incubator. Check each upload against the original or the issuer's records, then approve it or send it back with a reason."
           : "Check each upload against the original or the issuer's records, then approve it or send it back with a reason. A company becomes Verified when its four joining documents are approved."} />

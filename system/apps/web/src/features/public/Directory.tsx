@@ -11,7 +11,7 @@ import { NativeSelect, TextField } from "@/components/ui/field";
 import { EmptyState } from "../../components/EmptyState";
 import { TopBar } from "../../components/layout/TopBar";
 import { PageHeader } from "../../components/PageHeader";
-import { LevelBadge, ToneBadge } from "../../components/ToneBadge";
+import { ToneBadge } from "../../components/ToneBadge";
 import { Spinner, useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
 
@@ -35,7 +35,7 @@ export function Directory() {
   const rows = d ? d.businesses.filter((b) => (!f.q || `${b.name} ${b.town} ${b.sector} ${b.tagline}`.toLowerCase().includes(f.q.toLowerCase())) && (!f.sector || b.sector === f.sector)) : [];
   return (
     <PublicShell>
-      <PageHeader label="ProofPocket directory" title="Verified local businesses" sub="Every business here has shown ProofPocket its CIPC registration, owner ID, business bank account and address. Scan a business's QR code to check it." />
+      <PageHeader title="Verified local businesses" sub="Every business here has shown ProofPocket its CIPC registration, owner ID, business bank account and address. Scan a business's QR code to check it." />
       {!d ? <Spinner /> : <>
         {d.featured.length > 0 && (
           <Card>
@@ -92,7 +92,7 @@ export function BusinessProfile() {
   const checked = p.verified ? ["CIPC registration certificate", "Owner ID copy", "Business bank account confirmation", "Proof of business address"] : ["Owner ID copy", "Proof of business address"];
   return (
     <PublicShell>
-      <PageHeader label={`${p.sector} · ${p.town}, ${p.province}`} title={p.name} badge={<LevelBadge verified={p.verified} />} />
+      <PageHeader title={p.name} sub={`${p.sector} · ${p.town}, ${p.province}`} />
       {p.verified
         ? <Callout tone="good"><b>Verified on ProofPocket.</b> Trading since {p.foundedYear}.</Callout>
         : <Callout tone="warn"><b>Starter: not verified yet.</b> ProofPocket has checked this owner's ID and address, but not yet the business registration and bank account.</Callout>}

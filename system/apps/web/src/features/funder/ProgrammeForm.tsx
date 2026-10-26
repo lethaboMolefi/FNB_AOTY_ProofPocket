@@ -12,7 +12,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { ToggleChips } from "../../components/ToggleChips";
 import { useToast } from "../../components/ui";
 import { ApiError, api } from "../../lib/api";
-import { meKey, useMe } from "../../lib/me";
+import { meKey } from "../../lib/me";
 
 export function ProgrammeForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () => void }) {
   const toast = useToast();
@@ -55,12 +55,11 @@ export function ProgrammeForm({ onDone, onCancel }: { onDone: () => void; onCanc
 }
 
 export default function Setup() {
-  const me = useMe().data;
   const qc = useQueryClient();
   const nav = useNavigate();
   return (
     <>
-      <PageHeader label={me?.org?.name} title="Set your requirements" sub="Before you see companies, tell founders what you need. They see these requirements on their Funding page before they apply, so fewer incomplete applications reach you." />
+      <PageHeader title="Set your requirements" sub="Before you see companies, tell founders what you need. They see these requirements on their Funding page before they apply, so fewer incomplete applications reach you." />
       <ProgrammeForm onDone={async () => { await qc.invalidateQueries({ queryKey: meKey }); nav("/funder/pipeline", { replace: true }); }} />
     </>
   );
