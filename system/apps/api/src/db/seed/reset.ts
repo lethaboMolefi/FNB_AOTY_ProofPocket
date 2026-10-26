@@ -42,7 +42,8 @@ export function loadOrCreatePasswords(adminEmail: string, file = CREDENTIALS_FIL
   return { accounts, passwords };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// By script name, not import.meta.url: bundled into another entry point (dist/*.js), that would match too.
+if (/[/\\]reset\.(ts|js)$/.test(process.argv[1] ?? "")) {
   const url = process.env.DATABASE_OWNER_URL;
   if (!url) throw new Error("DATABASE_OWNER_URL is required");
   assertResettable(process.env, url);

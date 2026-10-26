@@ -4,9 +4,8 @@
 import pg from "pg";
 import { exampleAccounts } from "./seed/accounts";
 import { resetDatabase } from "./seed/reset";
+import { DEMO_ADMIN_EMAIL } from "./demo-accounts";
 import { pgConfig } from "./pg-config";
-
-export const DEMO_ADMIN_EMAIL = "demo.admin@proofpocket.example";
 
 /** A database may be reset only if it's empty (first run) or carries the demo marker this job leaves behind. */
 export async function assertDemoDatabase(pool: pg.Pool) {

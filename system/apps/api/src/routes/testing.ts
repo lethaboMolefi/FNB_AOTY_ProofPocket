@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { Router } from "express";
 import { z } from "zod";
 import type { Deps } from "../app";
-import { DEMO_ADMIN_EMAIL } from "../db/demo-reset";
+import { DEMO_ADMIN_EMAIL } from "../db/demo-accounts";
 import { exampleAccounts } from "../db/seed/accounts";
 import { notFound } from "../lib/errors";
 import { requireUser } from "../middleware/auth";
