@@ -13,29 +13,26 @@ export interface NavPage {
 }
 export interface NavGroup { group: string; pages: NavPage[] }
 
+// The founder menu from the dashboard redesign (dashborad): grouped by what founders do day to day.
 export const FOUNDER_NAV: NavGroup[] = [
   { group: "", pages: [
     { path: "home", label: "Home", title: "Home", sub: "", phase: 3 },
   ] },
-  { group: "Start", pages: [
-    { path: "start", label: "Registration steps", title: "Registration steps", sub: "Everything a business needs to trade formally, one step at a time. The first four make you a Verified business; the rest open tenders and bigger funding.", phase: 2 },
-  ] },
-  { group: "Trade", pages: [
+  { group: "Daily operations", pages: [
     { path: "books", label: "Bookkeeping", short: "Books", title: "Bookkeeping", sub: "Record every sale and expense here, including cash. ProofPocket works out your profit and keeps the records funders ask for.", phase: 3 },
     { path: "stock", label: "Stock", title: "Stock", sub: "Know what you have before a client asks. Sales and purchases in Bookkeeping can update these numbers too.", phase: 3 },
-  ] },
-  { group: "Get paid", pages: [
     { path: "payments", label: "Payments", short: "Get paid", title: "Payments", sub: "Clients pay you directly with the methods they already use. They upload proof of payment, and you confirm once the money is in your account.", phase: 4 },
-  ] },
-  { group: "Manage cash flow", pages: [
     { path: "cashflow", label: "Cash flow", title: "Cash flow", sub: "Where your money is, where it's going, and how long it lasts.", phase: 3 },
   ] },
-  { group: "Reach formal markets", pages: [
+  { group: "Documents", pages: [
+    { path: "start", label: "Registration steps", title: "Registration steps", sub: "Everything a business needs to trade formally, one step at a time. The first four make you a Verified business; the rest open tenders and bigger funding.", phase: 2 },
+  ] },
+  { group: "Funding & markets", pages: [
     { path: "markets", label: "Profile & marketing", short: "Markets", title: "Profile & marketing", sub: "Your public page, a verified QR code, and posts you share from your own WhatsApp and social media.", phase: 5 },
     { path: "funding", label: "Funding readiness", title: "Funding readiness", sub: "Funders set their own requirements on ProofPocket. See what each one checks, and what you still need, before you apply.", phase: 5 },
     { path: "procurement", label: "Procurement", title: "Procurement", sub: "Tenders and supplier opportunities. Buyers see your checked documents and your track record on ProofPocket, so you don't have to prove it from scratch each time.", phase: 5 },
   ] },
-  { group: "Stay safe", pages: [
+  { group: "Safety", pages: [
     { path: "protection", label: "Fraud protection", title: "Fraud protection", sub: "Scam warnings, holds on changed bank details, and a fingerprint of every document you upload.", phase: 4 },
     { path: "privacy", label: "Privacy & sharing", title: "Privacy & sharing", sub: "You decide who sees what. You can change this at any time.", phase: 4 },
   ] },

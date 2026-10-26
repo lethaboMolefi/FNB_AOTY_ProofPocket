@@ -207,6 +207,7 @@ No console errors and no failed requests on any page, for any role, phone or des
   - the same top bar
   - the same grouped sidebar with an icon on every link and a note at its foot
   - on phones, the same bottom tab bar (up to four pages + **More**)
+- **Founder menu = dashborad's menu:** Home · Daily operations (Bookkeeping, Stock, Payments, Cash flow) · Documents (Registration steps) · Funding & markets (Profile & marketing, Funding readiness, Procurement) · Safety (Fraud protection, Privacy & sharing) · Account (Business settings), in the sidebar and in More. Phone tabs as on dashborad: Home, Books, Get paid, Markets, More. This replaces the prototype's grouping (Start / Trade / Get paid / Manage cash flow / Reach formal markets / Stay safe).
 - **Thin role wrappers:** `FounderShell` and `PortalShell` now only supply content. The founder adds the bell, the privacy and two-step prompts, and the business name; the portals add the organisation name.
 - **One nav link style:** `NavItem`/`TabItem`. **One icon per page:** `app/nav-icons.ts`, lucide everywhere. The hand-drawn tab icons (`components/icons.tsx`) are gone.
 - **One More page:** `MorePage`, for every role.
