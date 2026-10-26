@@ -1,5 +1,5 @@
 // Home dashboard — rebuilt with shadcn, skeleton loading, proper empty states.
-import { R, plural, type Flag, type JourneyStep, type ReadinessItem, type Tone } from "@proofpocket/shared";
+import { AREAS, R, plural, scoreTone, type Flag, type JourneyStep, type ReadinessItem, type Tone } from "@proofpocket/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -27,17 +27,9 @@ interface HomeData {
   messages: { id: string; sender: string; verified: boolean; body: string }[];
 }
 
-const AREA: Record<string, string> = { township: "Township", urban: "Urban", rural: "Rural" };
-
 const VIEW: Record<JourneyStep["view"], string> = {
   start: "start", books: "books", payments: "payments", cashflow: "cashflow", markets: "markets",
 };
-
-function scoreTone(score: number): Tone {
-  if (score >= 70) return "good";
-  if (score >= 40) return "warn";
-  return "bad";
-}
 
 const TONE_TEXT: Record<Tone, string> = {
   good: "text-good", warn: "text-warn", bad: "text-destructive", info: "text-primary", plain: "text-muted-foreground",
@@ -134,7 +126,7 @@ export default function Home() {
       {/* ── Page header ── */}
       <FounderHead
         title="Home"
-        sub={`${c.typeLabel} · ${AREA[c.area] ?? c.area} · ${c.employees} ${plural(c.employees, "person", "people")} · trading since ${c.foundedYear}`}
+        sub={`${c.typeLabel} · ${AREAS[c.area as keyof typeof AREAS] ?? c.area} · ${c.employees} ${plural(c.employees, "person", "people")} · trading since ${c.foundedYear}`}
         action={<Button size="sm" variant="outline" asChild><Link to="/app/books">Add entry <ArrowRight className="h-3.5 w-3.5" /></Link></Button>}
       />
 
