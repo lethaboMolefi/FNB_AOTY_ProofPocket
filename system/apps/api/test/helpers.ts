@@ -29,11 +29,12 @@ export const ADMIN = "admin@proofpocket.example";
 export { nextCode, resetTotpStore, staffToken } from "./totp-store";
 
 /** A brand-new founder who has finished joining (a Starter), for tests that change a company's settings. */
-export async function newFounder(app: import("express").Express, label: string, incubator?: string) {
+export async function newFounder(app: import("express").Express, label: string, incubator?: string, opts2: { passwordLater?: boolean } = {}) {
   const request = (await import("supertest")).default;
   const email = `${label}.${Date.now()}.${Math.random().toString(36).slice(2, 7)}@proofpocket.example`;
   const up = await request(app).post("/api/v1/auth/local/sign-up").send({ email, password: "a long and lovely passphrase" });
   const token = `Bearer ${up.body.token}`;
+  if (opts2.passwordLater) await request(app).post("/api/v1/auth/password/later").set("Authorization", token);
   const opts = await request(app).get("/api/v1/join/options");
   const incubatorId = incubator ? opts.body.incubators.find((i: { name: string }) => i.name === incubator)?.id ?? null : null;
   const joined = await request(app).post("/api/v1/join").set("Authorization", token).send({

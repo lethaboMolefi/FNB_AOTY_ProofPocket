@@ -15,8 +15,6 @@ test("join → upload → approve → Verified", async ({ page }, info) => {
   await page.goto("/join");
   await page.getByRole("button", { name: /Business Founder/ }).click();
   await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password (at least 12 characters)", { exact: true }).fill("a lovely long passphrase");
-  await page.getByLabel("Confirm password", { exact: true }).fill("a lovely long passphrase");
   await page.getByLabel("Your full name").fill("Ayanda E.");
   await page.getByLabel("SA ID number").fill("8001015009087");
   await page.getByLabel("Mobile number").fill("0821234567");
@@ -43,6 +41,13 @@ test("join → upload → approve → Verified", async ({ page }, info) => {
   await expect(page.getByRole("alert")).toBeVisible();
   await page.getByLabel(/These documents belong to me/).check();
   await page.getByRole("button", { name: "Join ProofPocket" }).click();
+  // Then the password, chosen after joining; nothing else opens until it's set.
+  await expect(page).toHaveURL(/\/set-password$/);
+  await page.goto("/app/home");
+  await expect(page).toHaveURL(/\/set-password$/);
+  await page.getByLabel("Password (at least 12 characters)", { exact: true }).fill("a lovely long passphrase");
+  await page.getByLabel("Type it again", { exact: true }).fill("a lovely long passphrase");
+  await page.getByRole("button", { name: "Save password" }).click();
   await expect(page).toHaveURL(/\/app\/(home|start)$/);
   await page.getByRole("button", { name: "Sign out" }).click();
 
@@ -77,7 +82,6 @@ test("a funder applies, the admin approves, and the funder's portal opens", asyn
   await page.getByRole("link", { name: "Create a sign-in" }).click();
   await expect(page).toHaveURL(/\/sign-up$/);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill("a lovely long passphrase");
   await page.getByRole("button", { name: "Create account" }).click();
   // Local sign-ins are confirmed at once; on the live site the email code comes first (API tests: email-code.test.ts).
   await expect(page).toHaveURL(/\/join$/);
@@ -108,6 +112,10 @@ test("a funder applies, the admin approves, and the funder's portal opens", asyn
   await choose(page, "Assets under management", /1.*10/);
   await page.getByLabel("Investment mandate description").fill("Township food businesses in Gauteng.");
   await page.getByRole("button", { name: "Submit application" }).click();
+  // The applicant chooses their password once the application is sent.
+  await page.getByLabel("Password (at least 12 characters)", { exact: true }).fill("a lovely long passphrase");
+  await page.getByLabel("Type it again", { exact: true }).fill("a lovely long passphrase");
+  await page.getByRole("button", { name: "Save password" }).click();
   await expect(page.getByRole("heading", { name: "We're checking your application" })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
 

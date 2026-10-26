@@ -16,6 +16,8 @@ export interface AuthUser {
   /** Temporary password: ok, must_change (only /me and /auth/password work) or expired (nothing works). */
   tempPassword: "ok" | "must_change" | "expired";
   suspended: boolean;
+  /** Joined with email only and hasn't chosen a password yet: only /me and choosing it work. */
+  needsPassword: boolean;
 }
 
 declare global {
@@ -74,7 +76,7 @@ export function authenticate(db: Db, verify: TokenVerifier) {
     }
     try {
       const rows = await db.execute<{ user_id: string; user_role: Role; org_id: string | null; email: string; display_name: string; otp_verified_auth_time: string | null; totp_enabled: boolean;
-        must_change_password: boolean; temp_password_expires_at: string | Date | null; suspended_at: string | Date | null }>(
+        must_change_password: boolean; temp_password_expires_at: string | Date | null; suspended_at: string | Date | null; needs_password: boolean }>(
         sql`select * from auth_lookup_user(${verified.uid}, ${verified.email}, ${verified.emailVerified})`,
       );
       const u = rows.rows[0];
@@ -83,7 +85,7 @@ export function authenticate(db: Db, verify: TokenVerifier) {
       req.auth = {
         token: verified,
         user: u ? { id: u.user_id, role: u.user_role, orgId: u.org_id, email: u.email, displayName: u.display_name, otpVerifiedAuthTime: u.otp_verified_auth_time === null ? null : Number(u.otp_verified_auth_time), totpEnabled: u.totp_enabled,
-          tempPassword: tempPasswordState(u.must_change_password, u.temp_password_expires_at ? new Date(u.temp_password_expires_at) : null, new Date()), suspended: u.suspended_at !== null } : null,
+          tempPassword: tempPasswordState(u.must_change_password, u.temp_password_expires_at ? new Date(u.temp_password_expires_at) : null, new Date()), suspended: u.suspended_at !== null, needsPassword: u.needs_password } : null,
       };
       next();
     } catch (e) {
@@ -113,6 +115,7 @@ export function requireUser(roles?: Role[], opts: { otp?: boolean; passwordChang
     if (a.user.suspended) return next(new AppError(403, "account_suspended", "This account is suspended. Contact ProofPocket if you think this is a mistake."));
     if (a.user.tempPassword === "expired") return next(new AppError(403, "temp_password_expired", "Your temporary password has expired. Ask ProofPocket for a new one."));
     if (a.user.tempPassword === "must_change" && !opts.passwordChange) return next(new AppError(403, "password_change_required", "Set your own password first."));
+    if (a.user.needsPassword && !opts.passwordChange) return next(new AppError(403, "password_required", "Choose your password first."));
     if (roles && !roles.includes(a.user.role)) return next(forbidden());
     if (checkOtp && !otpSatisfied(a.user, a.token)) return next(new AppError(403, "otp_required", "Enter the code from Google Authenticator to continue."));
     next();

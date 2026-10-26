@@ -21,6 +21,8 @@ function useDestination(): { wait: true } | { wait: false; to: string | null; ro
   }
   // A temporary password is changed before anything else, Google Authenticator included.
   if (me.data.mustChangePassword) return { wait: false, to: "/change-password" };
+  // Joined with email only: choose the password before anything else.
+  if (me.data.needsPassword) return { wait: false, to: "/set-password" };
   if (me.data.needsOtp) return { wait: false, to: "/verify" };
   if (me.data.role === "founder" && (!me.data.company || !me.data.company.joined)) return { wait: false, to: "/join" };
   return { wait: false, to: null, role: me.data.role };

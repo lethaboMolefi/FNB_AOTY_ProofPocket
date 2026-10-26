@@ -13,6 +13,7 @@ const More = lazy(() => import("../features/founder/More"));
 const SignIn = lazy(() => import("../features/auth/SignIn"));
 const SignUp = lazy(() => import("../features/auth/SignUp"));
 const ChangePassword = lazy(() => import("../features/auth/ChangePassword"));
+const SetPassword = lazy(() => import("../features/auth/SetPassword"));
 const AccountStatus = lazy(() => import("../features/auth/ChangePassword").then((m) => ({ default: m.AccountStatus })));
 const Uml = lazy(() => import("../features/common/Uml"));
 const AdminLog = lazy(() => import("../features/founder/AdminLog"));
@@ -116,6 +117,7 @@ export const routes: RouteObject[] = [
   { path: "/sign-in", element: s(<SignIn />) },
   { path: "/sign-up", element: s(<SignUp />) },
   { path: "/change-password", element: s(<ChangePassword />) },
+  { path: "/set-password", element: s(<SetPassword />) },
   { path: "/account-status", element: s(<AccountStatus />) },
   { path: "/verify", element: s(<VerifyPin />) },
   { path: "/join", element: s(<Join />) },

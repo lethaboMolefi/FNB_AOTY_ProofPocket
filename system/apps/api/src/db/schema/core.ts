@@ -203,6 +203,13 @@ export const emailCodes = pgTable("email_codes", {
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Email sign-ups that haven't chosen their own password yet (sign-up uses a random one nobody sees). */
+export const passwordPending = pgTable("password_pending", {
+  firebaseUid: text("firebase_uid").primaryKey(),
+  email: text("email").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const localCredentials = pgTable("local_credentials", {
   id: id(),
   email: text("email").notNull(),

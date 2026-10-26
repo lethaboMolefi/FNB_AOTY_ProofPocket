@@ -9,6 +9,7 @@ import { actorOf, contextOf, otpSatisfied, requireUser, twoFactorRequired } from
 import { handle, limits, parse } from "../middleware/http";
 import { findMe } from "../repositories/users";
 import { sendEmailCode, verifyEmailCode } from "../services/email-code";
+import { markPasswordLater, passwordLaterStatus, setFirstPassword } from "../services/password-later";
 import { signInLocal, signUpLocal } from "../services/local-auth";
 import { setOwnPassword } from "../lib/identity";
 import { sql } from "drizzle-orm";
@@ -133,6 +134,21 @@ export function authRoutes(deps: Deps) {
     return verifyEmailCode(deps.db, deps.config, who, code);
   }));
 
+  // Email-only sign-up: mark the new sign-in, check it, and choose the password at the end (needs a sign-in, not an account).
+  r.post("/auth/password/later", limits.auth(), handle(async (req) => {
+    if (req.auth?.user) throw new AppError(403, "forbidden", "Only a sign-in that was just created can choose its password later.");
+    return markPasswordLater(deps.db, deps.config, unconfirmed(req));
+  }));
+  r.get("/auth/password/later", handle(async (req) => passwordLaterStatus(deps.db, unconfirmed(req).uid)));
+  r.post("/auth/password/first", limits.auth(), handle(async (req) => {
+    const who = unconfirmed(req);
+    if (!who.confirmed) throw new AppError(403, "verify_email", "Confirm your email address first: enter the 6-digit code we emailed you.");
+    const { password } = parse(z.object({ password: z.string().max(128) }), req.body);
+    const res = await setFirstPassword(deps.db, deps.config, who, password);
+    if (req.auth!.user) await withContext(deps.db, contextOf(req), (tx) => audit(tx, actorOf(req), { action: "user.password_set", entity: "user", entityId: req.auth!.user!.id }));
+    return res;
+  }));
+
   r.get("/me", requireUser(undefined, { otp: false, passwordChange: true }), handle(async (req): Promise<Me> => {
     const { user, token } = req.auth!;
     const row = await withContext(deps.db, contextOf(req), (tx) => findMe(tx, user!.id));
@@ -146,6 +162,7 @@ export function authRoutes(deps: Deps) {
       needsOtp: !otpSatisfied(user!, token),
       twoFactor: { enabled: user!.totpEnabled, required: twoFactorRequired(user!) },
       mustChangePassword: user!.tempPassword === "must_change",
+      needsPassword: user!.needsPassword,
     };
   }));
 

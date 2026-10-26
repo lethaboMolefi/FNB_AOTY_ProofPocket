@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AREAS, BUSINESS_TYPES, BUSINESS_TYPE_KEYS, DOCS, PROVINCES, SECTORS,
   investorFieldsSchema, joinDetailsSchema, orgFieldsSchema,
-  joinDocsFor, passwordFor, emailSchema, shortDate, shortFingerprint,
+  joinDocsFor, emailSchema, shortDate, shortFingerprint,
   type DocType, type InvestorDetails, type JoinDetails, type Me, type OrgOnboard, type PortalApplicationKind,
 } from "@proofpocket/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +37,9 @@ import { ApiError, api } from "../../lib/api";
 import { AUTH_MODE, useAuth } from "../../lib/auth";
 import { HOME_FOR, meKey, useMe } from "../../lib/me";
 import { EmailCodeConfirm } from "../auth/EmailCode";
-import { AuthPageShell, PasswordField } from "../auth/SignIn";
+import { ChoosePasswordCard } from "../auth/SetPassword";
+import { AuthPageShell } from "../auth/SignIn";
+import { signUpEmailOnly } from "../../lib/sign-up";
 import type { DocumentsResponse } from "../founder/types";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -230,15 +232,8 @@ function RoleSelector({ onSelect }: { onSelect: (r: Role) => void }) {
 
 // ─── Founder track ────────────────────────────────────────────────────────────
 
-const accountSchema = z.object({
-  email: emailSchema,
-  password: z.string(),
-  confirm: z.string(),
-}).superRefine((v, ctx) => {
-  const p = passwordFor(v.email).safeParse(v.password);
-  if (!p.success) ctx.addIssue({ code: "custom", path: ["password"], message: p.error.issues[0]!.message });
-  if (v.password !== v.confirm) ctx.addIssue({ code: "custom", path: ["confirm"], message: "The two passwords don't match." });
-});
+// Email only: the password is chosen after Join ProofPocket.
+const accountSchema = z.object({ email: emailSchema });
 
 type FounderForm = JoinDetails & { account?: z.infer<typeof accountSchema> };
 
@@ -273,7 +268,7 @@ function FounderDetails({ signedOut, onDone, onConfirmFirst }: { signedOut: bool
     setErr("");
     try {
       if (account) {
-        await auth.signUp(account.email, account.password);
+        await signUpEmailOnly(auth, account.email);
         // A new email sign-in confirms its address before anything is saved; the details wait until then.
         if (AUTH_MODE === "firebase") { onConfirmFirst(d); return; }
       }
@@ -304,10 +299,7 @@ function FounderDetails({ signedOut, onDone, onConfirmFirst }: { signedOut: bool
             <Field label="Email address" error={e["account.email"]?.message}>
               <Input type="email" autoComplete="username" autoCapitalize="none" placeholder="you@example.com" {...form.register("account.email")} />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <PasswordField label="Password (at least 12 characters)" autoComplete="new-password" error={e["account.password"]?.message} {...form.register("account.password")} />
-              <PasswordField label="Confirm password" autoComplete="new-password" error={e["account.confirm"]?.message} {...form.register("account.confirm")} />
-            </div>
+            <p className="text-xs text-muted-foreground">We'll email you a code to confirm it's yours. You'll choose your password after you click Join ProofPocket.</p>
           </CardContent>
         </Card>
       )}
@@ -1288,6 +1280,8 @@ export default function Join() {
     enabled: !!unjoined,
   });
   const mine = useQuery({ queryKey: ["join-application"], queryFn: () => api<{ application: MyApplication | null }>("/join/application"), enabled: noAccount });
+  // Applicants who signed up with email only choose their password once the application is sent.
+  const later = useQuery({ queryKey: ["password-later"], queryFn: () => api<{ pending: boolean }>("/auth/password/later"), enabled: noAccount && !!mine.data?.application });
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [founderStep, setFounderStep] = useState<FounderStep>(unjoined ? 2 : 1);
@@ -1295,7 +1289,7 @@ export default function Join() {
   const [pending, setPending] = useState<PendingJoin | null>(null);
   const [pendingErr, setPendingErr] = useState("");
 
-  if (joined) return <Navigate to="/app/start" replace />;
+  if (joined) return <Navigate to="/" replace />;
   if (auth.status === "loading" || (auth.status === "signedIn" && me.isPending) || (noAccount && mine.isPending)) return <Spinner />;
   if (me.data && !unjoined) return <Navigate to={HOME_FOR[me.data.role]} replace />;
   if (me.data?.needsOtp) return <Navigate to="/verify" replace />;
@@ -1333,7 +1327,7 @@ export default function Join() {
         {/* ── Main content (left / full on mobile) ── */}
         <div className="w-full min-w-0 lg:flex-1">
 
-          {application && <ApplicationStatus a={application} />}
+          {application && (later.data?.pending ? <ChoosePasswordCard onDone={() => void later.refetch()} /> : <ApplicationStatus a={application} />)}
 
           {/* Role selector */}
           {!application && !isReturningFounder && !selectedRole && (

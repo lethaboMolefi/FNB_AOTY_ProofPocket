@@ -53,6 +53,8 @@ export const meSchema = z.object({
   twoFactor: z.object({ enabled: z.boolean(), required: z.boolean() }),
   /** Signed in with a temporary password: must set their own before anything else. */
   mustChangePassword: z.boolean(),
+  /** Joined with email only and must choose their password now (after Join ProofPocket). */
+  needsPassword: z.boolean(),
 });
 export type Me = z.infer<typeof meSchema>;
 
