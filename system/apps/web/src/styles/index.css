@@ -152,6 +152,16 @@
 }
 
 @layer components {
+  /* Wide tables scroll inside their card; a shadow at the edge shows there's more (pure CSS: the cover
+     gradients scroll with the content and hide the shadows once you reach that edge). */
+  .table-scroll {
+    background:
+      linear-gradient(to right, var(--card) 30%, transparent) left center / 40px 100% no-repeat local,
+      linear-gradient(to left, var(--card) 30%, transparent) right center / 40px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / .14), transparent) left center / 14px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / .14), transparent) right center / 14px 100% no-repeat scroll;
+  }
+
   .mono, .num { @apply font-mono; font-variant-numeric: tabular-nums; }
   .muted { @apply text-muted; }
   .small { font-size: .85rem; }
