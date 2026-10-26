@@ -1,0 +1,12 @@
+stateDiagram-v2
+  [*] --> Joining : account and details
+  Joining --> Starter : joined, not registered (ID and address only)
+  Joining --> AwaitingChecks : joined, registered (4 documents sent)
+  Starter --> AwaitingChecks : registers and adds CIPC and bank
+  AwaitingChecks --> Verified : cipc, id, bank and addr all verified
+  Verified --> AwaitingChecks : a required document expires or is replaced
+  Verified --> [*]
+  note right of Verified
+    Listed in the directory.
+    Funders may see it if sharing is on.
+  end note

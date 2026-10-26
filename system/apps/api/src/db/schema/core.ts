@@ -33,6 +33,13 @@ export const users = pgTable("users", {
   otpVerifiedAuthTime: bigint("otp_verified_auth_time", { mode: "number" }),
   /** Last API request, kept to within 5 minutes (touch_last_seen), for the admin's People page. */
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  /** Set on accounts made with a temporary password: nothing works until the person sets their own. */
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
+  /** The temporary password stops working after this (7 days); an operator re-issues it. */
+  tempPasswordExpiresAt: timestamp("temp_password_expires_at", { withTimezone: true }),
+  /** An admin suspended this (non-founder, non-admin) account; it can't use ProofPocket until reinstated. */
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  suspendedReason: text("suspended_reason"),
   isExample: isExample(),
   ...timestamps,
 }, (t) => [

@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> waiting : founder creates request
+  waiting --> checking : client sends proof
+  waiting --> paid : "Paid me cash"
+  waiting --> cancelled : founder cancels
+  waiting --> expired : 7 days pass (daily job)
+  checking --> paid : "The money is in my account"
+  checking --> not_received : "Not received" (1st time)
+  checking --> flagged : "Not received" (2nd time), fraud warning
+  not_received --> checking : client sends a new proof
+  not_received --> expired : 7 days pass
+  not_received --> paid : "Paid me cash"
+  expired --> paid : "Paid me cash"
+  paid --> [*]
+  cancelled --> [*]
+  expired --> [*]
+  flagged --> [*] : admin reviews (Flagged payments)

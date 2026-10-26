@@ -1,0 +1,28 @@
+flowchart TD
+  S([Start]) --> A0[score = 0]
+  A0 --> D1{CIPC verified?} -->|yes| P1[+15] --> D2
+  D1 -->|no| D2{Owner ID verified?}
+  D2 -->|yes| P2[+5] --> D3
+  D2 -->|no| D3{Bank letter verified?}
+  D3 -->|yes| P3[+10] --> D4
+  D3 -->|no| D4{Tax verified?}
+  D4 -->|yes| P4[+15] --> D5
+  D4 -->|no| D5{Business plan verified?}
+  D5 -->|yes| P5[+10] --> D6
+  D5 -->|no| D6{Signed management accounts verified?}
+  D6 -->|yes| P6[+15] --> D7
+  D6 -->|no| D7{Books updated in last 7 days?}
+  D7 -->|yes| P7[+10] --> D8
+  D7 -->|no| D8{No unresolved personal purchases?}
+  D8 -->|yes| P8[+10] --> D9
+  D8 -->|no| D9{An Owner salary entry?}
+  D9 -->|yes| P9[+5] --> D10
+  D9 -->|no| D10{Six months of records?}
+  D10 -->|yes| P10[+5] --> R
+  D10 -->|no| R{score}
+  R -->|70 or more| L1[Funding ready]
+  R -->|45 to 69| L2[Getting there]
+  R -->|below 45| L3[Early]
+  L1 --> E([End])
+  L2 --> E
+  L3 --> E

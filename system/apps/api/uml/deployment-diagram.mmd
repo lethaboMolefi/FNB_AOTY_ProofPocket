@@ -1,0 +1,39 @@
+flowchart LR
+  subgraph Device[User device]
+    Browser["Browser / installed PWA, service worker, IndexedDB"]
+  end
+
+  subgraph FBH[Firebase Hosting, global CDN]
+    Static["Static web app, CSP and HSTS headers"]
+  end
+
+  subgraph GCP["Google Cloud, africa-south1 (Johannesburg)"]
+    subgraph VPC["VPC proofpocket-vpc"]
+      Run["Cloud Run service proofpocket-api, 0-4 instances, service account proofpocket-api"]
+      RunJobs["Cloud Run jobs: proofpocket-jobs and proofpocket-bootstrap"]
+      SQL[("Cloud SQL PostgreSQL 18, private IP only, encrypted connections only, daily backups")]
+    end
+    GCS[("Cloud Storage bucket: private, uniform access, versioning")]
+    SM[Secret Manager]
+    AR[Artifact Registry: API image]
+  end
+
+  subgraph Google[Google global services]
+    FAuth[Firebase Authentication]
+    Gmail[Gmail SMTP]
+  end
+
+  Browser -->|HTTPS| Static
+  Browser -->|HTTPS, CORS, Bearer token| Run
+  Browser -->|5-minute signed URLs| GCS
+  Browser -->|sign-in| FAuth
+  Run -->|Direct VPC egress, TLS verify-ca| SQL
+  RunJobs -->|TLS verify-ca| SQL
+  Run --> GCS
+  RunJobs --> GCS
+  Run --> SM
+  RunJobs --> SM
+  Run -->|verify ID token| FAuth
+  Run -->|notifications| Gmail
+  AR -.->|image| Run
+  AR -.->|image| RunJobs

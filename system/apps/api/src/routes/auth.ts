@@ -1,4 +1,4 @@
-import { emailSchema, PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
+import { emailSchema, newPasswordSchema, passwordFor, PRIVACY_NOTICE_VERSION, signInSchema, signUpSchema, totpCodeSchema, type Me } from "@proofpocket/shared";
 import { Router } from "express";
 import { z } from "zod";
 import type { Deps } from "../app";
@@ -10,6 +10,8 @@ import { handle, limits, parse } from "../middleware/http";
 import { findMe } from "../repositories/users";
 import { sendEmailOtp, verifyEmailOtp } from "../services/email-otp";
 import { signInLocal, signUpLocal } from "../services/local-auth";
+import { setOwnPassword } from "../lib/identity";
+import { sql } from "drizzle-orm";
 import { adminReset, checkCode, codeError, markSignInVerified, startSetup, turnOff } from "../services/two-factor";
 
 export function authRoutes(deps: Deps) {
@@ -108,7 +110,25 @@ export function authRoutes(deps: Deps) {
     return { ok: true, message: `Authenticator reset for ${u.name}` };
   }));
 
-  r.get("/me", preOtp, handle(async (req): Promise<Me> => {
+  // Set your own password: required first after a temporary one (before Google Authenticator), or any time from
+  // your profile (then with the Authenticator code). Only on a fresh sign-in.
+  r.post("/auth/password", limits.auth(), requireUser(undefined, { otp: false, passwordChange: true }), handle(async (req) => {
+    const { current, password } = parse(newPasswordSchema, req.body);
+    const { user, token } = req.auth!;
+    if (user!.tempPassword !== "must_change" && !otpSatisfied(user!, token)) throw new AppError(403, "otp_required", "Enter the code from Google Authenticator to continue.");
+    if (Date.now() / 1000 - token.authTime > 15 * 60) throw new AppError(403, "sign_in_again", "For your safety, sign in again before changing your password.");
+    const rule = passwordFor(user!.email).safeParse(password);
+    if (!rule.success) throw new AppError(400, "weak_password", rule.error.issues[0]!.message);
+    if (password === current) throw new AppError(400, "same_password", "Choose a new password, not the one you have now.");
+    await setOwnPassword(deps.db, deps.config, { email: user!.email, firebaseUid: token.uid }, current, password);
+    await withContext(deps.db, contextOf(req), async (tx) => {
+      await tx.execute(sql`select password_changed()`);
+      await audit(tx, actorOf(req), { action: "user.password_changed", entity: "user", entityId: user!.id });
+    });
+    return { message: "Password changed. Sign in again with your new password." };
+  }));
+
+  r.get("/me", requireUser(undefined, { otp: false, passwordChange: true }), handle(async (req): Promise<Me> => {
     const { user, token } = req.auth!;
     const row = await withContext(deps.db, contextOf(req), (tx) => findMe(tx, user!.id));
     if (!row) throw notFound("Your account");
@@ -120,6 +140,7 @@ export function authRoutes(deps: Deps) {
         : null,
       needsOtp: !otpSatisfied(user!, token),
       twoFactor: { enabled: user!.totpEnabled, required: twoFactorRequired(user!) },
+      mustChangePassword: user!.tempPassword === "must_change",
     };
   }));
 

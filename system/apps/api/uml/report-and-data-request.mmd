@@ -1,0 +1,6 @@
+stateDiagram-v2
+  [*] --> open : public, client or founder reports (or founder sends a data request)
+  open --> resolved : admin acts, adds note
+  open --> dismissed : admin dismisses, adds note
+  resolved --> [*]
+  dismissed --> [*]

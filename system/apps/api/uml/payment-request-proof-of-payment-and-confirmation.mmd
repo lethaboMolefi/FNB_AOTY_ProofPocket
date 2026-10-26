@@ -1,0 +1,34 @@
+sequenceDiagram
+  autonumber
+  actor Fo as Founder
+  participant A as API
+  participant D as PostgreSQL
+  actor Cl as Client
+  participant P as Payment page
+  participant Bank as Founder's own bank (outside ProofPocket)
+
+  Fo->>A: Create payment request (client, amount, methods)
+  A->>D: Insert request (waiting), ref PP-xxxx, random token
+  A-->>Fo: Share link /pay/PP-xxxx + token
+  Fo-->>Cl: Sends link (WhatsApp, copy link)
+  Cl->>P: Open link
+  P->>A: GET /pay/PP-xxxx (X-Pay-Token)
+  A->>D: RLS: public sees only this request
+  A-->>P: Amount, reference, founder's saved details for allowed methods
+  Cl->>Bank: Pays the founder directly
+  Cl->>P: Upload proof of payment
+  P->>A: POST /pay/PP-xxxx/proof
+  A->>A: Checks: amount, reference used, date on or after request, file not used before (SHA-256), method allowed
+  A->>D: Proof saved, request = checking
+  Fo->>Bank: Looks in own banking app
+  alt Money is there
+    Fo->>A: "The money is in my account"
+    A->>D: Proof confirmed, request paid, money-in entry with proof
+  else Not there (first time)
+    Fo->>A: "Not received"
+    A->>D: request = not_received, client may resend
+  else Not there (second time)
+    Fo->>A: "Not received"
+    A->>D: request = flagged, fraud warning message
+  end
+  Note over A,D: Unpaid requests expire after 7 days (daily job). Cash: "Paid me cash" marks it paid directly.

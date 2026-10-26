@@ -1,0 +1,7 @@
+stateDiagram-v2
+  [*] --> none : post saved
+  none --> requested : Verified founder asks for a feature
+  requested --> featured : admin approves (7 days)
+  requested --> rejected : admin rejects with note
+  featured --> [*]
+  rejected --> [*]

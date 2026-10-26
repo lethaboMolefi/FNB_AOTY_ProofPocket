@@ -1,0 +1,147 @@
+[
+ {
+  "id": "use-case-diagram",
+  "title": "Use case diagram",
+  "kind": "Use case"
+ },
+ {
+  "id": "component-diagram",
+  "title": "Component diagram",
+  "kind": "Component"
+ },
+ {
+  "id": "deployment-diagram",
+  "title": "Deployment diagram",
+  "kind": "Deployment"
+ },
+ {
+  "id": "domain-class-diagram",
+  "title": "Domain class diagram",
+  "kind": "Class"
+ },
+ {
+  "id": "entity-relationship-diagram",
+  "title": "Entity-relationship diagram",
+  "kind": "Entity-relationship"
+ },
+ {
+  "id": "sign-in-with-two-step-sign-in-google-authenticator",
+  "title": "Sign-in with two-step sign-in (Google Authenticator)",
+  "kind": "Sequence"
+ },
+ {
+  "id": "how-every-api-request-is-authorised-two-layers",
+  "title": "How every API request is authorised (two layers)",
+  "kind": "Sequence"
+ },
+ {
+  "id": "joining-and-document-upload",
+  "title": "Joining and document upload",
+  "kind": "Sequence"
+ },
+ {
+  "id": "document-check-and-becoming-verified",
+  "title": "Document check and becoming Verified",
+  "kind": "Sequence"
+ },
+ {
+  "id": "payment-request-proof-of-payment-and-confirmation",
+  "title": "Payment request, proof of payment and confirmation",
+  "kind": "Sequence"
+ },
+ {
+  "id": "offline-bookkeeping-and-sync",
+  "title": "Offline bookkeeping and sync",
+  "kind": "Sequence"
+ },
+ {
+  "id": "funding-apply-offer-and-decision",
+  "title": "Funding: apply, offer and decision",
+  "kind": "Sequence"
+ },
+ {
+  "id": "changing-payment-details-protected",
+  "title": "Changing payment details (protected)",
+  "kind": "Sequence"
+ },
+ {
+  "id": "popia-data-request",
+  "title": "POPIA data request",
+  "kind": "Sequence"
+ },
+ {
+  "id": "daily-scheduled-job",
+  "title": "Daily scheduled job",
+  "kind": "Sequence"
+ },
+ {
+  "id": "funder-or-ngo-registration-and-admin-approval",
+  "title": "Funder or NGO registration and admin approval",
+  "kind": "Sequence"
+ },
+ {
+  "id": "admin-account-with-a-temporary-password",
+  "title": "Admin account with a temporary password",
+  "kind": "Sequence"
+ },
+ {
+  "id": "payment-request",
+  "title": "Payment request",
+  "kind": "State machine"
+ },
+ {
+  "id": "proof-of-payment",
+  "title": "Proof of payment",
+  "kind": "State machine"
+ },
+ {
+  "id": "document",
+  "title": "Document",
+  "kind": "State machine"
+ },
+ {
+  "id": "company-verification",
+  "title": "Company verification",
+  "kind": "State machine"
+ },
+ {
+  "id": "funding-application",
+  "title": "Funding application",
+  "kind": "State machine"
+ },
+ {
+  "id": "incubator-membership",
+  "title": "Incubator membership",
+  "kind": "State machine"
+ },
+ {
+  "id": "supplier-bank-detail-change",
+  "title": "Supplier bank detail change",
+  "kind": "State machine"
+ },
+ {
+  "id": "post-feature-request",
+  "title": "Post feature request",
+  "kind": "State machine"
+ },
+ {
+  "id": "report-and-data-request",
+  "title": "Report and data request",
+  "kind": "State machine"
+ },
+ {
+  "id": "readiness-score-computed-on-the-server-only",
+  "title": "Readiness score (computed on the server only)",
+  "kind": "Activity"
+ },
+ {
+  "id": "applying-to-a-funding-programme",
+  "title": "Applying to a funding programme",
+  "kind": "Activity"
+ },
+ {
+  "id": "recording-a-money-out-entry",
+  "title": "Recording a money-out entry",
+  "kind": "Activity"
+ }
+]

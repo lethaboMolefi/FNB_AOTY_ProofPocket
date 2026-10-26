@@ -1,0 +1,49 @@
+flowchart TB
+  subgraph Web["Web app (React 19 PWA)"]
+    Router[Router and role guards]
+    Features["Feature screens: founder, funder, adviser, admin, public"]
+    ApiClient[API client]
+    Outbox["Offline outbox (IndexedDB)"]
+    SW["Service worker (Workbox): app shell, founder read cache"]
+    AuthClient[Firebase Auth client]
+  end
+
+  subgraph Shared["packages/shared"]
+    Rules["Business rules: readiness, flags, eligibility, proof checks, bookkeeping, fraud"]
+    Schemas[Zod schemas]
+    Constants["Constants: documents, categories, sectors"]
+  end
+
+  subgraph API["API (Express on Cloud Run)"]
+    Middleware["Middleware: Helmet, CORS, rate limits, token check, role check"]
+    Routes["Routes: auth, join, founder, pay, funder, adviser, admin, public"]
+    Services["Services: logic and audit"]
+    Repos[Repositories: queries]
+    Libs["Libraries: crypto, TOTP, storage, mailer, file signature, audit"]
+  end
+
+  DB[("PostgreSQL 18: tables, RLS policies, triggers, functions")]
+  Bucket[("Cloud Storage: documents, receipts, proofs, statements, audit exports")]
+  Firebase[Firebase Authentication]
+  Mail[Gmail SMTP]
+  Jobs["Scheduled job: expiry, fingerprints, audit chain, retention"]
+
+  Features --> Router
+  Features --> ApiClient
+  Features --> Outbox
+  Outbox --> ApiClient
+  Features --> Rules
+  Features --> Schemas
+  AuthClient --> Firebase
+  ApiClient -->|HTTPS + ID token| Middleware
+  Middleware --> Routes --> Services --> Repos --> DB
+  Routes --> Schemas
+  Services --> Rules
+  Services --> Libs
+  Libs --> Bucket
+  Libs --> Mail
+  Middleware --> Firebase
+  Web -->|signed upload/download URLs| Bucket
+  Jobs --> DB
+  Jobs --> Bucket
+  Jobs --> Rules

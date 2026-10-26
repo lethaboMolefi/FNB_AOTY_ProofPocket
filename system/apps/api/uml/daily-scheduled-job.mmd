@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  participant J as proofpocket-jobs
+  participant D as PostgreSQL (owner)
+  participant B as Cloud Storage
+  participant L as Cloud Logging
+
+  J->>D: Expire payment requests older than 7 days
+  J->>D: Expire documents past valid-until, message founders
+  opt Weekly
+    loop Each stored document
+      J->>B: Read file
+      J->>J: SHA-256 equals recorded fingerprint?
+      alt Changed or missing
+        J->>D: Warning message and audit entry
+      end
+    end
+  end
+  J->>D: audit_log_verify()
+  J->>B: Read previous day's head hash, still in chain?
+  J->>B: Save yesterday's entries (.jsonl) and head hash
+  J->>D: Delete old rate-limit counters
+  J->>B: Delete unfinished uploads older than 24 hours
+  alt Integrity problem
+    J->>L: ERROR alert integrity
+  else All fine
+    J->>L: Result summary
+  end

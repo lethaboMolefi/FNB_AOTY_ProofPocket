@@ -44,3 +44,11 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   if (res.status === 401 && token && body.error?.code === "invalid_token") onUnauthorized();
   throw new ApiError(res.status, body.error?.code ?? "http_error", body.error?.message ?? "Something went wrong. Try again.");
 }
+
+/** A file from the API (e.g. a diagram's source), with the same sign-in as api(). */
+export async function apiBlob(path: string): Promise<Blob> {
+  const token = await tokenGetter();
+  const res = await fetch(`${API_BASE}/api/v1${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  if (!res.ok) throw new ApiError(res.status, "http_error", res.status === 403 ? "You don't have access to this file." : "Couldn't download the file. Try again.");
+  return res.blob();
+}

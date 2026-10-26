@@ -1,0 +1,17 @@
+sequenceDiagram
+  autonumber
+  actor Fo as Founder
+  participant A as API
+  participant D as PostgreSQL
+  actor Adm as Admin
+
+  Fo->>A: GET /founder/privacy/export
+  A->>D: Read own data through RLS
+  A->>D: audit privacy.exported
+  A-->>Fo: JSON download (no storage paths or encrypted values)
+  Fo->>A: POST /founder/privacy/requests (correction or deletion)
+  A->>D: Report (data_request), timeline line, audit
+  A-->>Fo: Reply within 30 days
+  Adm->>A: Reports page
+  Adm->>A: Resolve with a note
+  A->>D: Report resolved, audit

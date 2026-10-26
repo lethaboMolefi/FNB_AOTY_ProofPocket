@@ -1,0 +1,19 @@
+stateDiagram-v2
+  [*] --> submitted : founder applies (no gaps)
+  submitted --> under_review : funder
+  submitted --> offer_made : funder offers (reason if changed)
+  under_review --> offer_made
+  offer_made --> offer_made : offer changed (reason required, history kept)
+  offer_made --> awaiting_cofunding : funder (reason required)
+  awaiting_cofunding --> offer_made
+  offer_made --> approved : funder approves
+  awaiting_cofunding --> approved
+  submitted --> declined : funder (reason required)
+  under_review --> declined
+  offer_made --> declined
+  submitted --> withdrawn : founder
+  under_review --> withdrawn : founder
+  offer_made --> withdrawn : founder
+  approved --> [*]
+  declined --> [*]
+  withdrawn --> [*]

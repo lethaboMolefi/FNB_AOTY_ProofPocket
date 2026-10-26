@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  actor Fo as Founder
+  participant A as API
+  participant D as PostgreSQL
+  participant Ma as Mail
+  actor Ad as Adviser
+
+  Fo->>A: PUT /founder/payment-details + Google Authenticator code
+  alt Two-step sign-in not set up
+    A-->>Fo: Set up Google Authenticator first
+  else Code wrong
+    A-->>Fo: Refused (lockout after 5)
+  else Code correct
+    A->>A: Encrypt account number (AES-256-GCM)
+    A->>D: New payment_details row, audit
+    A->>Ma: Notify incubator advisers
+    Ma-->>Ad: Payment details changed
+    A-->>Fo: Saved
+  end

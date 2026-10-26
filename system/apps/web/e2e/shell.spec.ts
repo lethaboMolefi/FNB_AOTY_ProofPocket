@@ -43,7 +43,7 @@ test("a founder lands on Home with the founder navigation", async ({ page, isMob
     // The founder menu from the dashboard redesign (dashborad): its groups and order.
     for (const g of ["Daily operations", "Documents", "Funding & markets", "Safety", "Account"]) await expect(rail.getByText(g, { exact: true })).toBeVisible();
     await expect(rail.getByRole("link")).toHaveText([/^Home/, /^Bookkeeping/, /^Stock/, /^Payments/, /^Cash flow/, /^Registration steps/,
-      /^Profile & marketing/, /^Funding readiness/, /^Procurement/, /^Fraud protection/, /^Privacy & sharing/, /^Business settings/]);
+      /^Profile & marketing/, /^Funding readiness/, /^Procurement/, /^Fraud protection/, /^Privacy & sharing/, /^Business settings/, /^UML diagrams/, /^Admin decisions/]);
     await rail.getByRole("link", { name: "Cash flow" }).click();
     await expect(page.getByRole("heading", { name: "Cash flow", level: 1 })).toBeVisible();
     await expect(page.getByText("Cash on hand now")).toBeVisible();

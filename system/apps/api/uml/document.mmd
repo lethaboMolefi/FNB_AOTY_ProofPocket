@@ -1,0 +1,8 @@
+stateDiagram-v2
+  [*] --> pending : uploaded (type checked, SHA-256 saved)
+  pending --> verified : checker approves
+  pending --> rejected : checker sends back with reason
+  rejected --> pending : founder uploads new version
+  verified --> expired : valid-until date passes (daily job)
+  expired --> pending : founder uploads current one
+  verified --> verified : weekly fingerprint check passes

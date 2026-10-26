@@ -15,8 +15,12 @@ function useDestination(): { wait: true } | { wait: false; to: string | null; ro
   if (me.isPending) return { wait: true };
   if (me.error) {
     if (me.error instanceof ApiError && me.error.code === "no_account") return { wait: false, to: "/join" };
+    // A suspended account, or a temporary password that has expired: say so (signing in again won't help).
+    if (me.error instanceof ApiError && (me.error.code === "account_suspended" || me.error.code === "temp_password_expired")) return { wait: false, to: "/account-status" };
     return { wait: false, to: "/sign-in" };
   }
+  // A temporary password is changed before anything else, Google Authenticator included.
+  if (me.data.mustChangePassword) return { wait: false, to: "/change-password" };
   if (me.data.needsOtp) return { wait: false, to: "/verify" };
   if (me.data.role === "founder" && (!me.data.company || !me.data.company.joined)) return { wait: false, to: "/join" };
   return { wait: false, to: null, role: me.data.role };

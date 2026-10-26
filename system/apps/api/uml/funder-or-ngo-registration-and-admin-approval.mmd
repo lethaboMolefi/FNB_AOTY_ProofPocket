@@ -1,0 +1,30 @@
+sequenceDiagram
+  actor A as Applicant (funder or NGO)
+  participant W as Web (Join)
+  participant F as Firebase Auth
+  participant API as ProofPocket API
+  participant DB as PostgreSQL (RLS)
+  actor Ad as Admin
+  participant M as Gmail SMTP
+  A->>W: Sign up (email + password, or Google)
+  W->>F: createUser + sendEmailVerification
+  A->>F: Open the verification link
+  A->>W: Join → Investor / Funder (or Incubator / NGO), two steps
+  W->>API: POST /join/applications {kind, details}
+  API->>API: Zod (shared rules): SA ID check digit, phones, sizes
+  API->>DB: insert portal_applications (status pending, ID number AES-256-GCM)<br/>as role joining, own firebase_uid only
+  API->>DB: audit portal_application.sent
+  Note over A,W: Returning: "We're checking your application" (GET /join/application)
+  Ad->>W: User approvals (pending first)
+  W->>API: GET /admin/approvals, GET /admin/approvals/application/:id
+  alt Approve
+    Ad->>API: POST /admin/approvals/application/:id {decision: approve}
+    API->>DB: organisations (verified) + users (funder or adviser) + application approved
+    API->>M: "Your ProofPocket application was approved"
+  else Reject (reason required)
+    Ad->>API: POST /admin/approvals/application/:id {decision: reject, reason}
+    API->>DB: application rejected + reason
+    API->>M: "Your ProofPocket application" with the reason
+  end
+  API->>DB: audit portal_application.approved / rejected
+  Note over DB: founder_admin_log(): founders see date, action, role, organisation only

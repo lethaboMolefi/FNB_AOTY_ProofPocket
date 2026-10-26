@@ -7,7 +7,7 @@ const paths = (type?: Parameters<typeof founderNavFor>[0]) => founderNavFor(type
 describe("founder navigation", () => {
   it("uses the dashboard redesign's groups, in order", () => {
     expect(FOUNDER_NAV.map((g) => g.group)).toEqual(["", "Daily operations", "Documents", "Funding & markets", "Safety", "Account"]);
-    expect(FOUNDER_NAV.flatMap((g) => g.pages.map((p) => p.path))).toEqual(["home", "books", "stock", "payments", "cashflow", "start", "markets", "funding", "procurement", "protection", "privacy", "settings"]);
+    expect(FOUNDER_NAV.flatMap((g) => g.pages.map((p) => p.path))).toEqual(["home", "books", "stock", "payments", "cashflow", "start", "markets", "funding", "procurement", "protection", "privacy", "settings", "uml", "admin-log"]);
   });
   it("hides Stock for services businesses only", () => {
     expect(paths("services")).not.toContain("stock");

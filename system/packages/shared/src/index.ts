@@ -12,6 +12,7 @@ export * from "./rules/payments";
 export * from "./rules/bookkeeping";
 export * from "./rules/cashflow";
 export * from "./rules/identity";
+export * from "./rules/accounts";
 export * from "./schemas/common";
 export * from "./schemas/auth";
 export * from "./schemas/join";

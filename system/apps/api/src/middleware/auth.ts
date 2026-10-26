@@ -1,5 +1,5 @@
 // Verifies the Firebase ID token and loads the user. Roles always come from the database, never the client.
-import { OTP_ROLES, type Role } from "@proofpocket/shared";
+import { OTP_ROLES, tempPasswordState, type Role } from "@proofpocket/shared";
 import { sql } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import { applicationDefault, getApps, initializeApp } from "firebase-admin/app";
@@ -11,7 +11,12 @@ import { readSessionToken } from "../lib/session-token";
 export interface VerifiedToken { uid: string; email: string | null; emailVerified: boolean; authTime: number }
 export type TokenVerifier = (token: string) => Promise<VerifiedToken>;
 
-export interface AuthUser { id: string; role: Role; orgId: string | null; email: string; displayName: string; otpVerifiedAuthTime: number | null; totpEnabled: boolean }
+export interface AuthUser {
+  id: string; role: Role; orgId: string | null; email: string; displayName: string; otpVerifiedAuthTime: number | null; totpEnabled: boolean;
+  /** Temporary password: ok, must_change (only /me and /auth/password work) or expired (nothing works). */
+  tempPassword: "ok" | "must_change" | "expired";
+  suspended: boolean;
+}
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -67,7 +72,8 @@ export function authenticate(db: Db, verify: TokenVerifier) {
       return next(new AppError(401, "invalid_token", "Your sign-in has expired. Sign in again."));
     }
     try {
-      const rows = await db.execute<{ user_id: string; user_role: Role; org_id: string | null; email: string; display_name: string; otp_verified_auth_time: string | null; totp_enabled: boolean }>(
+      const rows = await db.execute<{ user_id: string; user_role: Role; org_id: string | null; email: string; display_name: string; otp_verified_auth_time: string | null; totp_enabled: boolean;
+        must_change_password: boolean; temp_password_expires_at: string | Date | null; suspended_at: string | Date | null }>(
         sql`select * from auth_lookup_user(${verified.uid}, ${verified.email}, ${verified.emailVerified})`,
       );
       const u = rows.rows[0];
@@ -75,7 +81,8 @@ export function authenticate(db: Db, verify: TokenVerifier) {
       if (u) await db.execute(sql`select touch_last_seen(${u.user_id}::uuid)`);
       req.auth = {
         token: verified,
-        user: u ? { id: u.user_id, role: u.user_role, orgId: u.org_id, email: u.email, displayName: u.display_name, otpVerifiedAuthTime: u.otp_verified_auth_time === null ? null : Number(u.otp_verified_auth_time), totpEnabled: u.totp_enabled } : null,
+        user: u ? { id: u.user_id, role: u.user_role, orgId: u.org_id, email: u.email, displayName: u.display_name, otpVerifiedAuthTime: u.otp_verified_auth_time === null ? null : Number(u.otp_verified_auth_time), totpEnabled: u.totp_enabled,
+          tempPassword: tempPasswordState(u.must_change_password, u.temp_password_expires_at ? new Date(u.temp_password_expires_at) : null, new Date()), suspended: u.suspended_at !== null } : null,
       };
       next();
     } catch (e) {
@@ -92,12 +99,19 @@ export const twoFactorOn = (user: Pick<AuthUser, "role" | "totpEnabled">) => two
 export const otpSatisfied = (user: AuthUser, token: VerifiedToken) =>
   !twoFactorOn(user) || user.otpVerifiedAuthTime === token.authTime;
 
-export function requireUser(roles?: Role[], opts: { otp?: boolean } = {}) {
+/**
+ * passwordChange: the route works while a temporary password still has to be changed (/me and /auth/password only).
+ * Suspended accounts and expired temporary passwords are refused everywhere.
+ */
+export function requireUser(roles?: Role[], opts: { otp?: boolean; passwordChange?: boolean } = {}) {
   const checkOtp = opts.otp ?? true;
   return (req: Request, _res: Response, next: NextFunction) => {
     const a = req.auth;
     if (!a) return next(unauthenticated());
     if (!a.user) return next(new AppError(403, "no_account", "Finish joining ProofPocket first."));
+    if (a.user.suspended) return next(new AppError(403, "account_suspended", "This account is suspended. Contact ProofPocket if you think this is a mistake."));
+    if (a.user.tempPassword === "expired") return next(new AppError(403, "temp_password_expired", "Your temporary password has expired. Ask ProofPocket for a new one."));
+    if (a.user.tempPassword === "must_change" && !opts.passwordChange) return next(new AppError(403, "password_change_required", "Set your own password first."));
     if (roles && !roles.includes(a.user.role)) return next(forbidden());
     if (checkOtp && !otpSatisfied(a.user, a.token)) return next(new AppError(403, "otp_required", "Enter the code from Google Authenticator to continue."));
     next();

@@ -12,6 +12,12 @@ const MorePage = lazy(() => import("../components/layout/MorePage").then((m) => 
 const More = lazy(() => import("../features/founder/More"));
 const SignIn = lazy(() => import("../features/auth/SignIn"));
 const SignUp = lazy(() => import("../features/auth/SignUp"));
+const ChangePassword = lazy(() => import("../features/auth/ChangePassword"));
+const AccountStatus = lazy(() => import("../features/auth/ChangePassword").then((m) => ({ default: m.AccountStatus })));
+const Uml = lazy(() => import("../features/common/Uml"));
+const AdminLog = lazy(() => import("../features/founder/AdminLog"));
+const Approvals = lazy(() => import("../features/admin/Approvals"));
+const AdminProfile = lazy(() => import("../features/admin/Profile"));
 const VerifyPin = lazy(() => import("../features/auth/VerifyPin"));
 const pub = () => import("../features/public/Directory");
 const Directory = lazy(() => pub().then((m) => ({ default: m.Directory })));
@@ -66,6 +72,8 @@ const BUILT: Record<string, ReactNode> = {
   "founder/markets": s(<Markets />),
   "founder/funding": s(<Funding />),
   "founder/procurement": s(<Procurement />),
+  "founder/uml": s(<Uml />),
+  "founder/admin-log": s(<AdminLog />),
   "funder/setup": s(<FunderSetup />),
   "funder/pipeline": s(<Pipeline />),
   "funder/applications": s(<FunderApplications />),
@@ -83,6 +91,9 @@ const BUILT: Record<string, ReactNode> = {
   "admin/features": s(<Features />),
   "admin/flagged": s(<Flagged />),
   "admin/tenders": s(<AdminTenders />),
+  "admin/approvals": s(<Approvals />),
+  "admin/uml": s(<Uml />),
+  "admin/profile": s(<AdminProfile />),
   "adviser/checks": s(<Checks scope="adviser" />),
   "admin/checks": s(<Checks scope="admin" />),
 };
@@ -102,6 +113,8 @@ export const routes: RouteObject[] = [
   { path: "/", element: <RoleHome /> },
   { path: "/sign-in", element: s(<SignIn />) },
   { path: "/sign-up", element: s(<SignUp />) },
+  { path: "/change-password", element: s(<ChangePassword />) },
+  { path: "/account-status", element: s(<AccountStatus />) },
   { path: "/verify", element: s(<VerifyPin />) },
   { path: "/join", element: s(<Join />) },
   // Public, no account.

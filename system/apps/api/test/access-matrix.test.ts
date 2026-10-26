@@ -17,7 +17,7 @@ const owner = new pg.Pool({ connectionString: process.env.DATABASE_OWNER_URL, ma
 afterAll(() => owner.end());
 
 const ZERO = "00000000-0000-0000-0000-000000000000";
-const fill = (path: string) => path.replace(":id", ZERO).replace(":ref", "PP-0000").replace(":slug", "no-such-business").replace(":token", "not-a-real-link");
+const fill = (path: string) => path.replace(":type", "user").replace(":id", ZERO).replace(":ref", "PP-0000").replace(":slug", "no-such-business").replace(":token", "not-a-real-link");
 
 const tokens = {} as Record<MatrixRole, string | null>;
 const results: { id: string; method: string; path: string; role: MatrixRole; expected: "allowed" | "denied" | "same"; status: number; code: string | null; pass: boolean }[] = [];

@@ -1,0 +1,7 @@
+stateDiagram-v2
+  [*] --> requested : founder asks to join
+  requested --> active : incubator accepts
+  requested --> declined : incubator declines
+  active --> left : founder leaves or moves
+  declined --> [*]
+  left --> [*]

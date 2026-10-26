@@ -1,0 +1,176 @@
+erDiagram
+  ORGANISATIONS ||--o{ USERS : "org_id"
+  USERS ||--o| COMPANIES : "owner_id"
+  COMPANIES ||--o| FOUNDER_IDENTITY : "company_id"
+  COMPANIES ||--o{ COMPANY_COFOUNDERS : "company_id"
+  PORTAL_APPLICATIONS }o--o| USERS : "user_id (once approved)"
+  PORTAL_APPLICATIONS }o--o| ORGANISATIONS : "org_id (once approved)"
+  ORGANISATIONS ||--o{ COMPANIES : "incubator_id"
+  COMPANIES ||--o{ INCUBATOR_MEMBERSHIPS : has
+  ORGANISATIONS ||--o{ INCUBATOR_MEMBERSHIPS : has
+  COMPANIES ||--o{ FILES : stores
+  COMPANIES ||--o{ DOCUMENTS : has
+  FILES ||--o| DOCUMENTS : "file_id"
+  COMPANIES ||--o{ LEDGER_ENTRIES : records
+  COMPANIES ||--o{ STOCK_ITEMS : holds
+  STOCK_ITEMS ||--o{ STOCK_MOVEMENTS : moves
+  COMPANIES ||--o{ SUPPLIERS : has
+  SUPPLIERS ||--o{ SUPPLIER_BANK_CHANGES : has
+  COMPANIES ||--o{ STATEMENT_IMPORTS : imports
+  STATEMENT_IMPORTS ||--o{ STATEMENT_LINES : contains
+  COMPANIES ||--o{ MONTHLY_HISTORY : has
+  COMPANIES ||--o{ PAYMENT_DETAILS : saves
+  COMPANIES ||--o{ PAYMENT_REQUESTS : creates
+  PAYMENT_REQUESTS ||--o{ PAYMENT_PROOFS : receives
+  FILES ||--o| PAYMENT_PROOFS : "file_id"
+  PAYMENT_REQUESTS ||--o{ LEDGER_ENTRIES : "settles"
+  COMPANIES ||--o{ MESSAGES : receives
+  COMPANIES ||--o| PROFILES : has
+  COMPANIES ||--o{ POSTS : writes
+  ORGANISATIONS ||--o{ PROGRAMMES : "funder_id"
+  PROGRAMMES ||--o{ PROGRAMME_REQUIREMENTS : requires
+  PROGRAMMES ||--o{ APPLICATIONS : receives
+  COMPANIES ||--o{ APPLICATIONS : submits
+  APPLICATIONS ||--o{ OFFERS : "append-only"
+  COMPANIES ||--o{ SUPPORT_LOGS : "logged for"
+  TENDERS ||--o{ TENDER_REQUIREMENTS : requires
+  TENDERS ||--o{ TENDER_INTERESTS : receives
+  COMPANIES ||--o{ TENDER_INTERESTS : expresses
+  COMPANIES ||--o{ INTRO_REQUESTS : asks
+  ORGANISATIONS ||--o{ INTRO_REQUESTS : "buyer_id"
+  COMPANIES ||--o{ REPORTS : "about"
+  USERS ||--o| USER_TOTP : "two-step secret"
+  COMPANIES ||--o{ ACTIVITY : timeline
+  COMPANIES ||--o{ AUDIT_LOG : "company_id"
+
+  USERS {
+    uuid id PK
+    enum role
+    text email
+    uuid org_id FK
+    text firebase_uid
+    boolean must_change_password
+    timestamptz temp_password_expires_at
+    timestamptz suspended_at
+    text suspended_reason
+    timestamptz last_seen_at
+  }
+  FOUNDER_IDENTITY {
+    uuid company_id PK,FK
+    text id_number_enc "AES-256-GCM"
+    text phone
+  }
+  COMPANY_COFOUNDERS {
+    uuid id PK
+    uuid company_id FK
+    text full_name
+    text id_number_enc "AES-256-GCM"
+    smallint shareholding
+  }
+  PORTAL_APPLICATIONS {
+    uuid id PK
+    enum kind "funder or support_org"
+    enum status "pending, approved, rejected"
+    text firebase_uid
+    text email
+    text org_name
+    text contact_id_number_enc "AES-256-GCM"
+    jsonb details
+    text review_reason
+    uuid user_id FK
+    uuid org_id FK
+  }
+  SENDER_WATCHLIST {
+    text sender_key PK
+    smallint reports
+    enum status
+  }
+  LOCAL_CREDENTIALS {
+    uuid id PK
+    text email "development sign-in only"
+    text password_hash "scrypt"
+  }
+  RATE_LIMIT_HITS {
+    text key PK
+    integer hits
+    timestamptz reset_at
+  }
+  COMPANIES {
+    uuid id PK
+    uuid owner_id FK
+    text name
+    enum business_type
+    enum funder_sharing
+    timestamptz verified_at
+    smallint support_stage
+    text consent_version
+  }
+  DOCUMENTS {
+    uuid id PK
+    uuid company_id FK
+    enum doc_type
+    int version
+    enum status
+    uuid file_id FK
+  }
+  FILES {
+    uuid id PK
+    uuid company_id FK
+    enum purpose
+    text bucket_path
+    text sha256
+  }
+  LEDGER_ENTRIES {
+    uuid id PK
+    uuid company_id FK
+    uuid client_uuid UK
+    date entry_date
+    enum direction
+    numeric amount
+    bool is_personal
+    timestamptz voided_at
+  }
+  PAYMENT_REQUESTS {
+    uuid id PK
+    uuid company_id FK
+    text ref UK
+    text public_token
+    numeric amount
+    enum status
+    smallint attempts
+  }
+  PAYMENT_PROOFS {
+    uuid id PK
+    uuid payment_request_id FK
+    uuid file_id FK
+    jsonb check_results
+    enum status
+  }
+  PAYMENT_DETAILS {
+    uuid id PK
+    uuid company_id FK
+    text account_number_enc
+    text account_last4
+  }
+  APPLICATIONS {
+    uuid id PK
+    uuid company_id FK
+    uuid programme_id FK
+    uuid funder_id FK
+    enum status
+  }
+  OFFERS {
+    uuid id PK
+    uuid application_id FK
+    numeric amount
+    text reason
+  }
+  AUDIT_LOG {
+    bigint id PK
+    bigint chain_seq UK
+    text action
+    jsonb before
+    jsonb after
+    text prev_hash
+    text hash
+  }

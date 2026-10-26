@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  actor C as Checker (adviser or admin)
+  participant A as API
+  participant D as PostgreSQL
+  participant Ma as Mail
+  actor Fo as Founder
+
+  C->>A: Open document (5-minute download link)
+  alt Approve
+    C->>A: POST approve
+    A->>D: status = verified
+    A->>D: Are cipc, id, bank and addr all verified?
+    opt All four verified
+      A->>D: companies.verified_at = now (listed in directory)
+      A->>Ma: "You're verified"
+      Ma-->>Fo: Email
+    end
+  else Send back
+    C->>A: POST reject with reason
+    A->>D: status = rejected, reason
+    A->>D: Message to founder
+    A->>Ma: "Please upload ... again"
+    Fo->>A: Upload new version
+  end
+  A->>D: audit_log entry

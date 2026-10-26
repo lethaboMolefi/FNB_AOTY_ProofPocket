@@ -1,0 +1,19 @@
+flowchart TD
+  S([Founder adds Money out]) --> V[Validate amount, date, method, category]
+  V --> Sup{Paid to a supplier?}
+  Sup -->|yes| Hold{Supplier bank details pending?}
+  Hold -->|yes| Block[Blocked until confirmed or rejected] --> E([End])
+  Hold -->|no| Dup
+  Sup -->|no| Dup{Same amount paid out in the last 7 days?}
+  Dup -->|yes| Conf{Founder chooses Save anyway?}
+  Conf -->|no| E
+  Conf -->|yes| Save
+  Dup -->|no| Save[Save entry with client UUID]
+  Save --> Stock{Linked to stock?}
+  Stock -->|yes| Move[Move stock quantity]
+  Stock -->|no| Pers
+  Move --> Pers{Marked personal?}
+  Pers -->|yes| Flag[Counts against readiness until Paid back]
+  Pers -->|no| Done[Update books, cash flow and readiness]
+  Flag --> Done
+  Done --> E

@@ -51,5 +51,13 @@ export const meSchema = z.object({
   needsOtp: z.boolean(),
   /** enabled = Google Authenticator is set up; required = funder, adviser and admin accounts. */
   twoFactor: z.object({ enabled: z.boolean(), required: z.boolean() }),
+  /** Signed in with a temporary password: must set their own before anything else. */
+  mustChangePassword: z.boolean(),
 });
 export type Me = z.infer<typeof meSchema>;
+
+/** Setting your own password (after a temporary one, or from your profile). The server checks it against your email. */
+export const newPasswordSchema = z.object({ current: z.string().min(1, "Enter your current (or temporary) password").max(128), password: z.string().max(128) });
+
+/** An admin turning an account down or suspending it always gives a reason. */
+export const accountReasonSchema = z.object({ reason: z.string().trim().min(10, "Give a reason (at least 10 characters)").max(500) });

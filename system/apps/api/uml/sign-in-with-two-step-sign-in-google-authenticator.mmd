@@ -1,0 +1,33 @@
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant W as Web app
+  participant F as Firebase Auth
+  participant A as API
+  participant D as PostgreSQL
+
+  U->>W: Email and password
+  W->>F: signInWithEmailAndPassword
+  F-->>W: ID token (auth_time)
+  W->>A: GET /me (Bearer ID token)
+  A->>F: Verify token, check not revoked
+  A->>D: auth_lookup_user(uid, email)
+  D-->>A: role, org, totp_enabled
+  alt Two-step sign-in required and not set up
+    A-->>W: needsOtp, not enabled
+    W->>U: Show QR code to scan
+    U->>W: First 6-digit code
+    W->>A: POST /auth/totp/activate
+  else Two-step sign-in on
+    A-->>W: needsOtp = true
+    U->>W: 6-digit code from Google Authenticator
+    W->>A: POST /auth/totp/verify
+    A->>D: Check code, step not used before, failures < 5
+    alt Code correct
+      A->>D: Record step and auth_time
+      A-->>W: OK
+    else Wrong 5 times
+      A-->>W: Locked, try later
+    end
+  end
+  W->>U: Open own portal (founder, funder, adviser or admin)

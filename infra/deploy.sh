@@ -187,6 +187,35 @@ step_add_admin() {
   else g run jobs create proofpocket-add-admin "${args[@]}"; fi
   g run jobs execute proofpocket-add-admin --region "$REGION" --wait
 }
+step_admins() {
+  # Admin accounts with temporary passwords (bash infra/deploy.sh admins [--reissue] EMAIL…). Two halves:
+  # 1. a Cloud Run job writes the database rows (role admin, must change password, 7 days). Its log holds emails
+  #    and outcomes only; existing emails are skipped, never overwritten.
+  # 2. this machine sets each new temporary password in Firebase and prints the table once, in this terminal only.
+  local reissue=""; [ "${1:-}" = "--reissue" ] && { reissue="--reissue"; shift; }
+  [ $# -gt 0 ] || { echo "Usage: bash infra/deploy.sh admins [--reissue] EMAIL…"; exit 1; }
+  local list; list=$(IFS=,; echo "$*")
+  local args=(--image "$IMAGE" --region "$REGION" --service-account "$SA" --network "$NETWORK" --subnet "$SUBNET" --vpc-egress private-ranges-only
+    --set-secrets "DATABASE_OWNER_URL=proofpocket-db-owner-url:latest"
+    --set-env-vars "^@^ADMIN_EMAILS=${list}@DATABASE_CA_CERT_B64=$(db_ca)" --command node --args "dist/add-admins.js${reissue:+,$reissue}" --max-retries 0 --task-timeout 120)
+  if exists g run jobs describe proofpocket-add-admins --region "$REGION"; then g run jobs update proofpocket-add-admins "${args[@]}"
+  else g run jobs create proofpocket-add-admins "${args[@]}"; fi
+  local exec_name
+  exec_name=$(g run jobs execute proofpocket-add-admins --region "$REGION" --wait --format 'value(metadata.name)')
+  sleep 10
+  local results
+  results=$(g logging read "resource.type=\"cloud_run_job\" AND labels.\"run.googleapis.com/execution_name\"=\"${exec_name}\" AND textPayload:\"RESULT \"" --format 'value(textPayload)' --freshness 30m)
+  echo "$results" | sed 's/^RESULT //' | python3 -c "import json,sys
+for l in sys.stdin:
+  l=l.strip()
+  if l: r=json.loads(l); print(f\"{r['email']:45} {r['status']:9} {r.get('note','')}\")"
+  local todo
+  todo=$(echo "$results" | sed 's/^RESULT //' | python3 -c "import json,sys
+print(' '.join(json.loads(l)['email'] for l in sys.stdin if l.strip() and json.loads(l)['status'] in ('created','reissued')))")
+  [ -n "$todo" ] || { echo "No passwords to set."; return; }
+  # shellcheck disable=SC2086
+  (cd "$SYSTEM/apps/api" && pnpm exec tsx scripts/firebase-temp-passwords.ts "$PROJECT" $todo)
+}
 step_web() {
   # The Firebase web config is public by design (it identifies the project; access is controlled by the API and RLS).
   local app_id cfg
@@ -265,5 +294,6 @@ case "${1:-}" in
   all) for s in network database storage secrets identity registry image bootstrap api jobs firebase web users budget smoke; do echo "== $s"; "step_$s"; done ;;
   network|database|storage|secrets|identity|registry|image|bootstrap|api|jobs|firebase|web|users|budget|smoke|iam_hardening|logging) "step_$1" ;;
   add_admin) step_add_admin "${2:-}" ;;
+  admins) shift; step_admins "$@" ;;
   *) sed -n '2,8p' "$0"; exit 1 ;;
 esac

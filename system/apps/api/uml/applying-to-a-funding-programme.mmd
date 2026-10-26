@@ -1,0 +1,21 @@
+flowchart TD
+  S([Founder opens Funding readiness]) --> G[Server works out gaps for each open programme]
+  G --> V{Company Verified?}
+  V -->|no| Gap[Show gap: get Verified]
+  V -->|yes| Docs{All required documents verified?}
+  Docs -->|no| Gap2[Show gap: missing documents]
+  Docs -->|yes| M{Enough months of records?}
+  M -->|no| Gap3[Show gap: more months]
+  M -->|yes| Sc{Score at least the minimum?}
+  Sc -->|no| Gap4[Show gap: raise score]
+  Sc -->|yes| Amt[/Founder enters amount/]
+  Amt --> R{Amount within min and max?}
+  R -->|no| Err[Ask for an amount in range]
+  Err --> Amt
+  R -->|yes| Sub[Create application: submitted]
+  Sub --> Share[Funder can now see the profile at summary level]
+  Share --> E([End])
+  Gap --> E
+  Gap2 --> E
+  Gap3 --> E
+  Gap4 --> E

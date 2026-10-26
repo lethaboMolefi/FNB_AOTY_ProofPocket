@@ -38,6 +38,8 @@ export const FOUNDER_NAV: NavGroup[] = [
   ] },
   { group: "Account", pages: [
     { path: "settings", label: "Business settings", title: "Business settings", sub: "Opening balance, people and the year you started trading.", phase: 3 },
+    { path: "uml", label: "UML diagrams", title: "UML diagrams", sub: "How ProofPocket is built.", phase: 5 },
+    { path: "admin-log", label: "Admin decisions", title: "Admin decisions", sub: "Who ProofPocket's admins let in, turned down or suspended.", phase: 5 },
   ] },
 ];
 
@@ -45,7 +47,7 @@ export const FOUNDER_NAV: NavGroup[] = [
 export const FOUNDER_TABS = ["home", "books", "payments", "markets"];
 export const FUNDER_TABS = ["pipeline", "applications", "programmes"];
 export const ADVISER_TABS = ["cohort", "checks", "attention", "support"];
-export const ADMIN_TABS = ["overview", "checks", "applications", "activity"];
+export const ADMIN_TABS = ["overview", "approvals", "checks", "activity"];
 
 /** Stock is only for business types that hold stock (v2: TYPES[type].stock). */
 export const founderNavFor = (type: BusinessType | undefined): NavGroup[] =>
@@ -73,6 +75,7 @@ export const ADMIN_NAV: NavPage[] = [
   { path: "activity", label: "Activity", short: "Activity", title: "Activity", sub: "Everything people and the system did, newest first. The log can't be edited, and its chain is checked.", phase: 5 },
   { path: "people", label: "People & companies", short: "People", title: "People & companies", sub: "Every account and every business, with two-step status and when they were last seen.", phase: 5 },
   { path: "health", label: "Security & health", short: "Health", title: "Security & health", sub: "Lockouts, two-step gaps, rate limits, background jobs, email failures and the system's own checks.", phase: 5 },
+  { path: "approvals", label: "User approvals", short: "Approvals", title: "User approvals", sub: "Everyone who isn't a founder: approve, turn down or suspend.", phase: 5 },
   { path: "checks", label: "Checker queue", short: "Checks", title: "Checker queue", sub: "Documents from companies without an incubator. Approve them or send them back with a reason.", phase: 2 },
   { path: "applications", label: "Applications", short: "Applications", title: "Applications", sub: "Funders and support organisations asking for a portal. Approve or turn down with a reason.", phase: 5 },
   { path: "organisations", label: "Organisations", title: "Organisations", sub: "Verify funders, incubators and buyers, and invite their people.", phase: 5 },
@@ -80,4 +83,6 @@ export const ADMIN_NAV: NavPage[] = [
   { path: "features", label: "Feature requests", title: "Feature requests", sub: "Posts Verified businesses asked to feature in the directory this week.", phase: 5 },
   { path: "flagged", label: "Flagged payments", title: "Flagged payments", sub: "Payment requests where a founder rejected the proof of payment twice.", phase: 5 },
   { path: "tenders", label: "Tenders & buyers", title: "Tenders & buyers", sub: "Opportunities founders can express interest in, and buyers they can ask to meet.", phase: 5 },
+  { path: "uml", label: "UML diagrams", title: "UML diagrams", sub: "How ProofPocket is built.", phase: 5 },
+  { path: "profile", label: "Profile", title: "Profile", sub: "Your own account and password.", phase: 5 },
 ];

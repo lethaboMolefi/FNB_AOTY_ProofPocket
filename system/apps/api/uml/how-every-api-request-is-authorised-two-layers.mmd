@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  participant W as Web app
+  participant M as API middleware
+  participant R as Route
+  participant S as Service
+  participant D as PostgreSQL (role proofpocket_app)
+
+  W->>M: Request with Bearer token
+  M->>M: Rate limit (counter in Postgres)
+  M->>M: Verify token, load role from database
+  M->>R: requireUser(allowed roles)
+  alt Role not allowed or code missing
+    R-->>W: 401 or 403
+  else Allowed
+    R->>R: Validate body with Zod schema
+    R->>S: Call service
+    S->>D: BEGIN, set_config app.role and app.user_id
+    S->>D: Queries
+    D->>D: RLS policies filter every row, triggers protect columns
+    S->>D: INSERT audit_log (hash-chained)
+    S->>D: COMMIT
+    S-->>W: JSON response
+  end

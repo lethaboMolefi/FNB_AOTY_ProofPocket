@@ -1,0 +1,52 @@
+flowchart LR
+  Founder([Founder])
+  Client([Client / payer])
+  Adviser([Incubator adviser])
+  Funder([Funder])
+  Admin([ProofPocket admin])
+  Public([Public visitor])
+  Job([Scheduled job])
+
+  subgraph PP[ProofPocket]
+    UC1((Join and upload documents))
+    UC2((Keep books, stock and suppliers))
+    UC3((Import bank statement CSV))
+    UC4((Create payment request))
+    UC5((Confirm or reject proof of payment))
+    UC6((Save payment details))
+    UC7((Check a suspicious message))
+    UC8((Choose funder sharing))
+    UC9((Download my data / data request))
+    UC10((Build profile and share posts))
+    UC11((Apply for funding))
+    UC12((Express interest in tenders))
+    UC13((Pay and send proof of payment))
+    UC14((Report a request or business))
+    UC15((Check documents))
+    UC16((Move cohort through support stages))
+    UC17((Log support))
+    UC18((Set programme requirements))
+    UC19((Review pipeline and applications))
+    UC20((Make or change offers with reasons))
+    UC21((Verify organisations and invite users))
+    UC22((Handle reports and data requests))
+    UC23((Review feature requests))
+    UC24((Review flagged payments and scam senders))
+    UC25((Manage tenders and buyers))
+    UC26((Browse directory and profiles))
+    UC27((Sign in with two-step sign-in))
+    UC28((Expire requests and documents, check integrity))
+    UC29((Apply for a funder or NGO portal))
+    UC30((Screen users: approve, reject, suspend))
+    UC31((View and download UML diagrams))
+    UC32((Set own password after a temporary one))
+    UC33((See admins' account decisions, summary))
+  end
+
+  Founder --- UC1 & UC2 & UC3 & UC4 & UC5 & UC6 & UC7 & UC8 & UC9 & UC10 & UC11 & UC12 & UC27 & UC31 & UC33
+  Client --- UC13 & UC14
+  Adviser --- UC15 & UC16 & UC17 & UC27 & UC29
+  Funder --- UC18 & UC19 & UC20 & UC27 & UC29
+  Admin --- UC15 & UC21 & UC22 & UC23 & UC24 & UC25 & UC27 & UC30 & UC31 & UC32
+  Public --- UC26 & UC14
+  Job --- UC28

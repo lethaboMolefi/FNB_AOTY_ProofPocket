@@ -1,0 +1,26 @@
+sequenceDiagram
+  autonumber
+  actor Fu as Funder
+  participant A as API
+  participant D as PostgreSQL
+  actor Fo as Founder
+
+  Fu->>A: Set programme (amounts, months, score, documents)
+  Fo->>A: GET /founder/funding
+  A->>A: Gaps: Verified? documents? months? score?
+  A-->>Fo: Programmes with gaps
+  Fo->>A: Apply (no gaps, amount in range)
+  A->>D: Application submitted
+  Fu->>A: Pipeline (Verified + sharing on, plus own applicants)
+  A->>D: RLS: app_company_access decides what the funder sees
+  Fu->>A: Make or change offer (needs a reason)
+  A->>D: Insert offer (append-only), status offer_made, audit
+  A-->>Fo: Offer and reason visible
+  alt Approve
+    Fu->>A: Approve (confirm if over budget)
+    A->>D: approved
+  else Decline
+    Fu->>A: Decline with reason
+    A->>D: declined
+    Fo->>A: Ask for a reason (if none given)
+  end

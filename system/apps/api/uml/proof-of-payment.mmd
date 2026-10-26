@@ -1,0 +1,6 @@
+stateDiagram-v2
+  [*] --> submitted : client uploads, 5 checks run
+  submitted --> confirmed : founder sees money in own bank
+  submitted --> rejected : founder says not received
+  confirmed --> [*]
+  rejected --> [*]

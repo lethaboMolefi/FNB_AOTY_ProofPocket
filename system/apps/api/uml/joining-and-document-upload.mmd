@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  actor Fo as Founder
+  participant W as Web app
+  participant A as API
+  participant B as Cloud Storage
+  participant D as PostgreSQL
+
+  Fo->>W: Account (password of 12+ characters)
+  Fo->>W: Business details, incubator, registered or not
+  W->>A: POST /join
+  A->>D: Create user and company
+  loop Each required document (CIPC, ID, bank, address. Starter: ID and address only)
+    W->>A: POST /founder/uploads (name, type, size)
+    A->>D: Insert file row
+    A-->>W: 5-minute signed PUT URL
+    W->>B: PUT file
+    W->>A: POST /founder/uploads/:id/complete
+    A->>B: Read stored bytes
+    A->>A: Check type from first bytes, size, compute SHA-256
+    alt Not a PDF or photo
+      A->>B: Delete
+      A-->>W: Refused
+    else Accepted
+      A->>D: Save sha256, attach document (pending)
+    end
+  end
+  Fo->>W: Agree to privacy notice and confirm
+  W->>A: POST /join/complete
+  A->>D: joined_at, consent_version, audit
+  A-->>W: Welcome, documents go to the checker

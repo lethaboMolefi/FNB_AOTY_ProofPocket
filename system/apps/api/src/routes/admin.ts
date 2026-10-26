@@ -1,5 +1,5 @@
 // Admin portal (phase 5). The checker queue lives in routes/checks.ts; authenticator resets in routes/auth.ts.
-import { OTP_ROLES, type Role, applicationDecisionSchema, featureDecisionSchema, handledSchema, inviteUserSchema, organisationSchema, reportDecisionSchema, tenderSchema, watchDecisionSchema } from "@proofpocket/shared";
+import { OTP_ROLES, type Role, accountReasonSchema, applicationDecisionSchema, featureDecisionSchema, handledSchema, inviteUserSchema, organisationSchema, reportDecisionSchema, tenderSchema, watchDecisionSchema } from "@proofpocket/shared";
 import { Router, type Request } from "express";
 import { z } from "zod";
 import type { Deps } from "../app";
@@ -9,6 +9,7 @@ import { actorOf, contextOf, requireUser } from "../middleware/auth";
 import { handle, parse } from "../middleware/http";
 import { handleRequest } from "../services/adviser";
 import { applicationsView, decideApplication } from "../services/applications";
+import { approvalDetail, approvalsList, setSuspended } from "../services/approvals";
 import { companyDrawer } from "../services/company-view";
 import { activity, chain, companies, health, overview, people } from "../services/monitoring";
 import { audit } from "../lib/audit";
@@ -63,13 +64,39 @@ export function adminRoutes(deps: Deps) {
 
   // Portal applications from funders and support organisations.
   r.get("/admin/applications", admin, handle((req) => as(req, (tx) => applicationsView(tx, deps.config))));
-  r.post("/admin/applications/:id", admin, handle(async (req) => {
+  /** Decide a portal application and email the applicant (approved: how to sign in; turned down: the reason). */
+  const decide = async (req: Request) => {
     const d = parse(applicationDecisionSchema, req.body);
     const res = await as(req, (tx) => decideApplication(tx, actorOf(req), id(req), d));
     const portal = res.kind === "funder" ? "funder portal" : "support organisation portal";
     await deps.mailer.send(res.approved
       ? { to: res.email, subject: "Your ProofPocket application was approved", text: `${res.orgName} now has a ProofPocket ${portal}.\n\nSign in with the email address and password you applied with. The first time, you'll set up Google Authenticator so nobody can use a stolen password to get in.`, action: { label: "Sign in to ProofPocket", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } }
       : { to: res.email, subject: "Your ProofPocket application", text: `We couldn't approve the ${portal} for ${res.orgName}.\n\nThe reason: ${res.reason}\n\nIf something can be fixed, reply to this email and we'll look at it again.` });
+    return { message: res.message };
+  };
+  r.post("/admin/applications/:id", admin, handle(decide));
+
+  // User approvals: everyone who isn't a founder. Founders, other admins and yourself are refused (403).
+  const approvalFilters = z.object({
+    q: z.string().trim().max(120).optional(),
+    role: z.enum(["funder", "adviser", "buyer", "admin"]).optional().or(z.literal("").transform(() => undefined)),
+    status: z.enum(["pending", "approved", "rejected", "suspended"]).optional().or(z.literal("").transform(() => undefined)),
+  });
+  r.get("/admin/approvals", admin, handle((req) => { const f = parse(approvalFilters, req.query); return as(req, (tx) => approvalsList(tx, { id: req.auth!.user!.id }, f)); }));
+  r.get("/admin/approvals/:type/:id", admin, handle((req) => {
+    const type = parse(z.enum(["application", "user"]), req.params.type);
+    return as(req, (tx) => approvalDetail(tx, deps.config, { id: req.auth!.user!.id }, type, parse(z.string().uuid(), req.params.id)));
+  }));
+  r.post("/admin/approvals/application/:id", admin, handle(decide));
+  r.post("/admin/approvals/user/:id/suspend", admin, handle(async (req) => {
+    const { reason } = parse(accountReasonSchema, req.body);
+    const res = await as(req, (tx) => setSuspended(tx, actorOf(req), parse(z.string().uuid(), req.params.id), { reason }));
+    await deps.mailer.send({ to: res.email, subject: "Your ProofPocket account is suspended", text: `Your ProofPocket account has been suspended.\n\nThe reason: ${reason}\n\nIf you think this is a mistake, reply to this email.` });
+    return { message: res.message };
+  }));
+  r.post("/admin/approvals/user/:id/reinstate", admin, handle(async (req) => {
+    const res = await as(req, (tx) => setSuspended(tx, actorOf(req), parse(z.string().uuid(), req.params.id), null));
+    await deps.mailer.send({ to: res.email, subject: "Your ProofPocket account is active again", text: "You can sign in to ProofPocket again.", action: { label: "Sign in to ProofPocket", url: `${deps.config.PUBLIC_WEB_URL}/sign-in` } });
     return { message: res.message };
   }));
   r.get("/admin/reports", admin, handle((req) => as(req, async (tx) => ({ reports: await reportsView(tx) }))));

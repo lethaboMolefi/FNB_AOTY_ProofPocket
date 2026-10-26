@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  actor Fo as Founder
+  participant W as Web app
+  participant O as Outbox (IndexedDB)
+  participant SW as Service worker
+  participant A as API
+  participant D as PostgreSQL
+
+  Fo->>W: Add money-in entry (offline)
+  W->>O: Save item with client UUID and owner
+  W-->>Fo: "Saved on this phone"
+  W->>SW: Register background sync
+  Note over W,A: Connection returns
+  SW->>W: FLUSH_OUTBOX
+  W->>A: POST /founder/entries (client UUID)
+  A->>D: Insert, unique on client UUID
+  alt Already stored (sent twice)
+    D-->>A: Existing entry
+  end
+  A-->>W: OK
+  W->>O: Remove item
+  W-->>Fo: Screens refresh

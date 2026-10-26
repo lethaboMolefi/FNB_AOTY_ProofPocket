@@ -33,6 +33,7 @@ export const MATRIX: Endpoint[] = [
   { id: "F-AUTH-02", module: "Sign-in", feature: "Create a sign-in (local, used by Join)", method: "POST", path: "/auth/local/sign-up", ui: "/join, /sign-up", allow: ALL },
   { id: "F-AUTH-10", module: "Sign-in", feature: "Email a sign-up code (local)", method: "POST", path: "/auth/email-otp/send", ui: "/sign-up", allow: ALL },
   { id: "F-AUTH-11", module: "Sign-in", feature: "Check a sign-up code (local)", method: "POST", path: "/auth/email-otp/verify", ui: "/sign-up", allow: ALL },
+  { id: "F-AUTH-12", module: "Sign-in", feature: "Set your own password (forced after a temporary one)", method: "POST", path: "/auth/password", ui: "/change-password, /admin/profile", allow: USERS, body: { current: "x", password: "y" }, note: "Needs a fresh sign-in (within 15 minutes)" },
   { id: "F-AUTH-03", module: "Sign-in", feature: "Who am I (account, role, company)", method: "GET", path: "/me", ui: "every signed-in page", allow: USERS },
   { id: "F-AUTH-04", module: "Sign-in", feature: "Start Google Authenticator set-up", method: "POST", path: "/auth/totp/setup", ui: "/verify, Business settings", allow: USERS, note: "Staff who already have it get 409; founders may start it any time" },
   { id: "F-AUTH-05", module: "Sign-in", feature: "Activate Google Authenticator", method: "POST", path: "/auth/totp/activate", ui: "/verify, Business settings", allow: USERS, body: { code: "000000" } },
@@ -183,6 +184,14 @@ export const MATRIX: Endpoint[] = [
   { id: "F-ADM-20", module: "Admin portal", feature: "Businesses: every company with level and score", method: "GET", path: "/admin/companies", ui: "/admin/people", allow: ["admin"] },
   { id: "F-ADM-21", module: "Admin portal", feature: "Open one business (audited)", method: "GET", path: "/admin/companies/:id", ui: "/admin/people", allow: ["admin"] },
   { id: "F-ADM-22", module: "Admin portal", feature: "Security and system health", method: "GET", path: "/admin/health", ui: "/admin/health", allow: ["admin"] },
+  { id: "F-ADM-23", module: "Admin portal", feature: "User approvals: everyone who isn't a founder", method: "GET", path: "/admin/approvals", ui: "/admin/approvals", allow: ["admin"] },
+  { id: "F-ADM-24", module: "Admin portal", feature: "Open an application or account (founders refused)", method: "GET", path: "/admin/approvals/:type/:id", ui: "/admin/approvals", allow: ["admin"] },
+  { id: "F-ADM-25", module: "Admin portal", feature: "Approve or reject an application (reason required)", method: "POST", path: "/admin/approvals/application/:id", ui: "/admin/approvals", allow: ["admin"] },
+  { id: "F-ADM-26", module: "Admin portal", feature: "Suspend an account (reason required; not founders, admins or yourself)", method: "POST", path: "/admin/approvals/user/:id/suspend", ui: "/admin/approvals", allow: ["admin"] },
+  { id: "F-ADM-27", module: "Admin portal", feature: "Reinstate a suspended account", method: "POST", path: "/admin/approvals/user/:id/reinstate", ui: "/admin/approvals", allow: ["admin"] },
+  { id: "F-UML-01", module: "UML diagrams", feature: "List and view UML diagrams", method: "GET", path: "/uml", ui: "/admin/uml, /app/uml", allow: ["founder", "admin"] },
+  { id: "F-UML-02", module: "UML diagrams", feature: "View or download a diagram (SVG, PNG, PDF or Mermaid source)", method: "GET", path: "/uml/:id/:format", ui: "/admin/uml, /app/uml", allow: ["founder", "admin"] },
+  { id: "F-UML-03", module: "UML diagrams", feature: "Admin decisions log (summary for founders)", method: "GET", path: "/admin-log", ui: "/app/admin-log", allow: ["founder", "admin"] },
 ];
 
 /** Features with no HTTP endpoint of their own (jobs, emails, web-only), listed in the inventory too. */

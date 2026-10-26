@@ -1,0 +1,224 @@
+classDiagram
+  direction LR
+
+  class Organisation {
+    +uuid id
+    +OrgType type
+    +string name
+    +bool verified
+    +bool setupDone
+  }
+  class User {
+    +uuid id
+    +Role role
+    +string email
+    +string displayName
+    +bool isLead
+  }
+  class Company {
+    +uuid id
+    +string name
+    +BusinessType businessType
+    +string sector
+    +string town
+    +string province
+    +Area area
+    +string cipcNumber
+    +Sharing funderSharing
+    +date verifiedAt
+    +int supportStage
+    +date joinedAt
+    +string consentVersion
+    +readiness() int
+    +isVerified() bool
+  }
+  class IncubatorMembership {
+    +MembershipStatus status
+  }
+  class File {
+    +uuid id
+    +FilePurpose purpose
+    +string mime
+    +int sizeBytes
+    +string sha256
+  }
+  class Document {
+    +DocType docType
+    +int version
+    +DocStatus status
+    +string rejectReason
+    +date expiresOn
+  }
+  class LedgerEntry {
+    +uuid clientUuid
+    +date entryDate
+    +Direction direction
+    +decimal amount
+    +PayMethod method
+    +string category
+    +bool isPersonal
+    +date paidBackAt
+    +date voidedAt
+  }
+  class StockItem {
+    +string name
+    +decimal qty
+    +decimal reorderAt
+    +decimal cost
+  }
+  class Supplier {
+    +string name
+    +string bankMasked
+    +string pendingBankMasked
+    +date pendingSince
+  }
+  class SupplierBankChange {
+    +string fromMasked
+    +string toMasked
+    +ChangeStatus status
+  }
+  class PaymentDetails {
+    +string bank
+    +string accountNumberEnc
+    +string accountLast4
+    +string shapId
+  }
+  class PaymentRequest {
+    +string ref
+    +string publicToken
+    +string clientName
+    +decimal amount
+    +Rail[] rails
+    +PaymentStatus status
+    +int attempts
+    +date requestedOn
+  }
+  class PaymentProof {
+    +string payerName
+    +decimal amount
+    +date paidOn
+    +string usedReference
+    +json checkResults
+    +ProofStatus status
+  }
+  class Message {
+    +MessageKind kind
+    +string sender
+    +string[] riskFlags
+    +MessageStatus status
+  }
+  class Programme {
+    +string name
+    +decimal minAmount
+    +decimal maxAmount
+    +decimal budget
+    +int minMonths
+    +int minScore
+    +ProgrammeStatus status
+  }
+  class Application {
+    +decimal requestedAmount
+    +ApplicationStatus status
+    +string statusReason
+  }
+  class Offer {
+    +decimal amount
+    +string reason
+    +date offeredOn
+  }
+  class Profile {
+    +string tagline
+    +string services
+    +string whatsapp
+  }
+  class Post {
+    +string text
+    +FeatureStatus feature
+  }
+  class Tender {
+    +string title
+    +decimal value
+    +date closesOn
+    +int minMonths
+  }
+  class Report {
+    +ReportTarget targetType
+    +string reason
+    +ReportStatus status
+  }
+  class AuditLog {
+    +bigint chainSeq
+    +string action
+    +string entity
+    +json before
+    +json after
+    +string prevHash
+    +string hash
+  }
+
+  Organisation "1" --> "*" User : employs
+  User "1" --> "0..1" Company : owns
+  Organisation "1" --> "*" IncubatorMembership
+  Company "1" --> "*" IncubatorMembership
+  Company "*" --> "0..1" Organisation : incubator
+  Company "*" --> "0..1" User : adviser
+  Company "1" *-- "*" File
+  Company "1" *-- "*" Document
+  Document "1" --> "1" File
+  Company "1" *-- "*" LedgerEntry
+  Company "1" *-- "*" StockItem
+  Company "1" *-- "*" Supplier
+  Supplier "1" --> "*" SupplierBankChange
+  Company "1" *-- "*" PaymentDetails
+  Company "1" *-- "*" PaymentRequest
+  PaymentRequest "1" --> "*" PaymentProof
+  PaymentProof "1" --> "1" File
+  LedgerEntry "*" --> "0..1" PaymentRequest
+  LedgerEntry "*" --> "0..1" StockItem
+  Company "1" *-- "*" Message
+  Organisation "1" --> "*" Programme : funder
+  Programme "1" --> "*" Application
+  Company "1" --> "*" Application
+  Application "1" *-- "*" Offer
+  Company "1" *-- "0..1" Profile
+  Company "1" *-- "*" Post
+  Company "*" --> "*" Tender : interest
+  Company "1" --> "*" Report
+  AuditLog ..> Company : records actions on
+
+  class Role {
+    <<enumeration>>
+    founder
+    funder
+    adviser
+    buyer
+    admin
+  }
+  class PaymentStatus {
+    <<enumeration>>
+    waiting
+    checking
+    paid
+    not_received
+    flagged
+    expired
+    cancelled
+  }
+  class DocType {
+    <<enumeration>>
+    cipc
+    id
+    bank
+    addr
+    tax
+    bplan
+    fin
+    bbbee
+    csd
+  }
+  class Sharing {
+    <<enumeration>>
+    none
+    summary
+    full
+  }

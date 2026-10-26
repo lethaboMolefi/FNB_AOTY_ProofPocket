@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> pending : new bank details entered
+  pending --> confirmed : founder confirms
+  pending --> rejected : founder rejects
+  confirmed --> [*]
+  rejected --> [*]
+  note right of pending
+    Payments to this supplier
+    are blocked while pending.
+  end note
