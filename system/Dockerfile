@@ -1,5 +1,5 @@
 # ProofPocket API for Cloud Run. Build context: system/
-FROM node:26.12.1-slim AS build
+FROM node:26.13.0-slim AS build
 WORKDIR /src
 RUN npm install -g pnpm@12.15.0
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -12,7 +12,7 @@ COPY apps/api apps/api
 RUN pnpm --filter @proofpocket/api build
 
 # Production dependencies only.
-FROM node:26.12.1-slim AS deps
+FROM node:26.13.0-slim AS deps
 WORKDIR /src
 RUN npm install -g pnpm@12.15.0
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -21,7 +21,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile --prod --filter "@proofpocket/api..."
 
-FROM node:26.12.1-slim
+FROM node:26.13.0-slim
 ENV NODE_ENV=production
 WORKDIR /srv
 COPY --from=deps /src/node_modules ./node_modules
